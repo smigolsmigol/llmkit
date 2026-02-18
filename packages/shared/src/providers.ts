@@ -19,7 +19,7 @@ const PRICING: Record<ProviderName, PricingTable> = {
       cacheReadPerMillion: 0.3,
       cacheWritePerMillion: 3.75,
     },
-    'claude-haiku-3.5-20241022': {
+    'claude-3-5-haiku-20241022': {
       inputPerMillion: 0.8,
       outputPerMillion: 4.0,
       cacheReadPerMillion: 0.08,
@@ -43,8 +43,8 @@ const PRICING: Record<ProviderName, PricingTable> = {
       outputPerMillion: 0.6,
     },
     'o3': {
-      inputPerMillion: 10.0,
-      outputPerMillion: 40.0,
+      inputPerMillion: 2.0,
+      outputPerMillion: 8.0,
     },
     'o3-mini': {
       inputPerMillion: 1.1,
@@ -57,7 +57,7 @@ const PRICING: Record<ProviderName, PricingTable> = {
       inputPerMillion: 0.1,
       outputPerMillion: 0.4,
     },
-    'gemini-2.0-pro': {
+    'gemini-2.5-pro': {
       inputPerMillion: 1.25,
       outputPerMillion: 10.0,
     },

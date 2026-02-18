@@ -8,9 +8,23 @@ export function costLogger() {
     await next();
 
     const latency = Date.now() - start;
+    const meta = c.get('llmkit_response') as Record<string, unknown> | undefined;
+    if (!meta) return;
 
-    // TODO: extract usage from response, calculate cost, log to supabase
-    // TODO: update budget counters in KV (post-request)
-    // TODO: group by sessionId for agent session tracking
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      sessionId,
+      apiKey: (c.get('apiKey') as string)?.slice(0, 8) + '...', // never log full key
+      provider: meta.provider,
+      model: meta.model,
+      latencyMs: latency,
+      usage: meta.usage,
+      cost: meta.cost,
+    };
+
+    // TODO: batch write to Supabase (don't block the response)
+    // TODO: update budget counters in KV
+    // for now, use cf workers console for observability
+    console.log(JSON.stringify(logEntry));
   });
 }

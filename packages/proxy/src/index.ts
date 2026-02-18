@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { LLMKitError } from '@llmkit/shared';
 import { auth } from './middleware/auth';
 import { budgetCheck } from './middleware/budget';
 import { costLogger } from './middleware/logger';
@@ -13,15 +14,20 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-// health check - no auth
+app.onError((err, c) => {
+  if (err instanceof LLMKitError) {
+    return c.json({ error: { code: err.code, message: err.message } }, err.statusCode as any);
+  }
+  console.error('unhandled:', err);
+  return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' } }, 500);
+});
+
 app.get('/health', (c) => c.json({ status: 'ok', version: '0.0.1' }));
 
-// all /v1/* routes go through the middleware chain
 app.use('/v1/*', auth());
 app.use('/v1/*', budgetCheck());
 app.use('/v1/*', costLogger());
 
-// chat completions
 app.route('/v1', providerRouter);
 
 export default app;
