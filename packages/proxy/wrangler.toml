@@ -1,0 +1,21 @@
+name = "llmkit-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-02-18"
+
+[observability]
+enabled = true
+
+# KV for rate limiting and budget counters
+# [[kv_namespaces]]
+# binding = "RATE_LIMIT"
+# id = ""
+
+# [[kv_namespaces]]
+# binding = "BUDGET"
+# id = ""
+
+# D1 for request logging (edge)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "llmkit"
+# database_id = ""

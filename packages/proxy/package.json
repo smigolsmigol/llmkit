@@ -1,0 +1,21 @@
+{
+  "name": "@llmkit/proxy",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist .wrangler"
+  },
+  "dependencies": {
+    "@llmkit/shared": "workspace:*",
+    "hono": "^4.7.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250214.0",
+    "wrangler": "^3.109.0"
+  }
+}

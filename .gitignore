@@ -1,0 +1,57 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build
+dist/
+.turbo/
+*.tsbuildinfo
+
+# env
+.env
+.env.*
+!.env.example
+
+# credentials - never commit these
+*.pem
+*.key
+credentials.json
+
+# os
+.DS_Store
+Thumbs.db
+
+# ide
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# cf workers
+.wrangler/
+.dev.vars
+
+# next.js
+.next/
+out/
+
+# test
+coverage/
+
+# logs
+*.log
+npm-debug.log*
+
+# temp
+tmp/
+.cache/
+
+# planning docs (local only, not repo material)
+docs/
+
+# claude working files (local only)
+.claude/STATUS.md
+.claude/BACKLOG.md
+.claude/todo.md
+.claude/sessions/
+.claude/settings.local.json
