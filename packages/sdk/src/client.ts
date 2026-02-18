@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import type { LLMKitConfig, LLMRequest, LLMResponse } from '@llmkit/shared';
 
 const DEFAULT_BASE_URL = 'https://api.llmkit.dev';
@@ -19,7 +18,7 @@ export class LLMKit {
   session(id?: string): LLMKit {
     const clone = new LLMKit({
       ...this.config,
-      sessionId: id || randomUUID(),
+      sessionId: id || crypto.randomUUID(),
     });
     return clone;
   }
