@@ -1,9 +1,9 @@
-import type { LLMResponse, Message, ProviderName, TokenUsage } from '@llmkit/shared';
+import type { Message, ProviderName, TokenUsage } from '@llmkit/shared';
 
 export interface ProviderAdapter {
   name: ProviderName;
   chat(req: ProviderRequest): Promise<ProviderResponse>;
-  chatStream(req: ProviderRequest): Promise<ReadableStream>;
+  chatStream(req: ProviderRequest): AsyncGenerator<StreamEvent>;
 }
 
 export interface ProviderRequest {
@@ -20,4 +20,12 @@ export interface ProviderResponse {
   model: string;
   usage: TokenUsage;
   finishReason: string;
+}
+
+export interface StreamEvent {
+  type: 'text' | 'end';
+  text?: string;
+  usage?: TokenUsage;
+  id?: string;
+  model?: string;
 }

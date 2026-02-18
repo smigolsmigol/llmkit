@@ -1,5 +1,5 @@
 import type { TokenUsage } from '@llmkit/shared';
-import type { ProviderAdapter, ProviderRequest, ProviderResponse } from './types';
+import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
 const BASE_URL = 'https://api.anthropic.com/v1';
 const API_VERSION = '2023-06-01';
@@ -65,7 +65,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     return parseResponse(data);
   }
 
-  async chatStream(req: ProviderRequest): Promise<ReadableStream> {
+  async *chatStream(req: ProviderRequest): AsyncGenerator<StreamEvent> {
     const { system, messages } = splitSystem(req.messages);
 
     const body: Record<string, unknown> = {
@@ -94,23 +94,26 @@ export class AnthropicAdapter implements ProviderAdapter {
 
     if (!res.body) throw new Error('No response body for stream');
 
-    // pass through the SSE stream and intercept the final message_delta for usage
-    const upstream = res.body;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
     let usage: TokenUsage | null = null;
-    let fullContent = '';
     let messageId = '';
     let model = req.model;
 
-    const transform = new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        controller.enqueue(chunk);
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        // parse SSE events from chunk to capture usage
-        const text = new TextDecoder().decode(chunk);
-        for (const line of text.split('\n')) {
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop()!;
+
+        for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const raw = line.slice(6).trim();
-          if (raw === '[DONE]') continue;
+          if (!raw || raw === '[DONE]') continue;
 
           try {
             const event = JSON.parse(raw) as AnthropicStreamEvent;
@@ -124,36 +127,25 @@ export class AnthropicAdapter implements ProviderAdapter {
             }
 
             if (event.type === 'content_block_delta' && event.delta?.text) {
-              fullContent += event.delta.text;
+              yield { type: 'text', text: event.delta.text };
             }
 
             if (event.type === 'message_delta' && event.usage) {
-              // final usage from anthropic includes output tokens
-              const finalUsage = event.usage;
               if (usage) {
-                usage.outputTokens = finalUsage.output_tokens;
+                usage.outputTokens = event.usage.output_tokens;
                 usage.totalTokens = usage.inputTokens + usage.outputTokens;
               }
             }
           } catch {
-            // partial JSON, skip
+            // partial JSON from chunk boundary, next chunk will complete it
           }
         }
-      },
-    });
+      }
+    } finally {
+      reader.releaseLock();
+    }
 
-    // attach metadata to the stream so the logger can read it after
-    const readable = upstream.pipeThrough(transform);
-    (readable as unknown as Record<string, unknown>).__llmkit = {
-      getMetadata: () => ({
-        id: messageId,
-        content: fullContent,
-        model,
-        usage,
-      }),
-    };
-
-    return readable;
+    yield { type: 'end', usage: usage ?? undefined, id: messageId, model };
   }
 }
 

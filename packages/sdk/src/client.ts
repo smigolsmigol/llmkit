@@ -1,6 +1,8 @@
-import type { LLMKitConfig, LLMRequest, LLMResponse } from '@llmkit/shared';
+import type { LLMKitConfig, LLMRequest, LLMResponse, TokenUsage, CostBreakdown } from '@llmkit/shared';
 
 const DEFAULT_BASE_URL = 'https://api.llmkit.dev';
+
+type ChatRequest = Omit<LLMRequest, 'provider'> & { provider?: string };
 
 export class LLMKit {
   private config: Required<Pick<LLMKitConfig, 'apiKey' | 'baseUrl'>>;
@@ -14,7 +16,6 @@ export class LLMKit {
     this.sessionId = config.sessionId;
   }
 
-  // start a tracked agent session
   session(id?: string): LLMKit {
     const clone = new LLMKit({
       ...this.config,
@@ -23,7 +24,29 @@ export class LLMKit {
     return clone;
   }
 
-  async chat(req: Omit<LLMRequest, 'provider'> & { provider?: string }): Promise<LLMResponse> {
+  async chat(req: ChatRequest): Promise<LLMResponse> {
+    const res = await this.fetch(req);
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error((err as { message: string }).message);
+    }
+
+    return res.json() as Promise<LLMResponse>;
+  }
+
+  async chatStream(req: ChatRequest): Promise<ChatStream> {
+    const res = await this.fetch({ ...req, stream: true });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error((err as { message: string }).message);
+    }
+
+    return new ChatStream(res);
+  }
+
+  private fetch(req: ChatRequest & { stream?: boolean }): Promise<Response> {
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${this.config.apiKey}`,
       'Content-Type': 'application/json',
@@ -36,17 +59,82 @@ export class LLMKit {
       headers['x-llmkit-provider'] = req.provider;
     }
 
-    const res = await fetch(`${this.config.baseUrl}/v1/chat/completions`, {
+    return fetch(`${this.config.baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers,
       body: JSON.stringify(req),
     });
+  }
+}
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: res.statusText }));
-      throw new Error((err as { message: string }).message);
+// async iterable that yields text chunks and exposes metadata after completion
+export class ChatStream {
+  private _usage?: TokenUsage;
+  private _cost?: CostBreakdown;
+  private _model?: string;
+  private _provider?: string;
+  private _id?: string;
+
+  constructor(private response: Response) {}
+
+  get usage() { return this._usage; }
+  get cost() { return this._cost; }
+  get model() { return this._model; }
+  get provider() { return this._provider; }
+  get id() { return this._id; }
+
+  async *[Symbol.asyncIterator](): AsyncGenerator<string> {
+    if (!this.response.body) throw new Error('No response body');
+
+    const reader = this.response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let currentEvent = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop()!;
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            currentEvent = line.slice(7).trim();
+            continue;
+          }
+
+          if (!line.startsWith('data: ')) {
+            if (line === '') currentEvent = '';
+            continue;
+          }
+
+          const raw = line.slice(6).trim();
+          if (!raw) continue;
+
+          try {
+            const data = JSON.parse(raw);
+
+            if (currentEvent === 'delta' && data.text !== undefined) {
+              yield data.text as string;
+            }
+
+            if (currentEvent === 'done') {
+              this._usage = data.usage;
+              this._cost = data.cost;
+              this._model = data.model;
+              this._provider = data.provider;
+              this._id = data.id;
+            }
+          } catch {
+            // partial JSON, will be completed in next chunk
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
     }
-
-    return res.json() as Promise<LLMResponse>;
   }
 }

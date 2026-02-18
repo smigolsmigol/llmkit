@@ -1,5 +1,5 @@
 import type { TokenUsage } from '@llmkit/shared';
-import type { ProviderAdapter, ProviderRequest, ProviderResponse } from './types';
+import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
 const BASE_URL = 'https://api.openai.com/v1';
 
@@ -66,7 +66,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     return parseResponse(data);
   }
 
-  async chatStream(req: ProviderRequest): Promise<ReadableStream> {
+  async *chatStream(req: ProviderRequest): AsyncGenerator<StreamEvent> {
     const messages: OpenAIMessage[] = req.messages.map((m) => ({
       role: m.role as OpenAIMessage['role'],
       content: m.content,
@@ -97,56 +97,54 @@ export class OpenAIAdapter implements ProviderAdapter {
 
     if (!res.body) throw new Error('No response body for stream');
 
-    const upstream = res.body;
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
     let usage: TokenUsage | null = null;
-    let fullContent = '';
     let messageId = '';
     let model = req.model;
 
-    const transform = new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        controller.enqueue(chunk);
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        const text = new TextDecoder().decode(chunk);
-        for (const line of text.split('\n')) {
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop()!;
+
+        for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
           const raw = line.slice(6).trim();
-          if (raw === '[DONE]') continue;
+          if (!raw || raw === '[DONE]') continue;
 
           try {
-            const chunk = JSON.parse(raw) as OpenAIStreamChunk;
-            messageId = chunk.id;
-            model = chunk.model;
+            const parsed = JSON.parse(raw) as OpenAIStreamChunk;
+            messageId = parsed.id;
+            model = parsed.model;
 
-            const delta = chunk.choices[0]?.delta?.content;
-            if (delta) fullContent += delta;
+            const delta = parsed.choices[0]?.delta?.content;
+            if (delta) {
+              yield { type: 'text', text: delta };
+            }
 
-            // usage comes in the final chunk when stream_options.include_usage is true
-            if (chunk.usage) {
+            if (parsed.usage) {
               usage = {
-                inputTokens: chunk.usage.prompt_tokens,
-                outputTokens: chunk.usage.completion_tokens,
-                totalTokens: chunk.usage.total_tokens,
+                inputTokens: parsed.usage.prompt_tokens,
+                outputTokens: parsed.usage.completion_tokens,
+                totalTokens: parsed.usage.total_tokens,
               };
             }
           } catch {
-            // partial JSON
+            // partial JSON from chunk boundary
           }
         }
-      },
-    });
+      }
+    } finally {
+      reader.releaseLock();
+    }
 
-    const readable = upstream.pipeThrough(transform);
-    (readable as unknown as Record<string, unknown>).__llmkit = {
-      getMetadata: () => ({
-        id: messageId,
-        content: fullContent,
-        model,
-        usage,
-      }),
-    };
-
-    return readable;
+    yield { type: 'end', usage: usage ?? undefined, id: messageId, model };
   }
 }
 
