@@ -1,22 +1,20 @@
 import { Hono } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { LLMKitError } from '@llmkit/shared';
+import type { Env } from './env';
 import { auth } from './middleware/auth';
 import { budgetCheck } from './middleware/budget';
 import { costLogger } from './middleware/logger';
 import { providerRouter } from './routes/chat';
 
-type Bindings = {
-  RATE_LIMIT: KVNamespace;
-  BUDGET: KVNamespace;
-  SUPABASE_URL: string;
-  SUPABASE_KEY: string;
-};
-
-const app = new Hono<{ Bindings: Bindings }>();
+const app = new Hono<Env>();
 
 app.onError((err, c) => {
   if (err instanceof LLMKitError) {
-    return c.json({ error: { code: err.code, message: err.message } }, err.statusCode as any);
+    return c.json(
+      { error: { code: err.code, message: err.message } },
+      err.statusCode as ContentfulStatusCode,
+    );
   }
   console.error('unhandled:', err);
   return c.json({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' } }, 500);
