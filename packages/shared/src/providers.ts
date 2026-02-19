@@ -25,6 +25,10 @@ const PRICING: Record<ProviderName, PricingTable> = {
       cacheReadPerMillion: 0.08,
       cacheWritePerMillion: 1.0,
     },
+    'claude-3-haiku-20240307': {
+      inputPerMillion: 0.25,
+      outputPerMillion: 1.25,
+    },
     'claude-opus-4-20250514': {
       inputPerMillion: 15.0,
       outputPerMillion: 75.0,
