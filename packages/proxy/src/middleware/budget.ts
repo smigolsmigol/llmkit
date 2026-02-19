@@ -5,8 +5,9 @@ import type { Env, BudgetRecord } from '../env';
 
 export function budgetCheck() {
   return createMiddleware<Env>(async (c, next) => {
-    // per-request header takes priority, then API key's default budget (set by auth)
-    const budgetId = c.req.header('x-llmkit-budget-id') || c.get('budgetId');
+    // budget comes from API key record (set by auth middleware)
+    // no per-request override - prevents users pointing to other budgets
+    const budgetId: string | undefined = c.get('budgetId');
     if (!budgetId) return await next();
 
     const raw = await c.env.BUDGET.get(budgetId);
@@ -60,7 +61,13 @@ export async function recordUsage(
   const raw = await kv.get(budgetId);
   if (!raw) return;
 
-  const budget: BudgetRecord = JSON.parse(raw);
+  let budget: BudgetRecord;
+  try {
+    budget = JSON.parse(raw);
+  } catch {
+    console.error(`corrupt budget record in recordUsage: ${budgetId}`);
+    return;
+  }
   budget.usedCents += costCents;
   await kv.put(budgetId, JSON.stringify(budget));
 }

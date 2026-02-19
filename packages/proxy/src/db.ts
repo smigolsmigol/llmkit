@@ -59,7 +59,10 @@ export async function findApiKey(
     `api_keys?key_hash=eq.${keyHash}&revoked_at=is.null&select=id,user_id,key_prefix,name,budget_id`,
   );
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`api key lookup failed (${res.status}): ${detail}`);
+  }
 
   const rows = await res.json() as ApiKeyRow[];
   return rows[0] ?? null;

@@ -19,15 +19,16 @@ export type Env = {
   Bindings: {
     RATE_LIMIT: KVNamespace;
     BUDGET: KVNamespace;
-    SUPABASE_URL: string;
-    SUPABASE_KEY: string;
+    SUPABASE_URL?: string;
+    SUPABASE_KEY?: string;
+    DEV_MODE?: string;
   };
   Variables: {
     apiKey: string;
-    apiKeyId: string;
-    userId: string;
-    budgetId: string;
-    budgetRecord: BudgetRecord;
-    llmkit_response: ResponseMeta;
+    apiKeyId?: string;
+    userId?: string;
+    budgetId?: string;
+    budgetRecord?: BudgetRecord;
+    llmkit_response?: ResponseMeta;
   };
 };

@@ -5,11 +5,15 @@ import { findApiKey } from '../db';
 
 export function auth() {
   return createMiddleware<Env>(async (c, next) => {
-    const raw = c.req.header('Authorization')?.replace('Bearer ', '');
+    const authHeader = c.req.header('Authorization') || '';
+    const raw = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
     if (!raw) throw new AuthError();
 
-    // dev mode: skip DB validation if Supabase isn't configured
-    if (!c.env.SUPABASE_URL) {
+    if (!c.env.SUPABASE_URL || !c.env.SUPABASE_KEY) {
+      if (c.env.DEV_MODE !== 'true') {
+        throw new Error('SUPABASE_URL/SUPABASE_KEY not set. Set DEV_MODE=true to bypass auth in development.');
+      }
+      console.warn('[llmkit] DEV_MODE: auth bypassed, do not use in production');
       c.set('apiKey', raw.slice(0, 8) + '...');
       return await next();
     }
@@ -22,7 +26,7 @@ export function auth() {
     c.set('apiKeyId', keyRecord.id);
     c.set('userId', keyRecord.user_id);
 
-    // use API key's default budget if no per-request override
+    // attach budget from API key record (if configured)
     if (keyRecord.budget_id) {
       c.set('budgetId', keyRecord.budget_id);
     }

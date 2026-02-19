@@ -77,11 +77,22 @@ export function getModelPricing(
   if (providerPricing[model]) return providerPricing[model];
 
   // prefix match for versioned models (e.g. "claude-sonnet-4" matches "claude-sonnet-4-20250514")
+  // longest match wins to avoid "gpt-4o" matching before "gpt-4o-mini"
+  let best: ModelPricing | undefined;
+  let bestLen = 0;
+
   for (const [key, pricing] of Object.entries(providerPricing)) {
-    if (key.startsWith(model) || model.startsWith(key)) return pricing;
+    if (model.startsWith(key) && key.length > bestLen) {
+      bestLen = key.length;
+      best = pricing;
+    }
+    if (key.startsWith(model) && model.length > bestLen) {
+      bestLen = model.length;
+      best = pricing;
+    }
   }
 
-  return undefined;
+  return best;
 }
 
 export function calculateCost(

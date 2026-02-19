@@ -53,6 +53,13 @@ export class AuthError extends LLMKitError {
   }
 }
 
+export class ValidationError extends LLMKitError {
+  constructor(message: string) {
+    super(message, 'INVALID_REQUEST', 400);
+    this.name = 'ValidationError';
+  }
+}
+
 export class RateLimitError extends LLMKitError {
   constructor(
     public retryAfterMs?: number,

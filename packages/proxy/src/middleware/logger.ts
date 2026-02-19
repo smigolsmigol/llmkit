@@ -34,7 +34,7 @@ export function costLogger() {
 
     // persist request log to Supabase (non-blocking)
     const apiKeyId: string | undefined = c.get('apiKeyId');
-    if (apiKeyId && c.env.SUPABASE_URL) {
+    if (apiKeyId && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
       const insertPromise = logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
         api_key_id: apiKeyId,
         session_id: sessionId || null,

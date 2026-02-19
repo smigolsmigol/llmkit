@@ -28,10 +28,20 @@ interface GeminiResponse {
   responseId?: string;
 }
 
+// only allow safe model names - blocks path traversal in URL interpolation
+const MODEL_NAME_RE = /^[a-zA-Z0-9][a-zA-Z0-9._-]{0,127}$/;
+
+function assertModelName(model: string): void {
+  if (!MODEL_NAME_RE.test(model)) {
+    throw new Error(`invalid model name: ${model}`);
+  }
+}
+
 export class GeminiAdapter implements ProviderAdapter {
   name = 'gemini' as const;
 
   async chat(req: ProviderRequest): Promise<ProviderResponse> {
+    assertModelName(req.model);
     const { systemInstruction, contents } = toGeminiFormat(req.messages);
 
     const body: Record<string, unknown> = { contents };
@@ -61,6 +71,7 @@ export class GeminiAdapter implements ProviderAdapter {
   }
 
   async *chatStream(req: ProviderRequest): AsyncGenerator<StreamEvent> {
+    assertModelName(req.model);
     const { systemInstruction, contents } = toGeminiFormat(req.messages);
 
     const body: Record<string, unknown> = { contents };

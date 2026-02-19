@@ -28,8 +28,9 @@ export class LLMKit {
     const res = await this.fetch(req);
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: res.statusText }));
-      throw new Error((err as { message: string }).message);
+      const body = await res.json().catch(() => null);
+      const msg = body?.error?.message || body?.message || res.statusText;
+      throw new Error(msg);
     }
 
     return res.json() as Promise<LLMResponse>;
@@ -39,8 +40,9 @@ export class LLMKit {
     const res = await this.fetch({ ...req, stream: true });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: res.statusText }));
-      throw new Error((err as { message: string }).message);
+      const body = await res.json().catch(() => null);
+      const msg = body?.error?.message || body?.message || res.statusText;
+      throw new Error(msg);
     }
 
     return new ChatStream(res);

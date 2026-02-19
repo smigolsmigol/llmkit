@@ -195,7 +195,6 @@ function buildHeaders(config: LLMKitProviderConfig): Record<string, string> {
     'Content-Type': 'application/json',
   };
   if (config.sessionId) headers['x-llmkit-session-id'] = config.sessionId;
-  if (config.budgetId) headers['x-llmkit-budget-id'] = config.budgetId;
   if (config.provider) headers['x-llmkit-provider'] = config.provider;
   if (config.providerKey) headers['x-llmkit-provider-key'] = config.providerKey;
   return headers;

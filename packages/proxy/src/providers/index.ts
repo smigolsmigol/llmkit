@@ -1,4 +1,4 @@
-import type { ProviderName } from '@llmkit/shared';
+import { ValidationError, type ProviderName } from '@llmkit/shared';
 import type { ProviderAdapter } from './types';
 import { AnthropicAdapter } from './anthropic';
 import { OpenAIAdapter } from './openai';
@@ -12,7 +12,7 @@ const adapters: Record<string, ProviderAdapter> = {
 
 export function getAdapter(provider: ProviderName): ProviderAdapter {
   const adapter = adapters[provider];
-  if (!adapter) throw new Error(`Unknown provider: ${provider}`);
+  if (!adapter) throw new ValidationError(`unsupported provider: ${provider}`);
   return adapter;
 }
 
