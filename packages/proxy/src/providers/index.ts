@@ -2,10 +2,12 @@ import type { ProviderName } from '@llmkit/shared';
 import type { ProviderAdapter } from './types';
 import { AnthropicAdapter } from './anthropic';
 import { OpenAIAdapter } from './openai';
+import { GeminiAdapter } from './gemini';
 
 const adapters: Record<string, ProviderAdapter> = {
   anthropic: new AnthropicAdapter(),
   openai: new OpenAIAdapter(),
+  gemini: new GeminiAdapter(),
 };
 
 export function getAdapter(provider: ProviderName): ProviderAdapter {
