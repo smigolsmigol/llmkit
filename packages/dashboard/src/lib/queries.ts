@@ -1,0 +1,341 @@
+import { createServerClient } from './supabase';
+
+export interface RequestRow {
+  id: string;
+  api_key_id: string;
+  session_id: string | null;
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_tokens: number;
+  cache_write_tokens: number;
+  cost_cents: number;
+  latency_ms: number;
+  status: string;
+  error_code: string | null;
+  created_at: string;
+}
+
+export interface BudgetRow {
+  id: string;
+  user_id: string;
+  name: string;
+  limit_cents: number;
+  period: string;
+  scope: string;
+  alert_webhook_url: string | null;
+  reset_at: string | null;
+  created_at: string;
+}
+
+export interface ApiKeyRow {
+  id: string;
+  user_id: string;
+  key_prefix: string;
+  name: string;
+  budget_id: string | null;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+interface ProviderStats {
+  provider: string;
+  count: number;
+  totalCostCents: number;
+}
+
+interface DailySpend {
+  date: string;
+  costCents: number;
+}
+
+export async function getRecentRequests(userId: string, limit = 20): Promise<RequestRow[]> {
+  const db = createServerClient();
+  const { data: keys } = await db
+    .from('api_keys')
+    .select('id')
+    .eq('user_id', userId);
+
+  if (!keys?.length) return [];
+
+  const keyIds = keys.map((k) => k.id);
+  const { data } = await db
+    .from('requests')
+    .select('*')
+    .in('api_key_id', keyIds)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  return (data as RequestRow[]) || [];
+}
+
+export async function getSpendByProvider(userId: string): Promise<ProviderStats[]> {
+  const requests = await getRecentRequests(userId, 1000);
+
+  const byProvider = new Map<string, { count: number; totalCostCents: number }>();
+  for (const req of requests) {
+    const existing = byProvider.get(req.provider) || { count: 0, totalCostCents: 0 };
+    existing.count++;
+    existing.totalCostCents += Number(req.cost_cents);
+    byProvider.set(req.provider, existing);
+  }
+
+  return Array.from(byProvider.entries()).map(([provider, stats]) => ({
+    provider,
+    ...stats,
+  }));
+}
+
+export async function getDailySpend(userId: string, days = 30): Promise<DailySpend[]> {
+  const requests = await getRecentRequests(userId, 10000);
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+
+  const byDay = new Map<string, number>();
+  for (const req of requests) {
+    const date = req.created_at.slice(0, 10);
+    if (new Date(date) < cutoff) continue;
+    byDay.set(date, (byDay.get(date) || 0) + Number(req.cost_cents));
+  }
+
+  return Array.from(byDay.entries())
+    .map(([date, costCents]) => ({ date, costCents }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+export async function getTotalSpend(userId: string): Promise<{ today: number; week: number; month: number }> {
+  const requests = await getRecentRequests(userId, 10000);
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  const weekAgo = new Date(now.getTime() - 7 * 86400000);
+  const monthAgo = new Date(now.getTime() - 30 * 86400000);
+
+  let today = 0;
+  let week = 0;
+  let month = 0;
+
+  for (const req of requests) {
+    const cost = Number(req.cost_cents);
+    const date = new Date(req.created_at);
+    if (req.created_at.startsWith(todayStr)) today += cost;
+    if (date >= weekAgo) week += cost;
+    if (date >= monthAgo) month += cost;
+  }
+
+  return { today, week, month };
+}
+
+export interface PaginatedResult {
+  data: RequestRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface RequestFilters {
+  provider?: string;
+  model?: string;
+  status?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+export async function getRequestsPaginated(
+  userId: string,
+  page = 1,
+  pageSize = 25,
+  filters: RequestFilters = {},
+): Promise<PaginatedResult> {
+  const db = createServerClient();
+  const { data: keys } = await db
+    .from('api_keys')
+    .select('id')
+    .eq('user_id', userId);
+
+  if (!keys?.length) return { data: [], total: 0, page, pageSize };
+
+  const keyIds = keys.map((k) => k.id);
+
+  let query = db
+    .from('requests')
+    .select('*', { count: 'exact' })
+    .in('api_key_id', keyIds);
+
+  if (filters.provider) query = query.eq('provider', filters.provider);
+  if (filters.model) query = query.eq('model', filters.model);
+  if (filters.status === 'error') query = query.not('error_code', 'is', null);
+  if (filters.status === 'ok') query = query.is('error_code', null);
+
+  const sortCol = filters.sortBy || 'created_at';
+  const ascending = filters.sortOrder === 'asc';
+  query = query.order(sortCol, { ascending });
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, count } = await query;
+
+  return {
+    data: (data as RequestRow[]) || [],
+    total: count || 0,
+    page,
+    pageSize,
+  };
+}
+
+export async function getDistinctProviders(userId: string): Promise<string[]> {
+  const requests = await getRecentRequests(userId, 1000);
+  return [...new Set(requests.map((r) => r.provider))].sort();
+}
+
+export async function getDistinctModels(userId: string): Promise<string[]> {
+  const requests = await getRecentRequests(userId, 1000);
+  return [...new Set(requests.map((r) => r.model))].sort();
+}
+
+// ---- Cache analytics ----
+
+export interface CacheStats {
+  totalCacheReadTokens: number;
+  totalCacheWriteTokens: number;
+  totalInputTokens: number;
+  cacheHitRate: number;
+  estimatedSavingsCents: number;
+}
+
+export async function getCacheStats(userId: string, days = 30): Promise<CacheStats> {
+  const requests = await getRecentRequests(userId, 10000);
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+
+  let totalCacheRead = 0;
+  let totalCacheWrite = 0;
+  let totalInput = 0;
+  let savingsCents = 0;
+
+  for (const req of requests) {
+    if (new Date(req.created_at) < cutoff) continue;
+
+    totalInput += req.input_tokens;
+    totalCacheRead += req.cache_read_tokens;
+    totalCacheWrite += req.cache_write_tokens;
+
+    // savings = what cache reads would have cost at full input price minus what they actually cost
+    if (req.cache_read_tokens > 0) {
+      const fullCostPerToken = Number(req.cost_cents) / Math.max(1, req.input_tokens + req.output_tokens);
+      savingsCents += req.cache_read_tokens * fullCostPerToken * 0.9;
+    }
+  }
+
+  const denominator = totalCacheRead + totalInput;
+  const cacheHitRate = denominator > 0 ? (totalCacheRead / denominator) * 100 : 0;
+
+  return {
+    totalCacheReadTokens: totalCacheRead,
+    totalCacheWriteTokens: totalCacheWrite,
+    totalInputTokens: totalInput,
+    cacheHitRate: +cacheHitRate.toFixed(1),
+    estimatedSavingsCents: +savingsCents.toFixed(2),
+  };
+}
+
+export interface DailyCacheBreakdown {
+  date: string;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+  regularInputTokens: number;
+}
+
+export async function getDailyCacheBreakdown(userId: string, days = 30): Promise<DailyCacheBreakdown[]> {
+  const requests = await getRecentRequests(userId, 10000);
+
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - days);
+
+  const byDay = new Map<string, { cacheRead: number; cacheWrite: number; regular: number }>();
+
+  for (const req of requests) {
+    const date = req.created_at.slice(0, 10);
+    if (new Date(date) < cutoff) continue;
+
+    const day = byDay.get(date) || { cacheRead: 0, cacheWrite: 0, regular: 0 };
+    day.cacheRead += req.cache_read_tokens;
+    day.cacheWrite += req.cache_write_tokens;
+    day.regular += req.input_tokens;
+    byDay.set(date, day);
+  }
+
+  return Array.from(byDay.entries())
+    .map(([date, d]) => ({
+      date,
+      cacheReadTokens: d.cacheRead,
+      cacheWriteTokens: d.cacheWrite,
+      regularInputTokens: d.regular,
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ---- Budgets and keys ----
+
+export async function getBudgets(userId: string): Promise<BudgetRow[]> {
+  const db = createServerClient();
+  const { data } = await db
+    .from('budgets')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  return (data as BudgetRow[]) || [];
+}
+
+export async function getApiKeys(userId: string): Promise<ApiKeyRow[]> {
+  const db = createServerClient();
+  const { data } = await db
+    .from('api_keys')
+    .select('id, user_id, key_prefix, name, budget_id, created_at, revoked_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
+  return (data as ApiKeyRow[]) || [];
+}
+
+export async function getSessions(userId: string, limit = 50) {
+  const requests = await getRecentRequests(userId, 5000);
+
+  const sessions = new Map<string, {
+    sessionId: string;
+    requestCount: number;
+    totalCostCents: number;
+    providers: Set<string>;
+    firstRequest: string;
+    lastRequest: string;
+  }>();
+
+  for (const req of requests) {
+    const sid = req.session_id || 'no-session';
+    const existing = sessions.get(sid) || {
+      sessionId: sid,
+      requestCount: 0,
+      totalCostCents: 0,
+      providers: new Set<string>(),
+      firstRequest: req.created_at,
+      lastRequest: req.created_at,
+    };
+    existing.requestCount++;
+    existing.totalCostCents += Number(req.cost_cents);
+    existing.providers.add(req.provider);
+    if (req.created_at < existing.firstRequest) existing.firstRequest = req.created_at;
+    if (req.created_at > existing.lastRequest) existing.lastRequest = req.created_at;
+    sessions.set(sid, existing);
+  }
+
+  return Array.from(sessions.values())
+    .map((s) => ({ ...s, providers: Array.from(s.providers) }))
+    .sort((a, b) => b.lastRequest.localeCompare(a.lastRequest))
+    .slice(0, limit);
+}
