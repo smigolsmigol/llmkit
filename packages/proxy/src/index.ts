@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { LLMKitError } from '@llmkit/shared';
 import type { Env } from './env';
@@ -8,6 +9,12 @@ import { costLogger } from './middleware/logger';
 import { providerRouter } from './routes/chat';
 
 const app = new Hono<Env>();
+
+app.use('*', cors({
+  origin: '*',
+  allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id'],
+  allowMethods: ['POST', 'GET', 'OPTIONS'],
+}));
 
 app.onError((err, c) => {
   if (err instanceof LLMKitError) {

@@ -6,13 +6,9 @@ compatibility_date = "2025-02-18"
 enabled = true
 
 [[kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "dev-rate-limit"
+binding = "BUDGET"
+id = "f42fdd9a03704ab3be48e45494939847"
 
 [[kv_namespaces]]
-binding = "BUDGET"
-id = "dev-budget"
-
-[vars]
-SUPABASE_URL = ""
-SUPABASE_KEY = ""
+binding = "RATE_LIMIT"
+id = "f6eef367a5bd4f56be601269118046f5"
