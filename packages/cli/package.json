@@ -1,0 +1,23 @@
+{
+  "name": "@llmkit/cli",
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Zero-code AI cost tracking. Wraps any command, intercepts API calls, prints cost summary.",
+  "bin": {
+    "llmkit": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@llmkit/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0"
+  }
+}
