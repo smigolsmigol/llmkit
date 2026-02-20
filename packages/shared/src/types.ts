@@ -49,6 +49,17 @@ export interface Budget {
   usedCents: number;
   period: 'daily' | 'weekly' | 'monthly';
   resetAt: Date;
+  scope?: 'key' | 'session';
+}
+
+export interface BudgetAlert {
+  type: 'budget.threshold';
+  budgetId: string;
+  usedCents: number;
+  limitCents: number;
+  percentage: number;
+  period: string;
+  timestamp: string;
 }
 
 export interface SessionSummary {
@@ -62,7 +73,18 @@ export interface SessionSummary {
   durationMs: number;
 }
 
-export type ProviderName = 'anthropic' | 'openai' | 'gemini' | 'ollama';
+export type ProviderName =
+  | 'anthropic'
+  | 'openai'
+  | 'gemini'
+  | 'groq'
+  | 'together'
+  | 'fireworks'
+  | 'deepseek'
+  | 'mistral'
+  | 'xai'
+  | 'ollama'
+  | 'openrouter';
 
 export interface ProviderConfig {
   name: ProviderName;

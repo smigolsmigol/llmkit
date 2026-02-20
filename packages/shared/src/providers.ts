@@ -1,4 +1,4 @@
-import type { ProviderName } from './types';
+import type { ProviderName } from './types.js';
 
 interface ModelPricing {
   inputPerMillion: number;
@@ -9,8 +9,8 @@ interface ModelPricing {
 
 type PricingTable = Record<string, ModelPricing>;
 
-// last updated: 2026-02-18
-// TODO: add automated freshness checks
+// last updated: 2026-02-20
+// prices in USD per 1M tokens
 const PRICING: Record<ProviderName, PricingTable> = {
   anthropic: {
     'claude-sonnet-4-20250514': {
@@ -38,36 +38,77 @@ const PRICING: Record<ProviderName, PricingTable> = {
   },
 
   openai: {
-    'gpt-4o': {
-      inputPerMillion: 2.5,
-      outputPerMillion: 10.0,
-    },
-    'gpt-4o-mini': {
-      inputPerMillion: 0.15,
-      outputPerMillion: 0.6,
-    },
-    'o3': {
-      inputPerMillion: 2.0,
-      outputPerMillion: 8.0,
-    },
-    'o3-mini': {
-      inputPerMillion: 1.1,
-      outputPerMillion: 4.4,
-    },
+    'gpt-4o': { inputPerMillion: 2.5, outputPerMillion: 10.0 },
+    'gpt-4o-mini': { inputPerMillion: 0.15, outputPerMillion: 0.6 },
+    'o3': { inputPerMillion: 2.0, outputPerMillion: 8.0 },
+    'o3-mini': { inputPerMillion: 1.1, outputPerMillion: 4.4 },
+    'gpt-4-turbo': { inputPerMillion: 10.0, outputPerMillion: 30.0 },
   },
 
   gemini: {
-    'gemini-2.0-flash': {
-      inputPerMillion: 0.1,
-      outputPerMillion: 0.4,
+    'gemini-2.0-flash': { inputPerMillion: 0.1, outputPerMillion: 0.4 },
+    'gemini-2.5-pro': { inputPerMillion: 1.25, outputPerMillion: 10.0 },
+    'gemini-2.5-flash': { inputPerMillion: 0.15, outputPerMillion: 0.6 },
+  },
+
+  groq: {
+    // mixtral-8x7b discontinued on Groq as of late 2025
+    'llama-3.3-70b-versatile': { inputPerMillion: 0.59, outputPerMillion: 0.79 },
+    'llama-3.1-8b-instant': { inputPerMillion: 0.05, outputPerMillion: 0.08 },
+    'gemma2-9b-it': { inputPerMillion: 0.20, outputPerMillion: 0.20 },
+  },
+
+  together: {
+    'meta-llama/Meta-Llama-3.3-70B-Instruct-Turbo': { inputPerMillion: 0.88, outputPerMillion: 0.88 },
+    'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo': { inputPerMillion: 0.18, outputPerMillion: 0.18 },
+    'Qwen/Qwen2.5-72B-Instruct-Turbo': { inputPerMillion: 1.20, outputPerMillion: 1.20 },
+    'mistralai/Mixtral-8x7B-Instruct-v0.1': { inputPerMillion: 0.60, outputPerMillion: 0.60 },
+  },
+
+  fireworks: {
+    // fireworks gives 50% discount on cached input automatically
+    'accounts/fireworks/models/llama-v3p3-70b-instruct': {
+      inputPerMillion: 0.90, outputPerMillion: 0.90,
+      cacheReadPerMillion: 0.45,
     },
-    'gemini-2.5-pro': {
-      inputPerMillion: 1.25,
-      outputPerMillion: 10.0,
+    'accounts/fireworks/models/llama-v3p1-8b-instruct': {
+      inputPerMillion: 0.20, outputPerMillion: 0.20,
+      cacheReadPerMillion: 0.10,
     },
   },
 
+  deepseek: {
+    // V3.2 unified pricing (Sep 2025) - both models same rate
+    // cache hits are 90% cheaper, auto-caching no config needed
+    'deepseek-chat': {
+      inputPerMillion: 0.28,
+      outputPerMillion: 0.42,
+      cacheReadPerMillion: 0.028,
+    },
+    'deepseek-reasoner': {
+      inputPerMillion: 0.28,
+      outputPerMillion: 0.42,
+      cacheReadPerMillion: 0.028,
+    },
+  },
+
+  mistral: {
+    'mistral-large-latest': { inputPerMillion: 2.0, outputPerMillion: 6.0 },
+    'mistral-small-latest': { inputPerMillion: 0.10, outputPerMillion: 0.30 },
+    'codestral-latest': { inputPerMillion: 0.30, outputPerMillion: 0.90 },
+  },
+
+  xai: {
+    'grok-2': { inputPerMillion: 2.0, outputPerMillion: 10.0 },
+    'grok-3': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
+    'grok-3-mini': { inputPerMillion: 0.30, outputPerMillion: 0.50 },
+  },
+
+  // local models - no cost
   ollama: {},
+
+  // meta-gateway, pricing varies per model - tracked by underlying provider
+  openrouter: {},
 };
 
 export function getModelPricing(

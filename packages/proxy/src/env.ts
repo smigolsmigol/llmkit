@@ -5,6 +5,10 @@ export interface BudgetRecord {
   usedCents: number;
   period: 'daily' | 'weekly' | 'monthly' | 'total';
   resetAt: number; // unix ms, 0 for 'total'
+  scope?: 'key' | 'session';
+  alertThreshold?: number; // 0-1, default 0.8
+  alertWebhookUrl?: string;
+  lastAlertAt?: number; // unix ms, prevents duplicate alerts per period
 }
 
 export interface ResponseMeta {
@@ -29,6 +33,8 @@ export type Env = {
     userId?: string;
     budgetId?: string;
     budgetRecord?: BudgetRecord;
+    budgetScope?: 'key' | 'session';
+    budgetKvKey?: string; // resolved KV key (may include session suffix)
     llmkit_response?: ResponseMeta;
   };
 };

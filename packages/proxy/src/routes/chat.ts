@@ -12,7 +12,7 @@ import {
 import type { Env, ResponseMeta } from '../env';
 import { getAdapter } from '../providers';
 import type { ProviderRequest, ProviderResponse } from '../providers';
-import { recordUsage } from '../middleware/budget';
+import { recordUsage, maybeSendAlert } from '../middleware/budget';
 import { logRequest } from '../db';
 
 const encoder = new TextEncoder();
@@ -170,10 +170,13 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           cost,
         }));
 
-        const budgetId: string | undefined = c.get('budgetId');
-        if (budgetId && cost.totalCost > 0) {
+        const kvKey: string | undefined = c.get('budgetKvKey');
+        if (kvKey && cost.totalCost > 0) {
           const costCents = Math.ceil(cost.totalCost * 100);
-          await recordUsage(c.env.BUDGET, budgetId, costCents);
+          const updated = await recordUsage(c.env.BUDGET, kvKey, costCents);
+          if (updated) {
+            c.executionCtx.waitUntil(maybeSendAlert(c.env.BUDGET, kvKey, updated));
+          }
         }
 
         const apiKeyId: string | undefined = c.get('apiKeyId');

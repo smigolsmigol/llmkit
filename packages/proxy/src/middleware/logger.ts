@@ -1,6 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 import type { Env, ResponseMeta } from '../env';
-import { recordUsage } from './budget';
+import { recordUsage, maybeSendAlert } from './budget';
 import { logRequest } from '../db';
 
 export function costLogger() {
@@ -25,33 +25,33 @@ export function costLogger() {
       cost: meta.cost,
     }));
 
-    // update budget with actual cost
-    const budgetId: string | undefined = c.get('budgetId');
-    if (budgetId && meta.cost) {
+    const kvKey: string | undefined = c.get('budgetKvKey');
+    if (kvKey && meta.cost) {
       const costCents = Math.ceil(meta.cost.totalCost * 100);
-      await recordUsage(c.env.BUDGET, budgetId, costCents);
+      const updated = await recordUsage(c.env.BUDGET, kvKey, costCents);
+      if (updated) {
+        c.executionCtx.waitUntil(maybeSendAlert(c.env.BUDGET, kvKey, updated));
+      }
     }
 
-    // persist request log to Supabase (non-blocking)
     const apiKeyId: string | undefined = c.get('apiKeyId');
     if (apiKeyId && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
-      const insertPromise = logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
-        api_key_id: apiKeyId,
-        session_id: sessionId || null,
-        provider: meta.provider,
-        model: meta.model || 'unknown',
-        input_tokens: meta.usage.inputTokens,
-        output_tokens: meta.usage.outputTokens,
-        cache_read_tokens: meta.usage.cacheReadTokens || 0,
-        cache_write_tokens: meta.usage.cacheWriteTokens || 0,
-        cost_cents: +(meta.cost.totalCost * 100).toFixed(4),
-        latency_ms: latency,
-        status: 'success',
-        error_code: null,
-      });
-
-      // fire after response is sent, don't add latency
-      c.executionCtx.waitUntil(insertPromise);
+      c.executionCtx.waitUntil(
+        logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
+          api_key_id: apiKeyId,
+          session_id: sessionId || null,
+          provider: meta.provider,
+          model: meta.model || 'unknown',
+          input_tokens: meta.usage.inputTokens,
+          output_tokens: meta.usage.outputTokens,
+          cache_read_tokens: meta.usage.cacheReadTokens || 0,
+          cache_write_tokens: meta.usage.cacheWriteTokens || 0,
+          cost_cents: +(meta.cost.totalCost * 100).toFixed(4),
+          latency_ms: latency,
+          status: 'success',
+          error_code: null,
+        })
+      );
     }
   });
 }

@@ -1,7 +1,5 @@
-import type { TokenUsage } from '@llmkit/shared';
+import type { ProviderName, TokenUsage } from '@llmkit/shared';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
-
-const BASE_URL = 'https://api.openai.com/v1';
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
@@ -32,8 +30,15 @@ interface OpenAIStreamChunk {
   usage?: OpenAIResponse['usage'];
 }
 
+// reusable for any provider that speaks the OpenAI chat completions protocol
 export class OpenAIAdapter implements ProviderAdapter {
-  name = 'openai' as const;
+  name: ProviderName;
+  private baseUrl: string;
+
+  constructor(name: ProviderName = 'openai', baseUrl = 'https://api.openai.com/v1') {
+    this.name = name;
+    this.baseUrl = baseUrl;
+  }
 
   async chat(req: ProviderRequest): Promise<ProviderResponse> {
     const messages: OpenAIMessage[] = req.messages.map((m) => ({
@@ -48,7 +53,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     if (req.maxTokens) body.max_tokens = req.maxTokens;
     if (req.temperature !== undefined) body.temperature = req.temperature;
 
-    const res = await fetch(`${BASE_URL}/chat/completions`, {
+    const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -81,7 +86,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     if (req.maxTokens) body.max_tokens = req.maxTokens;
     if (req.temperature !== undefined) body.temperature = req.temperature;
 
-    const res = await fetch(`${BASE_URL}/chat/completions`, {
+    const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
