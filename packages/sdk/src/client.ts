@@ -52,6 +52,7 @@ export class LLMKit {
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${this.config.apiKey}`,
       'Content-Type': 'application/json',
+      'x-llmkit-format': 'llmkit',
     };
 
     if (this.sessionId) {

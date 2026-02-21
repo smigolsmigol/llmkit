@@ -193,6 +193,7 @@ function buildHeaders(config: LLMKitProviderConfig): Record<string, string> {
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${config.apiKey}`,
     'Content-Type': 'application/json',
+    'x-llmkit-format': 'llmkit',
   };
   if (config.sessionId) headers['x-llmkit-session-id'] = config.sessionId;
   if (config.provider) headers['x-llmkit-provider'] = config.provider;

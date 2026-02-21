@@ -1,21 +1,39 @@
+import {
+  AllProvidersFailedError,
+  type CostBreakdown,
+  getModelPricing,
+  ProviderError,
+  type ProviderName,
+  ValidationError,
+} from '@llmkit/shared';
+import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
-import type { Context } from 'hono';
-import {
-  ProviderError,
-  AllProvidersFailedError,
-  ValidationError,
-  getModelPricing,
-  type ProviderName,
-  type CostBreakdown,
-} from '@llmkit/shared';
-import type { Env, ResponseMeta } from '../env';
-import { getAdapter } from '../providers';
-import type { ProviderRequest, ProviderResponse } from '../providers';
-import { recordUsage, maybeSendAlert } from '../middleware/budget';
 import { logRequest } from '../db';
+import type { Env, ResponseMeta } from '../env';
+import { maybeSendAlert, recordUsage } from '../middleware/budget';
+import type { ProviderRequest, ProviderResponse } from '../providers';
+import { getAdapter } from '../providers';
 
 const encoder = new TextEncoder();
+
+function wantsLLMKitFormat(c: Context<Env>): boolean {
+  return c.req.header('x-llmkit-format') === 'llmkit';
+}
+
+function setCostHeaders(c: Context<Env>, cost: CostBreakdown, provider: string, latencyMs: number) {
+  c.header('x-llmkit-cost', String(cost.totalCost));
+  c.header('x-llmkit-provider', provider);
+  c.header('x-llmkit-latency-ms', String(latencyMs));
+  const sid = c.req.header('x-llmkit-session-id');
+  if (sid) c.header('x-llmkit-session-id', sid);
+}
+
+function toOpenAIFinishReason(reason: string): string {
+  if (reason === 'end_turn') return 'stop';
+  if (reason === 'max_tokens') return 'length';
+  return reason || 'stop';
+}
 
 export const providerRouter = new Hono<Env>();
 
@@ -70,16 +88,36 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
       };
       c.set('llmkit_response', meta);
 
+      if (wantsLLMKitFormat(c)) {
+        return c.json({
+          id: result.id,
+          provider: providerName,
+          model: result.model,
+          content: result.content,
+          usage: result.usage,
+          cost,
+          latencyMs: latency,
+          cached: false,
+          sessionId: c.req.header('x-llmkit-session-id') || undefined,
+        });
+      }
+
+      setCostHeaders(c, cost, providerName, latency);
       return c.json({
         id: result.id,
-        provider: providerName,
+        object: 'chat.completion',
+        created: Math.floor(Date.now() / 1000),
         model: result.model,
-        content: result.content,
-        usage: result.usage,
-        cost,
-        latencyMs: latency,
-        cached: false,
-        sessionId: c.req.header('x-llmkit-session-id') || undefined,
+        choices: [{
+          index: 0,
+          message: { role: 'assistant', content: result.content },
+          finish_reason: toOpenAIFinishReason(result.finishReason),
+        }],
+        usage: {
+          prompt_tokens: result.usage.inputTokens,
+          completion_tokens: result.usage.outputTokens,
+          total_tokens: result.usage.totalTokens,
+        },
       });
     } catch (err) {
       if (err instanceof ValidationError) throw err;
@@ -108,17 +146,39 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
       c.header('Content-Type', 'text/event-stream');
       c.header('Cache-Control', 'no-cache');
 
+      const llmkitFmt = wantsLLMKitFormat(c);
+
       return stream(c, async (s) => {
         let finalUsage: ProviderResponse['usage'] | undefined;
         let finalModel = req.model;
         let finalId = '';
+        const created = Math.floor(Date.now() / 1000);
+        const streamId = `chatcmpl-${created}`;
+        let sentRole = false;
+
+        const writeText = async (text: string) => {
+          if (llmkitFmt) {
+            await s.write(encoder.encode(`event: delta\ndata: ${JSON.stringify({ text })}\n\n`));
+            return;
+          }
+          // OpenAI format: send role announcement on first chunk
+          if (!sentRole) {
+            sentRole = true;
+            await s.write(encoder.encode(`data: ${JSON.stringify({
+              id: streamId, object: 'chat.completion.chunk', created, model: req.model,
+              choices: [{ delta: { role: 'assistant', content: '' }, index: 0, finish_reason: null }],
+            })}\n\n`));
+          }
+          await s.write(encoder.encode(`data: ${JSON.stringify({
+            id: streamId, object: 'chat.completion.chunk', created, model: req.model,
+            choices: [{ delta: { content: text }, index: 0, finish_reason: null }],
+          })}\n\n`));
+        };
 
         // process the first event we already fetched during warm-up
         if (!first.done) {
           const event = first.value;
-          if (event.type === 'text' && event.text) {
-            await s.write(encoder.encode(`event: delta\ndata: ${JSON.stringify({ text: event.text })}\n\n`));
-          }
+          if (event.type === 'text' && event.text) await writeText(event.text);
           if (event.type === 'end') {
             finalUsage = event.usage;
             finalModel = event.model || req.model;
@@ -127,10 +187,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
         }
 
         for await (const event of gen) {
-          if (event.type === 'text' && event.text) {
-            await s.write(encoder.encode(`event: delta\ndata: ${JSON.stringify({ text: event.text })}\n\n`));
-          }
-
+          if (event.type === 'text' && event.text) await writeText(event.text);
           if (event.type === 'end') {
             finalUsage = event.usage;
             finalModel = event.model || req.model;
@@ -149,13 +206,31 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           finishReason: '',
         });
 
-        await s.write(encoder.encode(`event: done\ndata: ${JSON.stringify({
-          id: finalId,
-          model: finalModel,
-          provider: providerName,
-          usage: finalUsage,
-          cost,
-        })}\n\n`));
+        if (llmkitFmt) {
+          await s.write(encoder.encode(`event: done\ndata: ${JSON.stringify({
+            id: finalId,
+            model: finalModel,
+            provider: providerName,
+            usage: finalUsage,
+            cost,
+          })}\n\n`));
+        } else {
+          // OpenAI format: finish chunk + usage chunk + [DONE]
+          await s.write(encoder.encode(`data: ${JSON.stringify({
+            id: streamId, object: 'chat.completion.chunk', created, model: finalModel,
+            choices: [{ delta: {}, index: 0, finish_reason: 'stop' }],
+          })}\n\n`));
+          await s.write(encoder.encode(`data: ${JSON.stringify({
+            id: streamId, object: 'chat.completion.chunk', created, model: finalModel,
+            choices: [],
+            usage: {
+              prompt_tokens: finalUsage.inputTokens,
+              completion_tokens: finalUsage.outputTokens,
+              total_tokens: finalUsage.totalTokens,
+            },
+          })}\n\n`));
+          await s.write(encoder.encode('data: [DONE]\n\n'));
+        }
 
         // costLogger middleware can't handle streams: c.set() runs after middleware
         // already read c.get(). streams handle budget + logging here directly.

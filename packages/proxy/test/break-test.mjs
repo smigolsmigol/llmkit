@@ -1,4 +1,4 @@
-const BASE = 'http://localhost:8787';
+const BASE = process.env.BASE_URL || 'http://localhost:8787';
 
 const tests = [];
 let passed = 0;
@@ -144,12 +144,13 @@ test('invalid provider -> 400', async () => {
   assert(json?.error?.code === 'INVALID_REQUEST', `expected INVALID_REQUEST, got ${json?.error?.code}`);
 });
 
-test('ollama provider (no adapter) -> 400', async () => {
+test('ollama provider (no local server) -> 503', async () => {
   const { status } = await req('/v1/chat/completions', {
     headers: { Authorization: 'Bearer x', 'x-llmkit-provider': 'ollama' },
     body: { model: 'llama3', messages: [{ role: 'user', content: 'hi' }] },
   });
-  assert(status === 400, `expected 400, got ${status}`);
+  // ollama adapter exists but can't reach localhost:11434 -> AllProvidersFailed (503)
+  assert(status === 503, `expected 503, got ${status}`);
 });
 
 test('empty provider key -> provider error (not crash)', async () => {
