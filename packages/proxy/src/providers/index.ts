@@ -1,8 +1,8 @@
-import { ValidationError, type ProviderName } from '@llmkit/shared';
-import type { ProviderAdapter } from './types';
+import { type ProviderName, ValidationError } from '@llmkit/shared';
 import { AnthropicAdapter } from './anthropic';
-import { OpenAIAdapter } from './openai';
 import { GeminiAdapter } from './gemini';
+import { OpenAIAdapter } from './openai';
+import type { ProviderAdapter } from './types';
 
 // every provider that speaks the OpenAI chat completions protocol
 // gets a configured OpenAIAdapter instance - no separate adapter needed

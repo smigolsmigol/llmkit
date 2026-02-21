@@ -1,7 +1,7 @@
-import { createMiddleware } from 'hono/factory';
 import { AuthError } from '@llmkit/shared';
-import type { Env } from '../env';
+import { createMiddleware } from 'hono/factory';
 import { findApiKey } from '../db';
+import type { Env } from '../env';
 
 export function auth() {
   return createMiddleware<Env>(async (c, next) => {
@@ -14,7 +14,7 @@ export function auth() {
         throw new Error('SUPABASE_URL/SUPABASE_KEY not set. Set DEV_MODE=true to bypass auth in development.');
       }
       console.warn('[llmkit] DEV_MODE: auth bypassed, do not use in production');
-      c.set('apiKey', raw.slice(0, 8) + '...');
+      c.set('apiKey', `${raw.slice(0, 8)}...`);
       return await next();
     }
 

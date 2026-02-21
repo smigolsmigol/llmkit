@@ -1,7 +1,7 @@
 import { createMiddleware } from 'hono/factory';
-import type { Env, ResponseMeta } from '../env';
-import { recordUsage, maybeSendAlert } from './budget';
 import { logRequest } from '../db';
+import type { Env, ResponseMeta } from '../env';
+import { maybeSendAlert, recordUsage } from './budget';
 
 export function costLogger() {
   return createMiddleware<Env>(async (c, next) => {
