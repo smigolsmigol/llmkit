@@ -8,6 +8,7 @@ import { budgetCheck } from './middleware/budget';
 import { costLogger } from './middleware/logger';
 import { rateLimit } from './middleware/ratelimit';
 import { providerRouter } from './routes/chat';
+import { keysRouter } from './routes/keys';
 
 const app = new Hono<Env>();
 
@@ -15,7 +16,7 @@ app.use('*', cors({
   origin: '*',
   allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-format'],
   exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
-  allowMethods: ['POST', 'GET', 'OPTIONS'],
+  allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'],
 }));
 
 app.onError((err, c) => {
@@ -37,5 +38,6 @@ app.use('/v1/*', budgetCheck());
 app.use('/v1/*', costLogger());
 
 app.route('/v1', providerRouter);
+app.route('/v1', keysRouter);
 
 export default app;

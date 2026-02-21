@@ -26,6 +26,7 @@ export type Env = {
     SUPABASE_URL?: string;
     SUPABASE_KEY?: string;
     DEV_MODE?: string;
+    ENCRYPTION_KEY?: string; // base64 32-byte AES key. rotation requires re-encrypting all provider_keys rows.
   };
   Variables: {
     apiKey: string;

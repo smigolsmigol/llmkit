@@ -9,7 +9,8 @@ import {
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
-import { logRequest } from '../db';
+import { decrypt } from '../crypto';
+import { findProviderKey, logRequest } from '../db';
 import type { Env, ResponseMeta } from '../env';
 import { maybeSendAlert, recordUsage } from '../middleware/budget';
 import type { ProviderRequest, ProviderResponse } from '../providers';
@@ -49,8 +50,16 @@ providerRouter.post('/chat/completions', async (c) => {
     ? (fallbackHeader.split(',').map((s: string) => s.trim()) as ProviderName[])
     : [provider];
 
-  // TODO: get provider API keys from encrypted storage
-  const providerKey = c.req.header('x-llmkit-provider-key') || '';
+  let providerKey = c.req.header('x-llmkit-provider-key') || '';
+
+  if (!providerKey && c.get('userId') && c.env.ENCRYPTION_KEY && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
+    const stored = await findProviderKey(
+      c.env.SUPABASE_URL, c.env.SUPABASE_KEY, c.get('userId')!, provider,
+    );
+    if (stored) {
+      providerKey = await decrypt(stored.encrypted_key, stored.iv, c.env.ENCRYPTION_KEY, `${stored.user_id}:${stored.provider}`);
+    }
+  }
 
   const userMaxTokens = body.max_tokens ?? body.maxTokens;
   const budgetMaxTokens: number | undefined = c.get('budgetMaxTokens');

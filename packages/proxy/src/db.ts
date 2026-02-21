@@ -11,6 +11,18 @@ export interface ApiKeyRow {
   revoked_at: string | null;
 }
 
+export interface ProviderKeyRow {
+  id: string;
+  user_id: string;
+  provider: string;
+  encrypted_key: string;
+  iv: string;
+  key_prefix: string;
+  key_name: string;
+  created_at: string;
+  revoked_at: string | null;
+}
+
 export interface RequestInsert {
   api_key_id: string;
   session_id: string | null;
@@ -81,4 +93,84 @@ export async function logRequest(
   if (!res.ok) {
     console.error('failed to log request:', res.status, await res.text().catch(() => ''));
   }
+}
+
+export async function findProviderKey(
+  url: string,
+  serviceKey: string,
+  userId: string,
+  provider: string,
+): Promise<ProviderKeyRow | null> {
+  const res = await postgrest(
+    url,
+    serviceKey,
+    `provider_keys?user_id=eq.${encodeURIComponent(userId)}&provider=eq.${encodeURIComponent(provider)}&revoked_at=is.null&select=id,user_id,provider,encrypted_key,iv,key_prefix,key_name,created_at&limit=1`,
+  );
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`provider key lookup failed (${res.status}): ${detail}`);
+  }
+
+  const rows = await res.json() as ProviderKeyRow[];
+  return rows[0] ?? null;
+}
+
+export async function listProviderKeys(
+  url: string,
+  serviceKey: string,
+  userId: string,
+): Promise<Omit<ProviderKeyRow, 'encrypted_key' | 'iv'>[]> {
+  const res = await postgrest(
+    url,
+    serviceKey,
+    `provider_keys?user_id=eq.${encodeURIComponent(userId)}&revoked_at=is.null&select=id,provider,key_prefix,key_name,created_at&order=created_at.desc`,
+  );
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`provider keys list failed (${res.status}): ${detail}`);
+  }
+
+  return await res.json();
+}
+
+export async function storeProviderKey(
+  url: string,
+  serviceKey: string,
+  row: Omit<ProviderKeyRow, 'created_at' | 'revoked_at'>,
+): Promise<void> {
+  const res = await postgrest(url, serviceKey, 'provider_keys', {
+    method: 'POST',
+    body: JSON.stringify(row),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`provider key store failed (${res.status}): ${detail}`);
+  }
+}
+
+export async function revokeProviderKey(
+  url: string,
+  serviceKey: string,
+  keyId: string,
+  userId: string,
+): Promise<boolean> {
+  const res = await postgrest(
+    url,
+    serviceKey,
+    `provider_keys?id=eq.${encodeURIComponent(keyId)}&user_id=eq.${encodeURIComponent(userId)}&revoked_at=is.null`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ revoked_at: new Date().toISOString() }),
+    },
+  );
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`provider key revoke failed (${res.status}): ${detail}`);
+  }
+
+  return true;
 }
