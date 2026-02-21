@@ -52,11 +52,17 @@ providerRouter.post('/chat/completions', async (c) => {
   // TODO: get provider API keys from encrypted storage
   const providerKey = c.req.header('x-llmkit-provider-key') || '';
 
+  const userMaxTokens = body.max_tokens ?? body.maxTokens;
+  const budgetMaxTokens: number | undefined = c.get('budgetMaxTokens');
+  const effectiveMaxTokens = budgetMaxTokens
+    ? (userMaxTokens ? Math.min(userMaxTokens, budgetMaxTokens) : budgetMaxTokens)
+    : userMaxTokens;
+
   const req: ProviderRequest = {
     model: body.model,
     messages: body.messages,
     temperature: body.temperature,
-    maxTokens: body.max_tokens ?? body.maxTokens,
+    maxTokens: effectiveMaxTokens,
     apiKey: providerKey,
   };
 

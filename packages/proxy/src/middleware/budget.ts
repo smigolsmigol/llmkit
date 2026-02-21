@@ -62,10 +62,17 @@ export function budgetCheck() {
       throw new BudgetExceededError(budgetId, activeBudget.limitCents, activeBudget.usedCents);
     }
 
+    // clamp max_tokens so output cost can't exceed remaining budget
+    const clamped = affordableMaxTokens(remaining, body, provider);
+    if (clamped !== undefined && clamped < 10) {
+      throw new BudgetExceededError(budgetId, activeBudget.limitCents, activeBudget.usedCents);
+    }
+
     c.set('budgetId', budgetId);
     c.set('budgetRecord', activeBudget);
     c.set('budgetScope', budget.scope || 'key');
     c.set('budgetKvKey', kvKey);
+    if (clamped !== undefined) c.set('budgetMaxTokens', clamped);
     await next();
   });
 }
@@ -129,6 +136,37 @@ export async function maybeSendAlert(
 
   budget.lastAlertAt = Date.now();
   await kv.put(kvKey, JSON.stringify(budget));
+}
+
+function affordableMaxTokens(
+  remainingCents: number,
+  body: Record<string, unknown>,
+  provider: ProviderName,
+): number | undefined {
+  const model = body.model as string;
+  if (!model) return undefined;
+
+  const pricing = getModelPricing(provider, model);
+  if (!pricing || pricing.outputPerMillion === 0) return undefined;
+
+  // subtract estimated input cost from remaining budget
+  const messages = body.messages as Array<{ content: string }> | undefined;
+  const inputChars = messages
+    ? messages.reduce((sum, m) => sum + (m.content?.length || 0), 0)
+    : 0;
+  const inputTokens = Math.ceil(inputChars / 4);
+  const inputCostCents = ((inputTokens / 1_000_000) * pricing.inputPerMillion) * 100;
+
+  const centsForOutput = remainingCents - inputCostCents;
+  if (centsForOutput <= 0) return 0;
+
+  const affordable = Math.floor((centsForOutput / 100 / pricing.outputPerMillion) * 1_000_000);
+  const userMax = (body.max_tokens as number) ?? (body.maxTokens as number);
+
+  // only clamp if budget is more restrictive than user's request
+  if (userMax && affordable >= userMax) return undefined;
+
+  return affordable;
 }
 
 function estimateCost(body: Record<string, unknown>, provider: ProviderName): number {

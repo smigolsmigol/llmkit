@@ -35,6 +35,7 @@ export type Env = {
     budgetRecord?: BudgetRecord;
     budgetScope?: 'key' | 'session';
     budgetKvKey?: string; // resolved KV key (may include session suffix)
+    budgetMaxTokens?: number; // clamped max_tokens based on remaining budget
     llmkit_response?: ResponseMeta;
   };
 };
