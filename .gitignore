@@ -49,9 +49,5 @@ tmp/
 # planning docs (local only, not repo material)
 docs/
 
-# claude working files (local only)
-.claude/STATUS.md
-.claude/BACKLOG.md
-.claude/todo.md
-.claude/sessions/
-.claude/settings.local.json
+# claude working files (local only, NEVER commit)
+.claude/
