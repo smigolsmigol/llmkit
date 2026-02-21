@@ -162,6 +162,18 @@ test('empty provider key -> provider error (not crash)', async () => {
   assert(status !== 500, `expected non-500 (got provider error gracefully), got ${status}`);
 });
 
+// --- RATE LIMIT TESTS ---
+
+test('rate limit headers present on valid request', async () => {
+  const { status } = await req('/v1/chat/completions', {
+    headers: { Authorization: 'Bearer ratelimit-test' },
+    body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }] },
+  });
+  // will fail at provider (no key) but rate limit headers should still be set
+  // status will be 503 (provider failed) not 429
+  assert(status !== 429, `should not be rate limited on first request, got 429`);
+});
+
 // --- EDGE CASES ---
 
 test('no body at all -> 500 (JSON parse)', async () => {

@@ -6,6 +6,7 @@ import type { Env } from './env';
 import { auth } from './middleware/auth';
 import { budgetCheck } from './middleware/budget';
 import { costLogger } from './middleware/logger';
+import { rateLimit } from './middleware/ratelimit';
 import { providerRouter } from './routes/chat';
 
 const app = new Hono<Env>();
@@ -13,7 +14,7 @@ const app = new Hono<Env>();
 app.use('*', cors({
   origin: '*',
   allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-format'],
-  exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id'],
+  exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
   allowMethods: ['POST', 'GET', 'OPTIONS'],
 }));
 
@@ -31,6 +32,7 @@ app.onError((err, c) => {
 app.get('/health', (c) => c.json({ status: 'ok', version: '0.0.1' }));
 
 app.use('/v1/*', auth());
+app.use('/v1/*', rateLimit());
 app.use('/v1/*', budgetCheck());
 app.use('/v1/*', costLogger());
 
