@@ -10,6 +10,9 @@ import { rateLimit } from './middleware/ratelimit';
 import { providerRouter } from './routes/chat';
 import { keysRouter } from './routes/keys';
 
+export { BudgetDO } from './do/budget-do';
+export { RateLimitDO } from './do/ratelimit-do';
+
 const app = new Hono<Env>();
 
 app.use('*', cors({

@@ -12,7 +12,7 @@ import { stream } from 'hono/streaming';
 import { decrypt } from '../crypto';
 import { findProviderKey, logRequest } from '../db';
 import type { Env, ResponseMeta } from '../env';
-import { maybeSendAlert, recordUsage } from '../middleware/budget';
+import { recordUsage, sendAlert } from '../middleware/budget';
 import type { ProviderRequest, ProviderResponse } from '../providers';
 import { getAdapter } from '../providers';
 
@@ -39,7 +39,12 @@ function toOpenAIFinishReason(reason: string): string {
 export const providerRouter = new Hono<Env>();
 
 providerRouter.post('/chat/completions', async (c) => {
-  const body = await c.req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    throw new ValidationError('invalid JSON body');
+  }
   validateBody(body);
 
   const wantStream = body.stream === true;
@@ -64,13 +69,13 @@ providerRouter.post('/chat/completions', async (c) => {
   const userMaxTokens = body.max_tokens ?? body.maxTokens;
   const budgetMaxTokens: number | undefined = c.get('budgetMaxTokens');
   const effectiveMaxTokens = budgetMaxTokens
-    ? (userMaxTokens ? Math.min(userMaxTokens, budgetMaxTokens) : budgetMaxTokens)
-    : userMaxTokens;
+    ? (userMaxTokens ? Math.min(userMaxTokens as number, budgetMaxTokens) : budgetMaxTokens)
+    : userMaxTokens as number | undefined;
 
   const req: ProviderRequest = {
-    model: body.model,
-    messages: body.messages,
-    temperature: body.temperature,
+    model: body.model as string,
+    messages: body.messages as ProviderRequest['messages'],
+    temperature: body.temperature as number | undefined,
     maxTokens: effectiveMaxTokens,
     apiKey: providerKey,
   };
@@ -155,7 +160,6 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
 
       // warm up: force the generator past the fetch() call so connection errors
       // are caught HERE (in the fallback loop), not inside the stream callback
-      // where they'd just break the stream with no fallback.
       const first = await gen.next();
 
       c.header('Content-Type', 'text/event-stream');
@@ -176,7 +180,6 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
             await s.write(encoder.encode(`event: delta\ndata: ${JSON.stringify({ text })}\n\n`));
             return;
           }
-          // OpenAI format: send role announcement on first chunk
           if (!sentRole) {
             sentRole = true;
             await s.write(encoder.encode(`data: ${JSON.stringify({
@@ -190,7 +193,6 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           })}\n\n`));
         };
 
-        // process the first event we already fetched during warm-up
         if (!first.done) {
           const event = first.value;
           if (event.type === 'text' && event.text) await writeText(event.text);
@@ -230,7 +232,6 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
             cost,
           })}\n\n`));
         } else {
-          // OpenAI format: finish chunk + usage chunk + [DONE]
           await s.write(encoder.encode(`data: ${JSON.stringify({
             id: streamId, object: 'chat.completion.chunk', created, model: finalModel,
             choices: [{ delta: {}, index: 0, finish_reason: 'stop' }],
@@ -247,8 +248,6 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           await s.write(encoder.encode('data: [DONE]\n\n'));
         }
 
-        // costLogger middleware can't handle streams: c.set() runs after middleware
-        // already read c.get(). streams handle budget + logging here directly.
         console.log(JSON.stringify({
           timestamp: new Date().toISOString(),
           sessionId: c.req.header('x-llmkit-session-id'),
@@ -260,12 +259,13 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           cost,
         }));
 
-        const kvKey: string | undefined = c.get('budgetKvKey');
-        if (kvKey && cost.totalCost > 0) {
+        const budgetId: string | undefined = c.get('budgetId');
+        if (budgetId && cost.totalCost > 0) {
           const costCents = Math.ceil(cost.totalCost * 100);
-          const updated = await recordUsage(c.env.BUDGET, kvKey, costCents);
-          if (updated) {
-            c.executionCtx.waitUntil(maybeSendAlert(c.env.BUDGET, kvKey, updated));
+          const sessionId = c.req.header('x-llmkit-session-id');
+          const alertPayload = await recordUsage(c.env.BUDGET_DO, budgetId, sessionId || undefined, costCents);
+          if (alertPayload) {
+            c.executionCtx.waitUntil(sendAlert(alertPayload));
           }
         }
 

@@ -18,7 +18,7 @@ function fromBase64(b64: string): Uint8Array {
 export async function encrypt(
   plaintext: string,
   keyBase64: string,
-  context?: string,
+  context: string,
 ): Promise<{ ciphertext: string; iv: string }> {
   const key = await importKey(keyBase64);
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -27,7 +27,7 @@ export async function encrypt(
   const algo = {
     name: 'AES-GCM' as const,
     iv,
-    ...(context ? { additionalData: new TextEncoder().encode(context) } : {}),
+    additionalData: new TextEncoder().encode(context),
   };
   const encrypted = await crypto.subtle.encrypt(algo, key, encoded);
   return { ciphertext: toBase64(encrypted), iv: toBase64(iv.buffer) };
@@ -37,7 +37,7 @@ export async function decrypt(
   ciphertext: string,
   iv: string,
   keyBase64: string,
-  context?: string,
+  context: string,
 ): Promise<string> {
   const key = await importKey(keyBase64);
   const ivBytes = fromBase64(iv);
@@ -45,7 +45,7 @@ export async function decrypt(
   const algo = {
     name: 'AES-GCM' as const,
     iv: ivBytes,
-    ...(context ? { additionalData: new TextEncoder().encode(context) } : {}),
+    additionalData: new TextEncoder().encode(context),
   };
   const decrypted = await crypto.subtle.decrypt(algo, key, fromBase64(ciphertext));
   return new TextDecoder().decode(decrypted);

@@ -1,7 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { logRequest } from '../db';
 import type { Env, ResponseMeta } from '../env';
-import { maybeSendAlert, recordUsage } from './budget';
+import { recordUsage, sendAlert } from './budget';
 
 export function costLogger() {
   return createMiddleware<Env>(async (c, next) => {
@@ -25,12 +25,12 @@ export function costLogger() {
       cost: meta.cost,
     }));
 
-    const kvKey: string | undefined = c.get('budgetKvKey');
-    if (kvKey && meta.cost) {
+    const budgetId: string | undefined = c.get('budgetId');
+    if (budgetId && meta.cost) {
       const costCents = Math.ceil(meta.cost.totalCost * 100);
-      const updated = await recordUsage(c.env.BUDGET, kvKey, costCents);
-      if (updated) {
-        c.executionCtx.waitUntil(maybeSendAlert(c.env.BUDGET, kvKey, updated));
+      const alert = await recordUsage(c.env.BUDGET_DO, budgetId, sessionId || undefined, costCents);
+      if (alert) {
+        c.executionCtx.waitUntil(sendAlert(alert));
       }
     }
 

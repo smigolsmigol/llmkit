@@ -1,15 +1,6 @@
 import type { CostBreakdown, TokenUsage } from '@llmkit/shared';
-
-export interface BudgetRecord {
-  limitCents: number;
-  usedCents: number;
-  period: 'daily' | 'weekly' | 'monthly' | 'total';
-  resetAt: number; // unix ms, 0 for 'total'
-  scope?: 'key' | 'session';
-  alertThreshold?: number; // 0-1, default 0.8
-  alertWebhookUrl?: string;
-  lastAlertAt?: number; // unix ms, prevents duplicate alerts per period
-}
+import type { BudgetDO } from './do/budget-do';
+import type { RateLimitDO } from './do/ratelimit-do';
 
 export interface ResponseMeta {
   provider: string;
@@ -21,8 +12,8 @@ export interface ResponseMeta {
 
 export type Env = {
   Bindings: {
-    RATE_LIMIT: KVNamespace;
-    BUDGET: KVNamespace;
+    BUDGET_DO: DurableObjectNamespace<BudgetDO>;
+    RATE_LIMIT_DO: DurableObjectNamespace<RateLimitDO>;
     SUPABASE_URL?: string;
     SUPABASE_KEY?: string;
     DEV_MODE?: string;
@@ -33,10 +24,8 @@ export type Env = {
     apiKeyId?: string;
     userId?: string;
     budgetId?: string;
-    budgetRecord?: BudgetRecord;
     budgetScope?: 'key' | 'session';
-    budgetKvKey?: string; // resolved KV key (may include session suffix)
-    budgetMaxTokens?: number; // clamped max_tokens based on remaining budget
+    budgetMaxTokens?: number;
     llmkit_response?: ResponseMeta;
   };
 };

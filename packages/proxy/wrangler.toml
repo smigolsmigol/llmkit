@@ -5,10 +5,14 @@ compatibility_date = "2025-02-18"
 [observability]
 enabled = true
 
-[[kv_namespaces]]
-binding = "BUDGET"
-id = "f42fdd9a03704ab3be48e45494939847"
+[[durable_objects.bindings]]
+name = "BUDGET_DO"
+class_name = "BudgetDO"
 
-[[kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "f6eef367a5bd4f56be601269118046f5"
+[[durable_objects.bindings]]
+name = "RATE_LIMIT_DO"
+class_name = "RateLimitDO"
+
+[[migrations]]
+tag = "v1"
+new_classes = ["BudgetDO", "RateLimitDO"]

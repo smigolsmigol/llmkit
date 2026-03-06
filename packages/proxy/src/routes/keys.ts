@@ -24,7 +24,12 @@ keysRouter.post('/provider-keys', async (c) => {
     return c.json({ error: { code: 'SERVICE_UNAVAILABLE', message: 'key vault not configured' } }, 503);
   }
 
-  const body = await c.req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await c.req.json();
+  } catch {
+    throw new ValidationError('invalid JSON body');
+  }
   const { provider, key, name } = body as { provider?: string; key?: string; name?: string };
 
   if (!provider || !VALID_PROVIDERS.has(provider)) {

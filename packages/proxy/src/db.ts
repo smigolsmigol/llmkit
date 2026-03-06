@@ -73,7 +73,8 @@ export async function findApiKey(
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(`api key lookup failed (${res.status}): ${detail}`);
+    console.error(`api key lookup failed (${res.status}): ${detail}`);
+    throw new Error('database operation failed');
   }
 
   const rows = await res.json() as ApiKeyRow[];
@@ -109,7 +110,8 @@ export async function findProviderKey(
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(`provider key lookup failed (${res.status}): ${detail}`);
+    console.error(`provider key lookup failed (${res.status}): ${detail}`);
+    throw new Error('database operation failed');
   }
 
   const rows = await res.json() as ProviderKeyRow[];
@@ -129,7 +131,8 @@ export async function listProviderKeys(
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(`provider keys list failed (${res.status}): ${detail}`);
+    console.error(`provider keys list failed (${res.status}): ${detail}`);
+    throw new Error('database operation failed');
   }
 
   return await res.json();
@@ -147,7 +150,8 @@ export async function storeProviderKey(
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(`provider key store failed (${res.status}): ${detail}`);
+    console.error(`provider key store failed (${res.status}): ${detail}`);
+    throw new Error('database operation failed');
   }
 }
 
@@ -169,7 +173,8 @@ export async function revokeProviderKey(
 
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
-    throw new Error(`provider key revoke failed (${res.status}): ${detail}`);
+    console.error(`provider key revoke failed (${res.status}): ${detail}`);
+    throw new Error('database operation failed');
   }
 
   return true;
