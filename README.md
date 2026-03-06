@@ -221,16 +221,12 @@ Query your AI costs from Claude Code or Cursor.
 
 Tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`.
 
-## Compared to alternatives
+## Why LLMKit
 
-| | LLMKit | LiteLLM | Portkey | Helicone | Pydantic AI GW |
-|---|---|---|---|---|---|
-| **Budget enforcement** | Hard pre-request (402) | Soft (9+ bypass bugs) | Soft alerts | Rate limits only | Soft limits |
-| **TypeScript-native** | Yes (primary) | No (86 npm DL/wk) | Both | Header-swap | Python-only |
-| **License** | MIT | MIT | Gateway only | Apache | AGPL |
-| **Vercel AI SDK** | Native provider | No | Yes | Listed | No |
-| **Self-hosted** | CF Workers ($5/mo) | Docker | Stripped features | Complex | Beta |
-| **Entry price** | $29/mo | $250/mo | $49/mo | $20/seat | $49/mo |
+- **Budget enforcement that actually works**: pre-request checks with 402 rejection, not post-hoc alerts
+- **TypeScript-native**: built for the JS/TS ecosystem, Vercel AI SDK provider included
+- **Self-host on CF Workers free tier**: no Docker, no Kubernetes, deploy in 2 minutes
+- **MIT licensed**: use it however you want
 
 ## Self-host
 
