@@ -1,6 +1,7 @@
 {
   "name": "@llmkit/shared",
   "version": "0.0.1",
+  "license": "MIT",
   "description": "Shared types, pricing data, and constants for LLMKit packages",
   "type": "module",
   "main": "./dist/index.js",

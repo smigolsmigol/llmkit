@@ -2,6 +2,7 @@
   "name": "@llmkit/dashboard",
   "version": "0.0.1",
   "private": true,
+  "description": "LLMKit dashboard - cost analytics, API key management, budget configuration",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

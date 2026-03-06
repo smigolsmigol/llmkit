@@ -1,6 +1,7 @@
 {
   "name": "@llmkit/cli",
   "version": "0.0.1",
+  "license": "MIT",
   "type": "module",
   "description": "Zero-code AI cost tracking. Wraps any command, intercepts API calls, prints cost summary.",
   "bin": {

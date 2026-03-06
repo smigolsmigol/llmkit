@@ -40,7 +40,21 @@ create table requests (
   created_at timestamptz not null default now()
 );
 
+create table provider_keys (
+  id uuid primary key default gen_random_uuid(),
+  user_id text not null,
+  provider text not null,
+  encrypted_key text not null,
+  iv text not null,
+  key_prefix text not null,
+  key_name text not null default 'default',
+  created_at timestamptz not null default now(),
+  revoked_at timestamptz
+);
+
 create index idx_api_keys_user_id on api_keys(user_id);
 create index idx_requests_api_key on requests(api_key_id);
 create index idx_requests_session on requests(session_id) where session_id is not null;
 create index idx_requests_created on requests(created_at);
+create index idx_provider_keys_user on provider_keys(user_id, provider)
+  where revoked_at is null;
