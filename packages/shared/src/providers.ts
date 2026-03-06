@@ -1,4 +1,4 @@
-import type { ProviderName } from './types.js';
+import type { CostBreakdown, ProviderName, TokenUsage } from './types.js';
 
 interface ModelPricing {
   inputPerMillion: number;
@@ -140,29 +140,51 @@ export function getModelPricing(
   return best;
 }
 
+export function calculateCostBreakdown(
+  provider: ProviderName,
+  model: string,
+  usage: TokenUsage,
+): CostBreakdown {
+  const pricing = getModelPricing(provider, model);
+  if (!pricing) {
+    return { inputCost: 0, outputCost: 0, totalCost: 0, currency: 'USD' };
+  }
+
+  const perM = 1_000_000;
+  const inputCost = (usage.inputTokens / perM) * pricing.inputPerMillion;
+  const outputCost = (usage.outputTokens / perM) * pricing.outputPerMillion;
+  const cacheReadCost = (usage.cacheReadTokens && pricing.cacheReadPerMillion)
+    ? (usage.cacheReadTokens / perM) * pricing.cacheReadPerMillion
+    : 0;
+  const cacheWriteCost = (usage.cacheWriteTokens && pricing.cacheWritePerMillion)
+    ? (usage.cacheWriteTokens / perM) * pricing.cacheWritePerMillion
+    : 0;
+
+  return {
+    inputCost: +inputCost.toFixed(8),
+    outputCost: +outputCost.toFixed(8),
+    cacheReadCost: cacheReadCost ? +cacheReadCost.toFixed(8) : undefined,
+    cacheWriteCost: cacheWriteCost ? +cacheWriteCost.toFixed(8) : undefined,
+    totalCost: +(inputCost + outputCost + cacheReadCost + cacheWriteCost).toFixed(8),
+    currency: 'USD',
+  };
+}
+
 export function calculateCost(
   provider: ProviderName,
   model: string,
   inputTokens: number,
   outputTokens: number,
   cacheReadTokens = 0,
-  cacheWriteTokens = 0
+  cacheWriteTokens = 0,
 ): number {
-  const pricing = getModelPricing(provider, model);
-  if (!pricing) return 0;
-
-  let cost = 0;
-  cost += (inputTokens / 1_000_000) * pricing.inputPerMillion;
-  cost += (outputTokens / 1_000_000) * pricing.outputPerMillion;
-
-  if (pricing.cacheReadPerMillion && cacheReadTokens > 0) {
-    cost += (cacheReadTokens / 1_000_000) * pricing.cacheReadPerMillion;
-  }
-  if (pricing.cacheWritePerMillion && cacheWriteTokens > 0) {
-    cost += (cacheWriteTokens / 1_000_000) * pricing.cacheWritePerMillion;
-  }
-
-  return cost;
+  return calculateCostBreakdown(provider, model, {
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheWriteTokens,
+    totalTokens: inputTokens + outputTokens,
+  }).totalCost;
 }
 
 export { PRICING };

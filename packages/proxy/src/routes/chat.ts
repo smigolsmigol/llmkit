@@ -1,18 +1,20 @@
 import {
   AllProvidersFailedError,
+  calculateCostBreakdown,
   type CostBreakdown,
-  getModelPricing,
   ProviderError,
   type ProviderName,
+  type TokenUsage,
   ValidationError,
 } from '@f3d1/llmkit-shared';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
+import type { StreamingApi } from 'hono/utils/stream';
 import { decrypt } from '../crypto';
-import { findProviderKey, logRequest } from '../db';
+import { findProviderKey } from '../db';
 import type { Env, ResponseMeta } from '../env';
-import { recordUsage, sendAlert } from '../middleware/budget';
+import { trackRequest } from '../middleware/logger';
 import type { ProviderRequest, ProviderResponse } from '../providers';
 import { getAdapter } from '../providers';
 
@@ -97,7 +99,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
       const result = await adapter.chat(req);
       const latency = Date.now() - start;
 
-      const cost = buildCost(providerName, result);
+      const cost = calculateCostBreakdown(providerName, result.model, result.usage);
 
       const meta: ResponseMeta = {
         provider: providerName,
@@ -168,126 +170,35 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
       const llmkitFmt = wantsLLMKitFormat(c);
 
       return stream(c, async (s) => {
-        let finalUsage: ProviderResponse['usage'] | undefined;
-        let finalModel = req.model;
-        let finalId = '';
-        const created = Math.floor(Date.now() / 1000);
-        const streamId = `chatcmpl-${created}`;
-        let sentRole = false;
-
-        const writeText = async (text: string) => {
-          if (llmkitFmt) {
-            await s.write(encoder.encode(`event: delta\ndata: ${JSON.stringify({ text })}\n\n`));
-            return;
-          }
-          if (!sentRole) {
-            sentRole = true;
-            await s.write(encoder.encode(`data: ${JSON.stringify({
-              id: streamId, object: 'chat.completion.chunk', created, model: req.model,
-              choices: [{ delta: { role: 'assistant', content: '' }, index: 0, finish_reason: null }],
-            })}\n\n`));
-          }
-          await s.write(encoder.encode(`data: ${JSON.stringify({
-            id: streamId, object: 'chat.completion.chunk', created, model: req.model,
-            choices: [{ delta: { content: text }, index: 0, finish_reason: null }],
-          })}\n\n`));
-        };
-
-        if (!first.done) {
-          const event = first.value;
-          if (event.type === 'text' && event.text) await writeText(event.text);
-          if (event.type === 'end') {
-            finalUsage = event.usage;
-            finalModel = event.model || req.model;
-            finalId = event.id || '';
-          }
-        }
-
-        for await (const event of gen) {
-          if (event.type === 'text' && event.text) await writeText(event.text);
-          if (event.type === 'end') {
-            finalUsage = event.usage;
-            finalModel = event.model || req.model;
-            finalId = event.id || '';
-          }
-        }
-
-        if (!finalUsage) return;
+        const usage = await consumeStream(s, gen, first, req.model, llmkitFmt);
+        if (!usage) return;
 
         const latency = Date.now() - start;
-        const cost = buildCost(providerName, {
-          usage: finalUsage,
-          model: finalModel,
-          id: finalId,
-          content: '',
-          finishReason: '',
+        const cost = calculateCostBreakdown(providerName, usage.model, usage.tokens);
+
+        await writeStreamFinale(s, llmkitFmt, {
+          id: usage.id,
+          model: usage.model,
+          provider: providerName,
+          tokens: usage.tokens,
+          cost,
+          created: usage.created,
+          streamId: usage.streamId,
         });
 
-        if (llmkitFmt) {
-          await s.write(encoder.encode(`event: done\ndata: ${JSON.stringify({
-            id: finalId,
-            model: finalModel,
-            provider: providerName,
-            usage: finalUsage,
-            cost,
-          })}\n\n`));
-        } else {
-          await s.write(encoder.encode(`data: ${JSON.stringify({
-            id: streamId, object: 'chat.completion.chunk', created, model: finalModel,
-            choices: [{ delta: {}, index: 0, finish_reason: 'stop' }],
-          })}\n\n`));
-          await s.write(encoder.encode(`data: ${JSON.stringify({
-            id: streamId, object: 'chat.completion.chunk', created, model: finalModel,
-            choices: [],
-            usage: {
-              prompt_tokens: finalUsage.inputTokens,
-              completion_tokens: finalUsage.outputTokens,
-              total_tokens: finalUsage.totalTokens,
-            },
-          })}\n\n`));
-          await s.write(encoder.encode('data: [DONE]\n\n'));
-        }
-
-        console.log(JSON.stringify({
-          timestamp: new Date().toISOString(),
-          sessionId: c.req.header('x-llmkit-session-id'),
+        await trackRequest({
+          sessionId: c.req.header('x-llmkit-session-id') || undefined,
           apiKey: c.get('apiKey'),
+          apiKeyId: c.get('apiKeyId'),
+          budgetId: c.get('budgetId'),
           provider: providerName,
-          model: finalModel,
-          latencyMs: latency,
-          usage: finalUsage,
+          model: usage.model,
+          usage: usage.tokens,
           cost,
-        }));
-
-        const budgetId: string | undefined = c.get('budgetId');
-        if (budgetId && cost.totalCost > 0) {
-          const costCents = Math.ceil(cost.totalCost * 100);
-          const sessionId = c.req.header('x-llmkit-session-id');
-          const alertPayload = await recordUsage(c.env.BUDGET_DO, budgetId, sessionId || undefined, costCents);
-          if (alertPayload) {
-            c.executionCtx.waitUntil(sendAlert(alertPayload));
-          }
-        }
-
-        const apiKeyId: string | undefined = c.get('apiKeyId');
-        if (apiKeyId && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
-          c.executionCtx.waitUntil(
-            logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
-              api_key_id: apiKeyId,
-              session_id: c.req.header('x-llmkit-session-id') || null,
-              provider: providerName,
-              model: finalModel,
-              input_tokens: finalUsage.inputTokens,
-              output_tokens: finalUsage.outputTokens,
-              cache_read_tokens: finalUsage.cacheReadTokens || 0,
-              cache_write_tokens: finalUsage.cacheWriteTokens || 0,
-              cost_cents: +(cost.totalCost * 100).toFixed(4),
-              latency_ms: latency,
-              status: 'success',
-              error_code: null,
-            })
-          );
-        }
+          latencyMs: latency,
+          env: c.env,
+          ctx: c.executionCtx,
+        });
       });
     } catch (err) {
       if (err instanceof ValidationError) throw err;
@@ -297,6 +208,90 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
   }
 
   throw new AllProvidersFailedError(errors);
+}
+
+interface StreamResult {
+  tokens: ProviderResponse['usage'];
+  model: string;
+  id: string;
+  created: number;
+  streamId: string;
+}
+
+async function consumeStream(
+  s: StreamingApi,
+  gen: AsyncGenerator<{ type: string; text?: string; usage?: ProviderResponse['usage']; model?: string; id?: string }>,
+  first: IteratorResult<{ type: string; text?: string; usage?: ProviderResponse['usage']; model?: string; id?: string }>,
+  requestModel: string,
+  llmkitFmt: boolean,
+): Promise<StreamResult | null> {
+  let finalUsage: ProviderResponse['usage'] | undefined;
+  let finalModel = requestModel;
+  let finalId = '';
+  const created = Math.floor(Date.now() / 1000);
+  const streamId = `chatcmpl-${created}`;
+  let sentRole = false;
+
+  const writeText = async (text: string) => {
+    if (llmkitFmt) {
+      await s.write(encoder.encode(`event: delta\ndata: ${JSON.stringify({ text })}\n\n`));
+      return;
+    }
+    if (!sentRole) {
+      sentRole = true;
+      await s.write(encoder.encode(`data: ${JSON.stringify({
+        id: streamId, object: 'chat.completion.chunk', created, model: requestModel,
+        choices: [{ delta: { role: 'assistant', content: '' }, index: 0, finish_reason: null }],
+      })}\n\n`));
+    }
+    await s.write(encoder.encode(`data: ${JSON.stringify({
+      id: streamId, object: 'chat.completion.chunk', created, model: requestModel,
+      choices: [{ delta: { content: text }, index: 0, finish_reason: null }],
+    })}\n\n`));
+  };
+
+  const processEvent = async (event: { type: string; text?: string; usage?: ProviderResponse['usage']; model?: string; id?: string }) => {
+    if (event.type === 'text' && event.text) await writeText(event.text);
+    if (event.type === 'end') {
+      finalUsage = event.usage;
+      finalModel = event.model || requestModel;
+      finalId = event.id || '';
+    }
+  };
+
+  if (!first.done) await processEvent(first.value);
+  for await (const event of gen) await processEvent(event);
+
+  if (!finalUsage) return null;
+  return { tokens: finalUsage, model: finalModel, id: finalId, created, streamId };
+}
+
+async function writeStreamFinale(
+  s: StreamingApi,
+  llmkitFmt: boolean,
+  p: { id: string; model: string; provider: ProviderName; tokens: TokenUsage; cost: CostBreakdown; created: number; streamId: string },
+): Promise<void> {
+  if (llmkitFmt) {
+    await s.write(encoder.encode(`event: done\ndata: ${JSON.stringify({
+      id: p.id, model: p.model, provider: p.provider, usage: p.tokens, cost: p.cost,
+    })}\n\n`));
+    return;
+  }
+
+  await s.write(encoder.encode(`data: ${JSON.stringify({
+    id: p.streamId, object: 'chat.completion.chunk', created: p.created, model: p.model,
+    choices: [{ delta: {}, index: 0, finish_reason: 'stop' }],
+  })}\n\n`));
+  await s.write(encoder.encode(`data: ${JSON.stringify({
+    id: p.streamId, object: 'chat.completion.chunk', created: p.created, model: p.model,
+    choices: [],
+    usage: {
+      prompt_tokens: p.tokens.inputTokens,
+      completion_tokens: p.tokens.outputTokens,
+      total_tokens: p.tokens.totalTokens,
+    },
+  })}\n\n`));
+  await s.write(encoder.encode('data: [DONE]\n\n'));
 }
 
 const VALID_ROLES = new Set(['system', 'user', 'assistant']);
@@ -335,31 +330,4 @@ function validateBody(body: Record<string, unknown>): void {
       throw new ValidationError('max_tokens must be a positive integer');
     }
   }
-}
-
-function buildCost(provider: ProviderName, result: ProviderResponse): CostBreakdown {
-  const { usage } = result;
-  const pricing = getModelPricing(provider, result.model);
-  if (!pricing) {
-    return { inputCost: 0, outputCost: 0, totalCost: 0, currency: 'USD' };
-  }
-
-  const perM = 1_000_000;
-  const inputCost = (usage.inputTokens / perM) * pricing.inputPerMillion;
-  const outputCost = (usage.outputTokens / perM) * pricing.outputPerMillion;
-  const cacheReadCost = (usage.cacheReadTokens && pricing.cacheReadPerMillion)
-    ? (usage.cacheReadTokens / perM) * pricing.cacheReadPerMillion
-    : 0;
-  const cacheWriteCost = (usage.cacheWriteTokens && pricing.cacheWritePerMillion)
-    ? (usage.cacheWriteTokens / perM) * pricing.cacheWritePerMillion
-    : 0;
-
-  return {
-    inputCost: +inputCost.toFixed(8),
-    outputCost: +outputCost.toFixed(8),
-    cacheReadCost: cacheReadCost ? +cacheReadCost.toFixed(8) : undefined,
-    cacheWriteCost: cacheWriteCost ? +cacheWriteCost.toFixed(8) : undefined,
-    totalCost: +(inputCost + outputCost + cacheReadCost + cacheWriteCost).toFixed(8),
-    currency: 'USD',
-  };
 }
