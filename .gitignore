@@ -51,3 +51,4 @@ docs/
 
 # claude working files (local only, NEVER commit)
 .claude/
+.mcp.json
