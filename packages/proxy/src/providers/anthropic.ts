@@ -1,4 +1,4 @@
-import type { TokenUsage } from '@llmkit/shared';
+import type { TokenUsage } from '@f3d1/llmkit-shared';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
 const BASE_URL = 'https://api.anthropic.com/v1';

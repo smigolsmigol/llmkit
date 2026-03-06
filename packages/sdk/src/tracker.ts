@@ -1,4 +1,4 @@
-import { calculateCost, type ProviderName } from '@llmkit/shared';
+import { calculateCost, type ProviderName } from '@f3d1/llmkit-shared';
 
 interface UsageInput {
   inputTokens: number;

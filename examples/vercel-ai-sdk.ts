@@ -2,7 +2,7 @@
 // Run: npx tsx examples/vercel-ai-sdk.ts
 
 import { generateText, streamText } from 'ai'
-import { createLLMKit } from '@llmkit/ai-sdk-provider'
+import { createLLMKit } from '@f3d1/llmkit-ai-sdk-provider'
 
 const llmkit = createLLMKit({
   apiKey: process.env.LLMKIT_KEY!,

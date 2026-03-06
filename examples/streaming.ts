@@ -1,7 +1,7 @@
 // Streaming with the LLMKit SDK - cost available after stream ends
 // Run: npx tsx examples/streaming.ts
 
-import { LLMKit } from '@llmkit/sdk'
+import { LLMKit } from '@f3d1/llmkit-sdk'
 
 const kit = new LLMKit({
   apiKey: process.env.LLMKIT_KEY!,

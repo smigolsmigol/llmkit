@@ -5,7 +5,7 @@ import {
   ProviderError,
   type ProviderName,
   ValidationError,
-} from '@llmkit/shared';
+} from '@f3d1/llmkit-shared';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';

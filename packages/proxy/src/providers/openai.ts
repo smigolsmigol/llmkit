@@ -1,4 +1,4 @@
-import type { ProviderName, TokenUsage } from '@llmkit/shared';
+import type { ProviderName, TokenUsage } from '@f3d1/llmkit-shared';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
 interface OpenAIMessage {

@@ -1,6 +1,6 @@
 import http from 'node:http';
 import https from 'node:https';
-import { calculateCost, type ProviderName } from '@llmkit/shared';
+import { calculateCost, type ProviderName } from '@f3d1/llmkit-shared';
 import {
   parseAnthropicResponse,
   parseAnthropicStream,

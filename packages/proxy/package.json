@@ -1,5 +1,5 @@
 {
-  "name": "@llmkit/proxy",
+  "name": "@f3d1/llmkit-proxy",
   "version": "0.0.1",
   "license": "MIT",
   "private": true,
@@ -14,7 +14,7 @@
     "clean": "rm -rf dist .wrangler"
   },
   "dependencies": {
-    "@llmkit/shared": "workspace:*",
+    "@f3d1/llmkit-shared": "workspace:*",
     "hono": "^4.7.0"
   },
   "devDependencies": {

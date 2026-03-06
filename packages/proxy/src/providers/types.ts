@@ -1,4 +1,4 @@
-import type { Message, ProviderName, TokenUsage } from '@llmkit/shared';
+import type { Message, ProviderName, TokenUsage } from '@f3d1/llmkit-shared';
 
 export interface ProviderAdapter {
   name: ProviderName;

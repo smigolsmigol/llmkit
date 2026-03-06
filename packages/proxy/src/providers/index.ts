@@ -1,4 +1,4 @@
-import { type ProviderName, ValidationError } from '@llmkit/shared';
+import { type ProviderName, ValidationError } from '@f3d1/llmkit-shared';
 import { AnthropicAdapter } from './anthropic';
 import { GeminiAdapter } from './gemini';
 import { OpenAIAdapter } from './openai';

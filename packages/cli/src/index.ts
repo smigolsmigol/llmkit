@@ -16,9 +16,9 @@ function parseArgs(): CliOpts {
 
   if (dashIdx === -1 || dashIdx === argv.length - 1) {
     process.stderr.write(
-      'Usage: npx @llmkit/cli [--port N] [--verbose] [--json] -- <command> [args...]\n' +
+      'Usage: npx @f3d1/llmkit-cli [--port N] [--verbose] [--json] -- <command> [args...]\n' +
       '\nWraps any command, intercepts OpenAI/Anthropic API calls, prints cost summary.\n' +
-      '\nExample: npx @llmkit/cli -- python my_agent.py\n',
+      '\nExample: npx @f3d1/llmkit-cli -- python my_agent.py\n',
     );
     process.exit(1);
   }

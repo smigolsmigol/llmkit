@@ -1,7 +1,7 @@
 // Basic LLMKit SDK usage - chat with cost tracking
 // Run: npx tsx examples/sdk-basic.ts
 
-import { LLMKit } from '@llmkit/sdk'
+import { LLMKit } from '@f3d1/llmkit-sdk'
 
 const kit = new LLMKit({
   apiKey: process.env.LLMKIT_KEY!,

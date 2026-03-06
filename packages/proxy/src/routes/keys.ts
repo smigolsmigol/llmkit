@@ -1,4 +1,4 @@
-import { type ProviderName, ValidationError } from '@llmkit/shared';
+import { type ProviderName, ValidationError } from '@f3d1/llmkit-shared';
 import { Hono } from 'hono';
 import { encrypt } from '../crypto';
 import { listProviderKeys, revokeProviderKey, storeProviderKey } from '../db';

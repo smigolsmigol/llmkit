@@ -39,7 +39,7 @@ importers:
 
   packages/cli:
     dependencies:
-      '@llmkit/shared':
+      '@f3d1/llmkit-shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
@@ -52,7 +52,7 @@ importers:
       '@clerk/nextjs':
         specifier: ^6.0.0
         version: 6.38.0(next@15.5.12(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@llmkit/shared':
+      '@f3d1/llmkit-shared':
         specifier: workspace:*
         version: link:../shared
       '@supabase/supabase-js':
@@ -104,7 +104,7 @@ importers:
 
   packages/mcp-server:
     dependencies:
-      '@llmkit/shared':
+      '@f3d1/llmkit-shared':
         specifier: workspace:*
         version: link:../shared
       '@modelcontextprotocol/sdk':
@@ -117,7 +117,7 @@ importers:
 
   packages/proxy:
     dependencies:
-      '@llmkit/shared':
+      '@f3d1/llmkit-shared':
         specifier: workspace:*
         version: link:../shared
       hono:
@@ -133,7 +133,7 @@ importers:
 
   packages/sdk:
     dependencies:
-      '@llmkit/shared':
+      '@f3d1/llmkit-shared':
         specifier: workspace:*
         version: link:../shared
 

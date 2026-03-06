@@ -15,4 +15,4 @@ class_name = "RateLimitDO"
 
 [[migrations]]
 tag = "v1"
-new_classes = ["BudgetDO", "RateLimitDO"]
+new_sqlite_classes = ["BudgetDO", "RateLimitDO"]

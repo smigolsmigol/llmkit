@@ -2,7 +2,7 @@
 // Works with raw OpenAI/Anthropic SDK responses
 // Run: npx tsx examples/cost-tracker.ts
 
-import { CostTracker } from '@llmkit/sdk'
+import { CostTracker } from '@f3d1/llmkit-sdk'
 import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 

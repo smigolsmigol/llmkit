@@ -14,10 +14,10 @@
       "ignore": ["test/**"]
     },
     "packages/mcp-server": {
-      "ignoreDependencies": ["@llmkit/shared"]
+      "ignoreDependencies": ["@f3d1/llmkit-shared"]
     },
     "packages/dashboard": {
-      "ignoreDependencies": ["@llmkit/shared", "class-variance-authority"],
+      "ignoreDependencies": ["@f3d1/llmkit-shared", "class-variance-authority"],
       "ignore": [
         "src/components/skeletons.tsx",
         "src/components/ui/card.tsx",

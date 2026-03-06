@@ -22,7 +22,7 @@ Works with any language. Wrap your existing command with the CLI, or use the Typ
 The CLI intercepts OpenAI and Anthropic API calls, forwards them transparently, and prints a cost summary when your process exits. No code changes.
 
 ```bash
-npx @llmkit/cli -- python my_agent.py
+npx @f3d1/llmkit-cli -- python my_agent.py
 ```
 
 ```
@@ -39,12 +39,12 @@ Works with Python, Ruby, Go, Rust - anything that calls the OpenAI or Anthropic 
 
 ```bash
 # see per-request costs as they happen
-npx @llmkit/cli -v -- python multi_agent.py
+npx @f3d1/llmkit-cli -v -- python multi_agent.py
 #  [llmkit] openai/gpt-4o $0.0031 (420ms)
 #  [llmkit] anthropic/claude-sonnet-4-20250514 $0.0156 (1200ms)
 
 # machine-readable output
-npx @llmkit/cli --json -- node my_agent.js
+npx @f3d1/llmkit-cli --json -- node my_agent.js
 ```
 
 ## Python
@@ -86,7 +86,7 @@ python my_agent.py
 ## TypeScript SDK
 
 ```typescript
-import { LLMKit } from '@llmkit/sdk'
+import { LLMKit } from '@f3d1/llmkit-sdk'
 
 const kit = new LLMKit({ apiKey: process.env.LLMKIT_KEY })
 
@@ -124,7 +124,7 @@ console.log(stream.cost)
 Track costs locally without running the proxy. Pass any OpenAI or Anthropic SDK response and get costs calculated from the built-in pricing table.
 
 ```typescript
-import { CostTracker } from '@llmkit/sdk'
+import { CostTracker } from '@f3d1/llmkit-sdk'
 import Anthropic from '@anthropic-ai/sdk'
 
 const tracker = new CostTracker({ log: true })
@@ -148,7 +148,7 @@ console.log(tracker.bySession())   // breakdown by session
 
 ```typescript
 import { generateText } from 'ai'
-import { createLLMKit } from '@llmkit/ai-sdk-provider'
+import { createLLMKit } from '@f3d1/llmkit-ai-sdk-provider'
 
 const llmkit = createLLMKit({
   apiKey: process.env.LLMKIT_KEY,
@@ -197,12 +197,12 @@ The middleware chain runs on every request: authenticate the API key, check the 
 
 | Package | Description |
 |---------|-------------|
-| [@llmkit/cli](packages/cli) | `npx @llmkit/cli -- <cmd>` - zero-code cost tracking for any language |
-| [@llmkit/sdk](packages/sdk) | TypeScript client + CostTracker + streaming |
-| [@llmkit/proxy](packages/proxy) | Hono-based CF Workers proxy - auth, budgets, routing, logging |
-| [@llmkit/ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
-| [@llmkit/mcp-server](packages/mcp-server) | 6 tools for Claude Code / Cursor |
-| [@llmkit/shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
+| [@f3d1/llmkit-cli](packages/cli) | `npx @f3d1/llmkit-cli -- <cmd>` - zero-code cost tracking for any language |
+| [@f3d1/llmkit-sdk](packages/sdk) | TypeScript client + CostTracker + streaming |
+| [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy - auth, budgets, routing, logging |
+| [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
+| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 6 tools for Claude Code / Cursor |
+| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
 
 ## MCP Server
 
@@ -213,7 +213,7 @@ Query your AI costs from Claude Code or Cursor.
   "mcpServers": {
     "llmkit": {
       "command": "npx",
-      "args": ["@llmkit/mcp-server"]
+      "args": ["@f3d1/llmkit-mcp-server"]
     }
   }
 }

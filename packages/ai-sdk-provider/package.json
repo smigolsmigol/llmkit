@@ -1,5 +1,5 @@
 {
-  "name": "@llmkit/ai-sdk-provider",
+  "name": "@f3d1/llmkit-ai-sdk-provider",
   "version": "0.0.1",
   "license": "MIT",
   "description": "Vercel AI SDK v6 custom provider for LLMKit proxy",

@@ -1,4 +1,4 @@
-import { RateLimitError } from '@llmkit/shared';
+import { RateLimitError } from '@f3d1/llmkit-shared';
 import { createMiddleware } from 'hono/factory';
 import type { Env } from '../env';
 

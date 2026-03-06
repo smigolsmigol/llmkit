@@ -1,4 +1,4 @@
-import type { ProviderName } from '@llmkit/shared';
+import type { ProviderName } from '@f3d1/llmkit-shared';
 
 export interface ParsedUsage {
   provider: ProviderName;

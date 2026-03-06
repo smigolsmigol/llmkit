@@ -1,5 +1,5 @@
 {
-  "name": "@llmkit/shared",
+  "name": "@f3d1/llmkit-shared",
   "version": "0.0.1",
   "license": "MIT",
   "description": "Shared types, pricing data, and constants for LLMKit packages",

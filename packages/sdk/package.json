@@ -1,5 +1,5 @@
 {
-  "name": "@llmkit/sdk",
+  "name": "@f3d1/llmkit-sdk",
   "version": "0.0.1",
   "license": "MIT",
   "description": "TypeScript SDK for LLMKit - cost tracking, provider routing, budget enforcement",
@@ -20,6 +20,6 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@llmkit/shared": "workspace:*"
+    "@f3d1/llmkit-shared": "workspace:*"
   }
 }

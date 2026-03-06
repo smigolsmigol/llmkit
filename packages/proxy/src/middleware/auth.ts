@@ -1,4 +1,4 @@
-import { AuthError } from '@llmkit/shared';
+import { AuthError } from '@f3d1/llmkit-shared';
 import { createMiddleware } from 'hono/factory';
 import { findApiKey } from '../db';
 import type { Env } from '../env';

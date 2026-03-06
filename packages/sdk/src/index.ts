@@ -6,7 +6,7 @@ export type {
   ProviderName,
   SessionSummary,
   TokenUsage,
-} from '@llmkit/shared';
+} from '@f3d1/llmkit-shared';
 export { ChatStream, LLMKit } from './client';
 export type { CostEntry } from './tracker';
 export { CostTracker } from './tracker';

@@ -1,5 +1,5 @@
-import type { ProviderName } from '@llmkit/shared';
-import { BudgetExceededError, getModelPricing, ValidationError } from '@llmkit/shared';
+import type { ProviderName } from '@f3d1/llmkit-shared';
+import { BudgetExceededError, getModelPricing, ValidationError } from '@f3d1/llmkit-shared';
 import { createMiddleware } from 'hono/factory';
 import type { BudgetDO } from '../do/budget-do';
 import type { Env } from '../env';

@@ -1,4 +1,4 @@
-import type { CostBreakdown, LLMKitConfig, LLMRequest, LLMResponse, TokenUsage } from '@llmkit/shared';
+import type { CostBreakdown, LLMKitConfig, LLMRequest, LLMResponse, TokenUsage } from '@f3d1/llmkit-shared';
 
 const DEFAULT_BASE_URL = 'https://api.llmkit.dev';
 

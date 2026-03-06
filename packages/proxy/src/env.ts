@@ -1,4 +1,4 @@
-import type { CostBreakdown, TokenUsage } from '@llmkit/shared';
+import type { CostBreakdown, TokenUsage } from '@f3d1/llmkit-shared';
 import type { BudgetDO } from './do/budget-do';
 import type { RateLimitDO } from './do/ratelimit-do';
 
