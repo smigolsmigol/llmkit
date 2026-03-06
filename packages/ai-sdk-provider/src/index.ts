@@ -2,9 +2,9 @@ import type {
   LanguageModelV3,
   LanguageModelV3CallOptions,
   LanguageModelV3GenerateResult,
-  LanguageModelV3StreamResult,
-  LanguageModelV3StreamPart,
   LanguageModelV3Prompt,
+  LanguageModelV3StreamPart,
+  LanguageModelV3StreamResult,
 } from '@ai-sdk/provider';
 
 export interface LLMKitProviderConfig {

@@ -8,10 +8,13 @@
     "lint": "turbo lint",
     "test": "turbo test",
     "typecheck": "turbo typecheck",
-    "clean": "turbo clean"
+    "clean": "turbo clean",
+    "check-all": "pnpm typecheck && biome check packages/proxy/src packages/sdk/src packages/cli/src packages/shared/src packages/ai-sdk-provider/src packages/mcp-server/src && knip --exclude types,exports && publint packages/shared && publint packages/sdk && publint packages/cli && publint packages/ai-sdk-provider && publint packages/mcp-server"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.2",
+    "knip": "^5.85.0",
+    "publint": "^0.3.18",
     "turbo": "^2.4.0",
     "typescript": "^5.7.0"
   }

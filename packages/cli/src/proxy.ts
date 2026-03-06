@@ -2,12 +2,12 @@ import http from 'node:http';
 import https from 'node:https';
 import { calculateCost, type ProviderName } from '@llmkit/shared';
 import {
-  parseOpenAIResponse,
   parseAnthropicResponse,
-  parseOpenAIStream,
   parseAnthropicStream,
+  parseOpenAIResponse,
+  parseOpenAIStream,
 } from './parsers.js';
-import { type RequestRecord, printVerbose } from './summary.js';
+import { printVerbose, type RequestRecord } from './summary.js';
 
 interface ProxyTarget {
   host: string;

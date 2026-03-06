@@ -1,7 +1,7 @@
+import { LLMKitError } from '@llmkit/shared';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import { LLMKitError } from '@llmkit/shared';
 import type { Env } from './env';
 import { auth } from './middleware/auth';
 import { budgetCheck } from './middleware/budget';

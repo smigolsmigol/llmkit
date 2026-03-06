@@ -1,0 +1,29 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreDependencies": ["@biomejs/biome", "publint"],
+  "exclude": ["types", "exports"],
+  "workspaces": {
+    "packages/proxy": {
+      "ignore": ["test/**"],
+      "ignoreDependencies": ["cloudflare"]
+    },
+    "packages/sdk": {
+      "ignore": ["test/**"]
+    },
+    "packages/cli": {
+      "ignore": ["test/**"]
+    },
+    "packages/mcp-server": {
+      "ignoreDependencies": ["@llmkit/shared"]
+    },
+    "packages/dashboard": {
+      "ignoreDependencies": ["@llmkit/shared", "class-variance-authority"],
+      "ignore": [
+        "src/components/skeletons.tsx",
+        "src/components/ui/card.tsx",
+        "src/app/dashboard/keys/create-key-form.tsx",
+        "src/app/dashboard/settings/create-budget-form.tsx"
+      ]
+    }
+  }
+}

@@ -3,7 +3,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { getRequests, getApiKeys, getBudgets, loadConfig } from './client.js';
+import { getApiKeys, getBudgets, getRequests, loadConfig } from './client.js';
 
 // tool definitions - this is what Claude Code sees when it inspects available tools
 const TOOLS = [
