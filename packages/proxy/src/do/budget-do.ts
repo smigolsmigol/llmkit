@@ -88,7 +88,10 @@ export class BudgetDO extends DurableObject {
       }
     }
 
-    const remaining = active.limitCents - active.usedCents;
+    // enforce both session limit AND root aggregate limit
+    const sessionRemaining = active.limitCents - active.usedCents;
+    const rootRemaining = root.limitCents - root.usedCents;
+    const remaining = Math.min(sessionRemaining, rootRemaining);
 
     if (remaining <= 0 || (input.estimatedCents > 0 && remaining < input.estimatedCents)) {
       return { allowed: false, remaining: Math.max(0, remaining), scope: root.scope || 'key', limitCents: active.limitCents, usedCents: active.usedCents };
@@ -119,6 +122,13 @@ export class BudgetDO extends DurableObject {
 
     target.usedCents += input.costCents;
     await this.ctx.storage.put(key, target);
+
+    // always track aggregate spend on root so session-scoped budgets
+    // can't bypass the total limit by creating new sessions
+    if (key !== 'root') {
+      root.usedCents += input.costCents;
+      await this.ctx.storage.put('root', root);
+    }
 
     const threshold = target.alertThreshold ?? root.alertThreshold ?? 0.8;
     const webhookUrl = target.alertWebhookUrl ?? root.alertWebhookUrl;

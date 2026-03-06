@@ -17,7 +17,7 @@ interface ModelStats {
 export function printSummary(records: RequestRecord[], json: boolean, elapsedMs: number): void {
   if (records.length === 0) {
     if (json) {
-      process.stdout.write(JSON.stringify({ totalCost: 0, totalRequests: 0, byModel: {} }) + '\n');
+      process.stdout.write(`${JSON.stringify({ totalCost: 0, totalRequests: 0, byModel: {} })}\n`);
     } else {
       process.stderr.write('\nNo AI API calls detected. Make sure your code uses the default OpenAI/Anthropic base URL.\n');
     }
@@ -43,12 +43,12 @@ export function printSummary(records: RequestRecord[], json: boolean, elapsedMs:
     for (const [model, stats] of byModel) {
       modelObj[model] = { requests: stats.requests, cost: +stats.cost.toFixed(6) };
     }
-    process.stdout.write(JSON.stringify({
+    process.stdout.write(`${JSON.stringify({
       totalCost: +totalCost.toFixed(6),
       totalRequests: records.length,
       elapsedMs,
       byModel: modelObj,
-    }) + '\n');
+    })}\n`);
     return;
   }
 

@@ -14,9 +14,9 @@ let cachedConfig: Config | null = null;
 export function loadConfig(): Config {
   if (cachedConfig) return cachedConfig;
 
-  const supabaseUrl = process.env['LLMKIT_SUPABASE_URL'];
-  const supabaseKey = process.env['LLMKIT_SUPABASE_KEY'];
-  const userId = process.env['LLMKIT_USER_ID'];
+  const supabaseUrl = process.env.LLMKIT_SUPABASE_URL;
+  const supabaseKey = process.env.LLMKIT_SUPABASE_KEY;
+  const userId = process.env.LLMKIT_USER_ID;
 
   if (!supabaseUrl || !supabaseKey || !userId) {
     throw new Error(
@@ -28,7 +28,7 @@ export function loadConfig(): Config {
     supabaseUrl,
     supabaseKey,
     userId,
-    proxyUrl: process.env['LLMKIT_PROXY_URL'],
+    proxyUrl: process.env.LLMKIT_PROXY_URL,
   };
 
   return cachedConfig;

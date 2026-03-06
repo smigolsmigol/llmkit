@@ -51,7 +51,7 @@ function postgrest(
   };
 
   if (init.method === 'POST') {
-    headers['Prefer'] = 'return=minimal';
+    headers.Prefer = 'return=minimal';
   }
 
   return fetch(`${url}/rest/v1/${path}`, {

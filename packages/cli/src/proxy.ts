@@ -60,7 +60,7 @@ export function startProxy(opts: { port: number; verbose: boolean }): Promise<Pr
         if (k === 'host' || k === 'accept-encoding' || k === 'connection') continue;
         headers[k] = val;
       }
-      headers['host'] = target.host;
+      headers.host = target.host;
       headers['accept-encoding'] = 'identity';
 
       const start = Date.now();
