@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/logo.png" width="120" alt="LLMKit" />
+  <img src=".github/logo.png" width="120" alt="LLMKit" />
 </p>
 
 <h1 align="center">LLMKit</h1>
@@ -7,6 +7,9 @@
 <p align="center">
   Know exactly what your AI agents cost.
 </p>
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
 
 ---
 
@@ -218,6 +221,17 @@ Query your AI costs from Claude Code or Cursor.
 
 Tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`.
 
+## Compared to alternatives
+
+| | LLMKit | LiteLLM | Portkey | Helicone | Pydantic AI GW |
+|---|---|---|---|---|---|
+| **Budget enforcement** | Hard pre-request (402) | Soft (9+ bypass bugs) | Soft alerts | Rate limits only | Soft limits |
+| **TypeScript-native** | Yes (primary) | No (86 npm DL/wk) | Both | Header-swap | Python-only |
+| **License** | MIT | MIT | Gateway only | Apache | AGPL |
+| **Vercel AI SDK** | Native provider | No | Yes | Listed | No |
+| **Self-hosted** | CF Workers ($5/mo) | Docker | Stripped features | Complex | Beta |
+| **Entry price** | $29/mo | $250/mo | $49/mo | $20/seat | $49/mo |
+
 ## Self-host
 
 ```bash
@@ -234,12 +248,9 @@ Deploy to Cloudflare Workers:
 
 ```bash
 npx wrangler login
-npx wrangler kv namespace create BUDGET
-npx wrangler kv namespace create RATE_LIMIT
-# update wrangler.toml with KV IDs
-
 npx wrangler secret put SUPABASE_URL
 npx wrangler secret put SUPABASE_KEY
+npx wrangler secret put ENCRYPTION_KEY
 npx wrangler deploy
 ```
 
