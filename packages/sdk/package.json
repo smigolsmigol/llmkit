@@ -1,6 +1,7 @@
 {
   "name": "@llmkit/sdk",
   "version": "0.0.1",
+  "description": "TypeScript SDK for LLMKit - cost tracking, provider routing, budget enforcement",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

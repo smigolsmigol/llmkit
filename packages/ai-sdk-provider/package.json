@@ -1,6 +1,7 @@
 {
   "name": "@llmkit/ai-sdk-provider",
   "version": "0.0.1",
+  "description": "Vercel AI SDK v6 custom provider for LLMKit proxy",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -10,6 +11,7 @@
       "import": "./dist/index.js"
     }
   },
+  "files": ["dist"],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",

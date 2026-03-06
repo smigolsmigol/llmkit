@@ -176,23 +176,21 @@ test('rate limit headers present on valid request', async () => {
 
 // --- EDGE CASES ---
 
-test('no body at all -> 500 (JSON parse)', async () => {
+test('no body at all -> 400 (JSON parse)', async () => {
   const res = await fetch(`${BASE}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer x' },
   });
-  // c.req.json() throws SyntaxError -> 500 is current behavior
-  // (not ideal but expected - could improve to 400 later)
-  assert(res.status === 400 || res.status === 500, `expected 400 or 500, got ${res.status}`);
+  assert(res.status === 400, `expected 400, got ${res.status}`);
 });
 
-test('malformed JSON body -> 500 (JSON parse)', async () => {
+test('malformed JSON body -> 400 (JSON parse)', async () => {
   const res = await fetch(`${BASE}/v1/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: 'Bearer x' },
     body: '{not json',
   });
-  assert(res.status === 400 || res.status === 500, `expected 400 or 500, got ${res.status}`);
+  assert(res.status === 400, `expected 400, got ${res.status}`);
 });
 
 test('health endpoint still works', async () => {
