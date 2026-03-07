@@ -9,6 +9,7 @@ import { costLogger } from './middleware/logger';
 import { rateLimit } from './middleware/ratelimit';
 import { providerRouter } from './routes/chat';
 import { keysRouter } from './routes/keys';
+import { mcpRouter } from './routes/mcp';
 
 export { BudgetDO } from './do/budget-do';
 export { RateLimitDO } from './do/ratelimit-do';
@@ -42,5 +43,9 @@ app.use('/v1/*', costLogger());
 
 app.route('/v1', providerRouter);
 app.route('/v1', keysRouter);
+
+// MCP endpoint: auth only, no budget/rate-limit (read-only queries)
+app.use('/mcp/*', auth());
+app.route('/mcp', mcpRouter);
 
 export default app;
