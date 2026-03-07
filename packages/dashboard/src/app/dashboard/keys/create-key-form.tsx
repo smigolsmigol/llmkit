@@ -3,12 +3,33 @@
 import { useState } from 'react';
 import { createApiKey } from './actions';
 
+const PROXY_URL = 'https://llmkit-proxy.smigolsmigol.workers.dev/v1';
+
+function SnippetBlock({ label, code, onCopy }: { label: string; code: string; onCopy: (text: string) => void }) {
+  return (
+    <div>
+      <p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
+      <div className="group relative rounded-md bg-secondary p-3">
+        <pre className="overflow-x-auto font-mono text-xs text-primary whitespace-pre">{code}</pre>
+        <button
+          type="button"
+          onClick={() => onCopy(code)}
+          className="absolute right-2 top-2 rounded border border-border bg-card px-1.5 py-0.5 text-[10px] text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-primary"
+        >
+          copy
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function CreateKeyForm() {
   const [open, setOpen] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [name, setName] = useState('');
+  const [copied, setCopied] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,27 +53,69 @@ export function CreateKeyForm() {
     setNewKey(null);
     setError(null);
     setName('');
+    setCopied(false);
+  }
+
+  function copyText(text: string) {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   if (newKey) {
+    const pythonSnippet = `from openai import OpenAI
+
+client = OpenAI(
+    base_url="${PROXY_URL}",
+    api_key="${newKey}",
+    default_headers={"x-llmkit-provider-key": "sk-your-openai-key"},
+)
+
+res = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "hello"}],
+)
+print(res.choices[0].message.content)`;
+
+    const envSnippet = `export OPENAI_BASE_URL=${PROXY_URL}
+export OPENAI_API_KEY=${newKey}
+python your_app.py`;
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="mx-4 w-full max-w-md rounded-lg border border-border bg-card p-6">
+        <div className="mx-4 w-full max-w-lg rounded-lg border border-border bg-card p-6">
           <h2 className="text-lg font-semibold">Key Created</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Copy this key now. You won&apos;t be able to see it again.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Save this key now - you won&apos;t see it again.
           </p>
-          <div className="mt-4 rounded-md bg-secondary p-3">
+
+          <div className="mt-3 rounded-md bg-secondary p-3">
             <code className="break-all font-mono text-xs text-primary">{newKey}</code>
           </div>
-          <div className="mt-4 flex justify-end gap-2">
+
+          <div className="mt-2 flex gap-2">
             <button
               type="button"
-              onClick={() => navigator.clipboard.writeText(newKey)}
+              onClick={() => copyText(newKey)}
               className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Copy
+              {copied ? 'Copied' : 'Copy Key'}
             </button>
+          </div>
+
+          <div className="mt-5 border-t border-border pt-4">
+            <h3 className="text-sm font-semibold">Quick start</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Replace <code className="rounded bg-secondary px-1">sk-your-openai-key</code> with your actual OpenAI key.
+            </p>
+
+            <div className="mt-3 space-y-3">
+              <SnippetBlock label="Python (zero code changes)" code={envSnippet} onCopy={copyText} />
+              <SnippetBlock label="Python (explicit)" code={pythonSnippet} onCopy={copyText} />
+            </div>
+          </div>
+
+          <div className="mt-5 flex justify-end">
             <button
               type="button"
               onClick={handleClose}
