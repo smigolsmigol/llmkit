@@ -24,6 +24,7 @@ export interface ProviderKeyRow {
 }
 
 export interface RequestInsert {
+  user_id: string;
   api_key_id: string;
   session_id: string | null;
   provider: string;
