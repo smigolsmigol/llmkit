@@ -41,7 +41,7 @@ export default async function OverviewPage() {
           <p className="font-medium">Get started</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Create an API key in the Keys tab, then point your OpenAI or Anthropic
-            SDK at the LLMKit proxy. You bring your own provider keys - LLMKit
+            SDK at the LLMKit proxy. You bring your own provider keys. LLMKit
             tracks costs and enforces budgets. Free during beta, no limits.
           </p>
         </div>
