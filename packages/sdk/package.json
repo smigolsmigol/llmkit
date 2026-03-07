@@ -1,6 +1,6 @@
 {
   "name": "@f3d1/llmkit-sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "description": "TypeScript SDK for LLMKit - cost tracking, provider routing, budget enforcement",
   "type": "module",
