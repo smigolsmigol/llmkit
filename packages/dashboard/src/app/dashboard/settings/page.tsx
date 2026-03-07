@@ -49,26 +49,37 @@ export default async function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-lg font-semibold">{planName}</p>
+                  {account?.plan === 'beta' && !expires && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Lifetime access - all features, no limits
+                    </p>
+                  )}
                   {expires && (
                     <p className="mt-1 text-sm text-muted-foreground">
                       Expires {expires}
-                    </p>
-                  )}
-                  {account?.plan === 'beta' && !expires && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Lifetime access
                     </p>
                   )}
                   {account?.note && (
                     <p className="mt-1 text-xs text-muted-foreground">{account.note}</p>
                   )}
                 </div>
-                {account?.plan === 'free' && (
-                  <span className="rounded-full bg-secondary px-3 py-1 text-xs text-muted-foreground">
-                    Beta - all features unlocked
-                  </span>
-                )}
               </div>
+
+              {(account?.plan === 'free' || !account?.plan) && (
+                <div className="mt-4 rounded-md bg-secondary/50 p-4">
+                  <p className="text-sm font-medium">Free during beta</p>
+                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    <li>Unlimited API requests</li>
+                    <li>All 11 providers (OpenAI, Anthropic, Gemini, ...)</li>
+                    <li>Budget enforcement and cost tracking</li>
+                    <li>No credit card required</li>
+                  </ul>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Paid plans coming soon. You bring your own provider API keys, so
+                    you only pay the AI providers directly.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

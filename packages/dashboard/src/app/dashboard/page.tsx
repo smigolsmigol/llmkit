@@ -36,6 +36,17 @@ export default async function OverviewPage() {
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">Overview</h1>
 
+      {totalRequests === 0 && (
+        <div className="rounded-lg border border-primary/20 bg-card p-6">
+          <p className="font-medium">Get started</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create an API key in the Keys tab, then point your OpenAI or Anthropic
+            SDK at the LLMKit proxy. You bring your own provider keys - LLMKit
+            tracks costs and enforces budgets. Free during beta, no limits.
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-4 gap-4">
         <div className="glow-hover rounded-lg border border-primary/20 bg-card p-5">
           <p className="text-sm text-muted-foreground">Total Spend (30d)</p>
