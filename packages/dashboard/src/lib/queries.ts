@@ -335,6 +335,116 @@ export async function getAllAccounts(): Promise<AccountRow[]> {
   return (data as AccountRow[]) || [];
 }
 
+// ---- Admin queries (all users) ----
+
+export interface AdminStats {
+  totalRequests: number;
+  totalSpendCents: number;
+  activeUsers: number;
+  totalAccounts: number;
+}
+
+export interface UserBreakdown {
+  userId: string;
+  plan: string;
+  note: string | null;
+  requests: number;
+  spendCents: number;
+  lastActive: string;
+}
+
+export interface ModelBreakdown {
+  model: string;
+  provider: string;
+  requests: number;
+  spendCents: number;
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+  const db = createServerClient();
+  const { count: totalAccounts } = await db
+    .from('accounts')
+    .select('*', { count: 'exact', head: true });
+
+  const { data: requests } = await db
+    .from('requests')
+    .select('cost_cents, api_key_id')
+    .limit(50000);
+
+  const rows = requests || [];
+  const uniqueKeys = new Set(rows.map((r) => r.api_key_id));
+
+  return {
+    totalRequests: rows.length,
+    totalSpendCents: rows.reduce((s, r) => s + Number(r.cost_cents), 0),
+    activeUsers: uniqueKeys.size,
+    totalAccounts: totalAccounts || 0,
+  };
+}
+
+export async function getAdminUserBreakdown(): Promise<UserBreakdown[]> {
+  const db = createServerClient();
+
+  const { data: keys } = await db
+    .from('api_keys')
+    .select('id, user_id');
+
+  if (!keys?.length) return [];
+
+  const keyToUser = new Map(keys.map((k) => [k.id, k.user_id]));
+
+  const { data: requests } = await db
+    .from('requests')
+    .select('api_key_id, cost_cents, created_at')
+    .limit(50000);
+
+  const users = new Map<string, { requests: number; spendCents: number; lastActive: string }>();
+  for (const r of requests || []) {
+    const uid = keyToUser.get(r.api_key_id);
+    if (!uid) continue;
+    const u = users.get(uid) || { requests: 0, spendCents: 0, lastActive: '' };
+    u.requests++;
+    u.spendCents += Number(r.cost_cents);
+    if (r.created_at > u.lastActive) u.lastActive = r.created_at;
+    users.set(uid, u);
+  }
+
+  const { data: accounts } = await db
+    .from('accounts')
+    .select('user_id, plan, note');
+
+  const acctMap = new Map((accounts || []).map((a) => [a.user_id, a]));
+
+  return Array.from(users.entries())
+    .map(([userId, u]) => ({
+      userId,
+      plan: acctMap.get(userId)?.plan || 'free',
+      note: acctMap.get(userId)?.note || null,
+      ...u,
+    }))
+    .sort((a, b) => b.spendCents - a.spendCents);
+}
+
+export async function getAdminTopModels(): Promise<ModelBreakdown[]> {
+  const db = createServerClient();
+  const { data: requests } = await db
+    .from('requests')
+    .select('model, provider, cost_cents')
+    .limit(50000);
+
+  const models = new Map<string, { provider: string; requests: number; spendCents: number }>();
+  for (const r of requests || []) {
+    const m = models.get(r.model) || { provider: r.provider, requests: 0, spendCents: 0 };
+    m.requests++;
+    m.spendCents += Number(r.cost_cents);
+    models.set(r.model, m);
+  }
+
+  return Array.from(models.entries())
+    .map(([model, m]) => ({ model, ...m }))
+    .sort((a, b) => b.spendCents - a.spendCents);
+}
+
 // ---- Budgets and keys ----
 
 export async function getBudgets(userId: string): Promise<BudgetRow[]> {
