@@ -9,21 +9,29 @@ import {
 } from '@/lib/queries';
 import { StatCard } from '@/components/stat-card';
 import { CostChart } from '@/components/charts/cost-chart';
+import { TimeRangeSelector } from '@/components/time-range-selector';
 import { formatCents } from '@/lib/format';
 import { AccountTable } from './account-table';
 
-export default async function AdminPage() {
+export default async function AdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ days?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId || userId !== process.env.ADMIN_USER_ID) {
     redirect('/dashboard');
   }
 
+  const params = await searchParams;
+  const days = params.days !== undefined ? Number(params.days) : 30;
+
   const [accounts, stats, dailyStats, userBreakdown, topModels] = await Promise.all([
     getAllAccounts(),
-    getAdminStats(),
-    getAdminDailyStats(30),
-    getAdminUserBreakdown(),
-    getAdminTopModels(),
+    getAdminStats(days),
+    getAdminDailyStats(days),
+    getAdminUserBreakdown(days),
+    getAdminTopModels(days),
   ]);
 
   const chartData = dailyStats.map((d) => ({
@@ -35,7 +43,10 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-semibold">Admin</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Admin</h1>
+        <TimeRangeSelector />
+      </div>
 
       {/* row 1: money + volume */}
       <div className="grid grid-cols-4 gap-4">
@@ -69,7 +80,7 @@ export default async function AdminPage() {
         <StatCard
           label="Avg Latency"
           value={`${stats.avgLatencyMs}ms`}
-          sublabel="across all providers"
+          sublabel={stats.avgTokensPerReq > 0 ? `~${stats.avgTokensPerReq.toLocaleString()} tokens/req` : 'across all providers'}
         />
         <StatCard
           label="p95 Latency"
@@ -97,6 +108,9 @@ export default async function AdminPage() {
                     <th className="pb-2">Provider</th>
                     <th className="pb-2 text-right">Reqs</th>
                     <th className="pb-2 text-right">Spend</th>
+                    <th className="pb-2 text-right">Avg ms</th>
+                    <th className="pb-2 text-right">Tok/req</th>
+                    <th className="pb-2 text-right">$/1k tok</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -106,6 +120,9 @@ export default async function AdminPage() {
                       <td className="py-1.5 text-xs text-muted-foreground">{m.provider}</td>
                       <td className="py-1.5 text-right text-xs">{m.requests}</td>
                       <td className="py-1.5 text-right font-mono text-xs">{formatCents(m.spendCents)}</td>
+                      <td className="py-1.5 text-right text-xs text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
+                      <td className="py-1.5 text-right text-xs text-muted-foreground">{m.avgTokensPerReq.toLocaleString()}</td>
+                      <td className="py-1.5 text-right font-mono text-xs">{formatCents(m.costPer1kTokens)}</td>
                     </tr>
                   ))}
                 </tbody>

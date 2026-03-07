@@ -70,8 +70,8 @@ export async function getRecentRequests(userId: string, limit = 20): Promise<Req
   return (data as RequestRow[]) || [];
 }
 
-export async function getSpendByProvider(userId: string): Promise<ProviderStats[]> {
-  const requests = await getRecentRequests(userId, 1000);
+export async function getSpendByProvider(userId: string, days = 30): Promise<ProviderStats[]> {
+  const requests = filterByDays(await getRecentRequests(userId, 1000), days);
 
   const byProvider = new Map<string, { count: number; totalCostCents: number }>();
   for (const req of requests) {
@@ -359,6 +359,12 @@ async function getAllRequests(): Promise<AdminRequest[]> {
   return (data as AdminRequest[]) || [];
 }
 
+function filterByDays<T extends { created_at: string }>(rows: T[], days: number): T[] {
+  if (days <= 0) return rows;
+  const cutoff = new Date(Date.now() - days * 86400000);
+  return rows.filter((r) => new Date(r.created_at) >= cutoff);
+}
+
 export interface AdminStats {
   totalRequests: number;
   totalSpendCents: number;
@@ -371,6 +377,7 @@ export interface AdminStats {
   p95LatencyMs: number;
   totalInputTokens: number;
   totalOutputTokens: number;
+  avgTokensPerReq: number;
 }
 
 export interface UserBreakdown {
@@ -389,6 +396,9 @@ export interface ModelBreakdown {
   provider: string;
   requests: number;
   spendCents: number;
+  avgLatencyMs: number;
+  avgTokensPerReq: number;
+  costPer1kTokens: number;
 }
 
 export interface DailyAdminStats {
@@ -398,13 +408,13 @@ export interface DailyAdminStats {
   errors: number;
 }
 
-export async function getAdminStats(): Promise<AdminStats> {
+export async function getAdminStats(days = 0): Promise<AdminStats> {
   const db = createServerClient();
   const { count: totalAccounts } = await db
     .from('accounts')
     .select('*', { count: 'exact', head: true });
 
-  const rows = await getAllRequests();
+  const rows = filterByDays(await getAllRequests(), days);
 
   const now = Date.now();
   const dayAgo = now - 86400000;
@@ -447,17 +457,16 @@ export async function getAdminStats(): Promise<AdminStats> {
     p95LatencyMs: latencies.length > 0 ? latencies[p95Idx] : 0,
     totalInputTokens: totalInput,
     totalOutputTokens: totalOutput,
+    avgTokensPerReq: rows.length > 0 ? Math.round((totalInput + totalOutput) / rows.length) : 0,
   };
 }
 
-export async function getAdminDailyStats(days = 30): Promise<DailyAdminStats[]> {
-  const rows = await getAllRequests();
-  const cutoff = new Date(Date.now() - days * 86400000);
+export async function getAdminDailyStats(days = 0): Promise<DailyAdminStats[]> {
+  const rows = filterByDays(await getAllRequests(), days);
 
   const byDay = new Map<string, { costCents: number; requests: number; errors: number }>();
   for (const r of rows) {
     const date = r.created_at.slice(0, 10);
-    if (new Date(date) < cutoff) continue;
     const d = byDay.get(date) || { costCents: 0, requests: 0, errors: 0 };
     d.costCents += Number(r.cost_cents);
     d.requests++;
@@ -470,7 +479,7 @@ export async function getAdminDailyStats(days = 30): Promise<DailyAdminStats[]> 
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function getAdminUserBreakdown(): Promise<UserBreakdown[]> {
+export async function getAdminUserBreakdown(days = 0): Promise<UserBreakdown[]> {
   const db = createServerClient();
 
   const { data: keys } = await db
@@ -480,7 +489,7 @@ export async function getAdminUserBreakdown(): Promise<UserBreakdown[]> {
   if (!keys?.length) return [];
 
   const keyToUser = new Map(keys.map((k) => [k.id, k.user_id]));
-  const rows = await getAllRequests();
+  const rows = filterByDays(await getAllRequests(), days);
 
   const users = new Map<string, { requests: number; spendCents: number; errors: number; totalLatency: number; lastActive: string }>();
   for (const r of rows) {
@@ -515,19 +524,39 @@ export async function getAdminUserBreakdown(): Promise<UserBreakdown[]> {
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
-export async function getAdminTopModels(): Promise<ModelBreakdown[]> {
-  const rows = await getAllRequests();
+export async function getAdminTopModels(days = 0): Promise<ModelBreakdown[]> {
+  const rows = filterByDays(await getAllRequests(), days);
 
-  const models = new Map<string, { provider: string; requests: number; spendCents: number }>();
+  const models = new Map<string, {
+    provider: string; requests: number; spendCents: number;
+    totalLatency: number; totalInput: number; totalOutput: number;
+  }>();
   for (const r of rows) {
-    const m = models.get(r.model) || { provider: r.provider, requests: 0, spendCents: 0 };
+    const m = models.get(r.model) || {
+      provider: r.provider, requests: 0, spendCents: 0,
+      totalLatency: 0, totalInput: 0, totalOutput: 0,
+    };
     m.requests++;
     m.spendCents += Number(r.cost_cents);
+    m.totalLatency += r.latency_ms;
+    m.totalInput += r.input_tokens;
+    m.totalOutput += r.output_tokens;
     models.set(r.model, m);
   }
 
   return Array.from(models.entries())
-    .map(([model, m]) => ({ model, ...m }))
+    .map(([model, m]) => {
+      const totalTokens = m.totalInput + m.totalOutput;
+      return {
+        model,
+        provider: m.provider,
+        requests: m.requests,
+        spendCents: m.spendCents,
+        avgLatencyMs: m.requests > 0 ? Math.round(m.totalLatency / m.requests) : 0,
+        avgTokensPerReq: m.requests > 0 ? Math.round(totalTokens / m.requests) : 0,
+        costPer1kTokens: totalTokens > 0 ? +((m.spendCents / totalTokens) * 1000).toFixed(4) : 0,
+      };
+    })
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
@@ -616,6 +645,7 @@ export interface ModelStats {
   avgLatencyMs: number;
   totalInputTokens: number;
   totalOutputTokens: number;
+  costPer1kTokens: number;
 }
 
 export interface RequestSummary {
@@ -628,8 +658,8 @@ export interface RequestSummary {
   projectedMonthlyCents: number;
 }
 
-export async function getModelBreakdown(userId: string): Promise<ModelStats[]> {
-  const requests = await getRecentRequests(userId, 10000);
+export async function getModelBreakdown(userId: string, days = 30): Promise<ModelStats[]> {
+  const requests = filterByDays(await getRecentRequests(userId, 10000), days);
 
   const models = new Map<string, {
     provider: string; requests: number; spendCents: number;
@@ -650,20 +680,24 @@ export async function getModelBreakdown(userId: string): Promise<ModelStats[]> {
   }
 
   return Array.from(models.entries())
-    .map(([model, m]) => ({
-      model,
-      provider: m.provider,
-      requests: m.requests,
-      spendCents: m.spendCents,
-      avgLatencyMs: m.requests > 0 ? Math.round(m.totalLatency / m.requests) : 0,
-      totalInputTokens: m.inputTokens,
-      totalOutputTokens: m.outputTokens,
-    }))
+    .map(([model, m]) => {
+      const totalTokens = m.inputTokens + m.outputTokens;
+      return {
+        model,
+        provider: m.provider,
+        requests: m.requests,
+        spendCents: m.spendCents,
+        avgLatencyMs: m.requests > 0 ? Math.round(m.totalLatency / m.requests) : 0,
+        totalInputTokens: m.inputTokens,
+        totalOutputTokens: m.outputTokens,
+        costPer1kTokens: totalTokens > 0 ? +((m.spendCents / totalTokens) * 1000).toFixed(4) : 0,
+      };
+    })
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
-export async function getRequestSummary(userId: string): Promise<RequestSummary> {
-  const requests = await getRecentRequests(userId, 10000);
+export async function getRequestSummary(userId: string, days = 30): Promise<RequestSummary> {
+  const requests = filterByDays(await getRecentRequests(userId, 10000), days);
 
   let totalSpend = 0;
   let totalLatency = 0;
@@ -730,8 +764,8 @@ export async function getApiKeys(userId: string): Promise<ApiKeyRow[]> {
   return (data as ApiKeyRow[]) || [];
 }
 
-export async function getSessions(userId: string, limit = 50) {
-  const requests = await getRecentRequests(userId, 5000);
+export async function getSessions(userId: string, limit = 50, days = 30) {
+  const requests = filterByDays(await getRecentRequests(userId, 5000), days);
 
   const sessions = new Map<string, {
     sessionId: string;
