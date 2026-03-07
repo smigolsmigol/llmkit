@@ -1,7 +1,6 @@
 import {
   AllProvidersFailedError,
   type CostBreakdown,
-  calculateCostBreakdown,
   ProviderError,
   type ProviderName,
   type TokenUsage,
@@ -15,6 +14,7 @@ import { decrypt } from '../crypto';
 import { findProviderKey } from '../db';
 import type { Env, ResponseMeta } from '../env';
 import { trackRequest } from '../middleware/logger';
+import { resolveCost } from '../pricing';
 import type { ProviderRequest, ProviderResponse } from '../providers';
 import { getAdapter } from '../providers';
 
@@ -103,7 +103,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
       const result = await adapter.chat(req);
       const latency = Date.now() - start;
 
-      const cost = calculateCostBreakdown(providerName, result.model, result.usage);
+      const cost = await resolveCost(providerName, result.model, result.usage);
 
       const meta: ResponseMeta = {
         provider: providerName,
@@ -178,7 +178,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
         if (!usage) return;
 
         const latency = Date.now() - start;
-        const cost = calculateCostBreakdown(providerName, usage.model, usage.tokens);
+        const cost = await resolveCost(providerName, usage.model, usage.tokens);
 
         await writeStreamFinale(s, llmkitFmt, {
           id: usage.id,

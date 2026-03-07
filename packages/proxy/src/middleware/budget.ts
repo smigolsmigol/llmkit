@@ -1,8 +1,9 @@
 import type { ProviderName } from '@f3d1/llmkit-shared';
-import { BudgetExceededError, getModelPricing, ValidationError } from '@f3d1/llmkit-shared';
+import { BudgetExceededError, ValidationError } from '@f3d1/llmkit-shared';
 import { createMiddleware } from 'hono/factory';
 import type { BudgetDO } from '../do/budget-do';
 import type { Env } from '../env';
+import { resolvePricing } from '../pricing';
 
 function validateSessionId(sessionId: string | undefined): void {
   if (sessionId && !/^[\w-]{1,128}$/.test(sessionId)) {
@@ -28,7 +29,7 @@ export function budgetCheck() {
 
     const body = await parseBody(c);
     const provider = (c.req.header('x-llmkit-provider') || body.provider || 'anthropic') as ProviderName;
-    const estimated = estimateCost(body, provider);
+    const estimated = await estimateCost(body, provider);
 
     const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName(budgetId));
     const result = await stub.check({
@@ -40,7 +41,7 @@ export function budgetCheck() {
       throw new BudgetExceededError(budgetId, result.limitCents, result.usedCents);
     }
 
-    const clamped = affordableMaxTokens(result.remaining, body, provider);
+    const clamped = await affordableMaxTokens(result.remaining, body, provider);
     if (clamped !== undefined && clamped < 10) {
       throw new BudgetExceededError(budgetId, result.limitCents, result.usedCents);
     }
@@ -96,11 +97,11 @@ export async function sendAlert(alert: { webhookUrl: string; body: Record<string
 
 // pure functions for cost estimation (exported for testing)
 
-export function estimateCost(body: Record<string, unknown>, provider: ProviderName): number {
+export async function estimateCost(body: Record<string, unknown>, provider: ProviderName): Promise<number> {
   const model = body.model as string;
   if (!model) return 0;
 
-  const pricing = getModelPricing(provider, model);
+  const pricing = await resolvePricing(provider, model);
   if (!pricing) return 0;
 
   const messages = body.messages as Array<{ content: string }> | undefined;
@@ -117,15 +118,15 @@ export function estimateCost(body: Record<string, unknown>, provider: ProviderNa
   return Math.ceil(costUsd * 100);
 }
 
-export function affordableMaxTokens(
+export async function affordableMaxTokens(
   remainingCents: number,
   body: Record<string, unknown>,
   provider: ProviderName,
-): number | undefined {
+): Promise<number | undefined> {
   const model = body.model as string;
   if (!model) return undefined;
 
-  const pricing = getModelPricing(provider, model);
+  const pricing = await resolvePricing(provider, model);
   if (!pricing || pricing.outputPerMillion === 0) return undefined;
 
   const messages = body.messages as Array<{ content: string }> | undefined;
