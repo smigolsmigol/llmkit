@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { updateAccount } from './actions';
 import type { AccountRow } from '@/lib/queries';
 
-const plans = ['free', 'beta', 'pro', 'enterprise'] as const;
+const plans = ['free', 'beta', 'pro', 'enterprise', 'admin'] as const;
 
 function AccountRow({ account }: { account: AccountRow }) {
   const [plan, setPlan] = useState(account.plan);
