@@ -30,6 +30,7 @@ Thumbs.db
 # cf workers
 .wrangler/
 .dev.vars
+.dev.keys
 
 # next.js
 .next/

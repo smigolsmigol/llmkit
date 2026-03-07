@@ -12,6 +12,7 @@
       "import": "./dist/index.js"
     }
   },
+  "keywords": ["vercel-ai-sdk", "ai-sdk", "llm", "openai", "anthropic", "provider", "ai-gateway", "cost-tracking"],
   "files": ["dist"],
   "scripts": {
     "build": "tsc",

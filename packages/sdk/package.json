@@ -12,6 +12,7 @@
       "import": "./dist/index.js"
     }
   },
+  "keywords": ["llm", "ai", "openai", "anthropic", "sdk", "api-gateway", "cost-tracking", "budget", "ai-agents", "typescript"],
   "files": ["dist"],
   "scripts": {
     "build": "tsc",

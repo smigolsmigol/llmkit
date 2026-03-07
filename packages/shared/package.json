@@ -12,6 +12,7 @@
       "import": "./dist/index.js"
     }
   },
+  "keywords": ["llm", "ai", "openai", "anthropic", "pricing", "cost-tracking", "token-usage"],
   "files": ["dist"],
   "scripts": {
     "build": "tsc",
