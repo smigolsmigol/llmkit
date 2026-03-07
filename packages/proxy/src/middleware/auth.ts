@@ -6,7 +6,8 @@ import type { Env } from '../env';
 export function auth() {
   return createMiddleware<Env>(async (c, next) => {
     const authHeader = c.req.header('Authorization') || '';
-    const raw = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    const raw = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim()
+      : c.req.query('apiKey') || '';
     if (!raw) throw new AuthError();
 
     if (!c.env.SUPABASE_URL || !c.env.SUPABASE_KEY) {
