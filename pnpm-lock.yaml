@@ -53,8 +53,8 @@ importers:
         specifier: ^6.0.0
         version: 6.38.0(next@15.5.12(@opentelemetry/api@1.9.0)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@f3d1/llmkit-shared':
-        specifier: workspace:*
-        version: link:../shared
+        specifier: ^0.0.1
+        version: 0.0.1
       '@supabase/supabase-js':
         specifier: ^2.0.0
         version: 2.97.0
@@ -453,6 +453,9 @@ packages:
     engines: {node: '>=12'}
     cpu: [x64]
     os: [win32]
+
+  '@f3d1/llmkit-shared@0.0.1':
+    resolution: {integrity: sha512-aSAK8CMuFcKSG8XTQXzUXmKZxvRop8CG5BYZ1hjV59ps4AfxW1Gb4FCN7+YCEpTc77aFyu2QJtpN0oNJ0YyGCA==}
 
   '@fastify/busboy@2.1.1':
     resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
@@ -2361,6 +2364,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.17.19':
     optional: true
+
+  '@f3d1/llmkit-shared@0.0.1': {}
 
   '@fastify/busboy@2.1.1': {}
 
