@@ -1,7 +1,14 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
-import { getAllAccounts, getAdminStats, getAdminUserBreakdown, getAdminTopModels } from '@/lib/queries';
+import {
+  getAllAccounts,
+  getAdminStats,
+  getAdminDailyStats,
+  getAdminUserBreakdown,
+  getAdminTopModels,
+} from '@/lib/queries';
 import { StatCard } from '@/components/stat-card';
+import { CostChart } from '@/components/charts/cost-chart';
 import { formatCents } from '@/lib/format';
 import { AccountTable } from './account-table';
 
@@ -11,17 +18,26 @@ export default async function AdminPage() {
     redirect('/dashboard');
   }
 
-  const [accounts, stats, userBreakdown, topModels] = await Promise.all([
+  const [accounts, stats, dailyStats, userBreakdown, topModels] = await Promise.all([
     getAllAccounts(),
     getAdminStats(),
+    getAdminDailyStats(30),
     getAdminUserBreakdown(),
     getAdminTopModels(),
   ]);
+
+  const chartData = dailyStats.map((d) => ({
+    date: d.date,
+    cost: d.costCents / 100,
+  }));
+
+  const totalTokens = stats.totalInputTokens + stats.totalOutputTokens;
 
   return (
     <div className="space-y-8">
       <h1 className="text-xl font-semibold">Admin</h1>
 
+      {/* row 1: money + volume */}
       <div className="grid grid-cols-4 gap-4">
         <div className="glow-hover rounded-lg border border-primary/20 bg-card p-5">
           <p className="text-sm text-muted-foreground">Platform Spend</p>
@@ -31,71 +47,109 @@ export default async function AdminPage() {
         </div>
         <StatCard label="Total Requests" value={stats.totalRequests.toLocaleString()} />
         <StatCard label="Accounts" value={String(stats.totalAccounts)} />
-        <StatCard label="Active Keys" value={String(stats.activeUsers)} />
+        <StatCard
+          label="Tokens Processed"
+          value={totalTokens > 1_000_000 ? `${(totalTokens / 1_000_000).toFixed(1)}M` : totalTokens.toLocaleString()}
+          sublabel={`${stats.totalInputTokens.toLocaleString()} in / ${stats.totalOutputTokens.toLocaleString()} out`}
+        />
       </div>
 
-      {topModels.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">Top Models</h2>
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-secondary text-left text-xs text-muted-foreground">
-                  <th className="px-3 py-2">Model</th>
-                  <th className="px-3 py-2">Provider</th>
-                  <th className="px-3 py-2 text-right">Requests</th>
-                  <th className="px-3 py-2 text-right">Spend</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topModels.slice(0, 10).map((m) => (
-                  <tr key={m.model} className="border-t border-border">
-                    <td className="px-3 py-2 font-mono text-xs">{m.model}</td>
-                    <td className="px-3 py-2 text-xs">{m.provider}</td>
-                    <td className="px-3 py-2 text-right">{m.requests}</td>
-                    <td className="px-3 py-2 text-right font-mono">{formatCents(m.spendCents)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* row 2: health + activity */}
+      <div className="grid grid-cols-4 gap-4">
+        <StatCard
+          label="Active Keys (today)"
+          value={String(stats.activeKeysToday)}
+          sublabel={`${stats.activeKeysWeek} this week, ${stats.activeKeysMonth} this month`}
+        />
+        <StatCard
+          label="Error Rate"
+          value={`${stats.errorRate.toFixed(1)}%`}
+          sublabel={stats.errorRate > 5 ? 'above threshold' : 'healthy'}
+        />
+        <StatCard
+          label="Avg Latency"
+          value={`${stats.avgLatencyMs}ms`}
+          sublabel="across all providers"
+        />
+        <StatCard
+          label="p95 Latency"
+          value={`${stats.p95LatencyMs}ms`}
+          sublabel="95th percentile"
+        />
+      </div>
 
-      {userBreakdown.length > 0 && (
-        <div>
-          <h2 className="mb-3 text-sm font-medium text-muted-foreground">Per-User Breakdown</h2>
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-secondary text-left text-xs text-muted-foreground">
-                  <th className="px-3 py-2">User</th>
-                  <th className="px-3 py-2">Plan</th>
-                  <th className="px-3 py-2">Note</th>
-                  <th className="px-3 py-2 text-right">Requests</th>
-                  <th className="px-3 py-2 text-right">Spend</th>
-                  <th className="px-3 py-2">Last Active</th>
-                </tr>
-              </thead>
-              <tbody>
-                {userBreakdown.map((u) => (
-                  <tr key={u.userId} className="border-t border-border">
-                    <td className="px-3 py-2 font-mono text-xs">{u.userId.slice(0, 16)}...</td>
-                    <td className="px-3 py-2 text-xs">{u.plan}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{u.note || ''}</td>
-                    <td className="px-3 py-2 text-right">{u.requests}</td>
-                    <td className="px-3 py-2 text-right font-mono">{formatCents(u.spendCents)}</td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">
-                      {u.lastActive ? new Date(u.lastActive).toLocaleDateString() : ''}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* row 3: spend chart */}
+      <div className="rounded-lg border border-border bg-card p-5">
+        <h2 className="mb-4 text-sm font-medium text-muted-foreground">Daily Platform Spend (30d)</h2>
+        <CostChart data={chartData} />
+      </div>
 
+      {/* row 4: top models + per-user side by side */}
+      <div className="grid grid-cols-2 gap-4">
+        {topModels.length > 0 && (
+          <div className="rounded-lg border border-border bg-card p-5">
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Top Models</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground">
+                    <th className="pb-2">Model</th>
+                    <th className="pb-2">Provider</th>
+                    <th className="pb-2 text-right">Reqs</th>
+                    <th className="pb-2 text-right">Spend</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topModels.slice(0, 10).map((m) => (
+                    <tr key={m.model} className="border-t border-border/50">
+                      <td className="py-1.5 font-mono text-xs">{m.model}</td>
+                      <td className="py-1.5 text-xs text-muted-foreground">{m.provider}</td>
+                      <td className="py-1.5 text-right text-xs">{m.requests}</td>
+                      <td className="py-1.5 text-right font-mono text-xs">{formatCents(m.spendCents)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {userBreakdown.length > 0 && (
+          <div className="rounded-lg border border-border bg-card p-5">
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Per-User Breakdown</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground">
+                    <th className="pb-2">User</th>
+                    <th className="pb-2">Plan</th>
+                    <th className="pb-2 text-right">Reqs</th>
+                    <th className="pb-2 text-right">Spend</th>
+                    <th className="pb-2 text-right">Errs</th>
+                    <th className="pb-2 text-right">Avg ms</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {userBreakdown.map((u) => (
+                    <tr key={u.userId} className="border-t border-border/50">
+                      <td className="py-1.5 font-mono text-xs" title={u.userId}>
+                        {u.note || u.userId.slice(0, 12) + '...'}
+                      </td>
+                      <td className="py-1.5 text-xs text-muted-foreground">{u.plan}</td>
+                      <td className="py-1.5 text-right text-xs">{u.requests}</td>
+                      <td className="py-1.5 text-right font-mono text-xs">{formatCents(u.spendCents)}</td>
+                      <td className="py-1.5 text-right text-xs text-red-400">{u.errors || ''}</td>
+                      <td className="py-1.5 text-right text-xs">{u.avgLatencyMs}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* row 5: account management */}
       <div>
         <h2 className="mb-3 text-sm font-medium text-muted-foreground">
           Accounts ({accounts.length})

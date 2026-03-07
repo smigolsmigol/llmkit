@@ -335,13 +335,42 @@ export async function getAllAccounts(): Promise<AccountRow[]> {
   return (data as AccountRow[]) || [];
 }
 
-// ---- Admin queries (all users) ----
+// ---- Admin queries (all users, platform-wide) ----
+
+interface AdminRequest {
+  api_key_id: string;
+  cost_cents: number;
+  latency_ms: number;
+  error_code: string | null;
+  provider: string;
+  model: string;
+  input_tokens: number;
+  output_tokens: number;
+  created_at: string;
+}
+
+async function getAllRequests(): Promise<AdminRequest[]> {
+  const db = createServerClient();
+  const { data } = await db
+    .from('requests')
+    .select('api_key_id, cost_cents, latency_ms, error_code, provider, model, input_tokens, output_tokens, created_at')
+    .order('created_at', { ascending: false })
+    .limit(50000);
+  return (data as AdminRequest[]) || [];
+}
 
 export interface AdminStats {
   totalRequests: number;
   totalSpendCents: number;
-  activeUsers: number;
   totalAccounts: number;
+  activeKeysToday: number;
+  activeKeysWeek: number;
+  activeKeysMonth: number;
+  errorRate: number;
+  avgLatencyMs: number;
+  p95LatencyMs: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
 }
 
 export interface UserBreakdown {
@@ -350,6 +379,8 @@ export interface UserBreakdown {
   note: string | null;
   requests: number;
   spendCents: number;
+  errors: number;
+  avgLatencyMs: number;
   lastActive: string;
 }
 
@@ -360,26 +391,83 @@ export interface ModelBreakdown {
   spendCents: number;
 }
 
+export interface DailyAdminStats {
+  date: string;
+  costCents: number;
+  requests: number;
+  errors: number;
+}
+
 export async function getAdminStats(): Promise<AdminStats> {
   const db = createServerClient();
   const { count: totalAccounts } = await db
     .from('accounts')
     .select('*', { count: 'exact', head: true });
 
-  const { data: requests } = await db
-    .from('requests')
-    .select('cost_cents, api_key_id')
-    .limit(50000);
+  const rows = await getAllRequests();
 
-  const rows = requests || [];
-  const uniqueKeys = new Set(rows.map((r) => r.api_key_id));
+  const now = Date.now();
+  const dayAgo = now - 86400000;
+  const weekAgo = now - 7 * 86400000;
+  const monthAgo = now - 30 * 86400000;
+
+  const keysToday = new Set<string>();
+  const keysWeek = new Set<string>();
+  const keysMonth = new Set<string>();
+  let errors = 0;
+  let totalLatency = 0;
+  let totalInput = 0;
+  let totalOutput = 0;
+  const latencies: number[] = [];
+
+  for (const r of rows) {
+    const ts = new Date(r.created_at).getTime();
+    if (ts >= dayAgo) keysToday.add(r.api_key_id);
+    if (ts >= weekAgo) keysWeek.add(r.api_key_id);
+    if (ts >= monthAgo) keysMonth.add(r.api_key_id);
+    if (r.error_code) errors++;
+    totalLatency += r.latency_ms;
+    latencies.push(r.latency_ms);
+    totalInput += r.input_tokens;
+    totalOutput += r.output_tokens;
+  }
+
+  latencies.sort((a, b) => a - b);
+  const p95Idx = Math.floor(latencies.length * 0.95);
 
   return {
     totalRequests: rows.length,
     totalSpendCents: rows.reduce((s, r) => s + Number(r.cost_cents), 0),
-    activeUsers: uniqueKeys.size,
     totalAccounts: totalAccounts || 0,
+    activeKeysToday: keysToday.size,
+    activeKeysWeek: keysWeek.size,
+    activeKeysMonth: keysMonth.size,
+    errorRate: rows.length > 0 ? (errors / rows.length) * 100 : 0,
+    avgLatencyMs: rows.length > 0 ? Math.round(totalLatency / rows.length) : 0,
+    p95LatencyMs: latencies.length > 0 ? latencies[p95Idx] : 0,
+    totalInputTokens: totalInput,
+    totalOutputTokens: totalOutput,
   };
+}
+
+export async function getAdminDailyStats(days = 30): Promise<DailyAdminStats[]> {
+  const rows = await getAllRequests();
+  const cutoff = new Date(Date.now() - days * 86400000);
+
+  const byDay = new Map<string, { costCents: number; requests: number; errors: number }>();
+  for (const r of rows) {
+    const date = r.created_at.slice(0, 10);
+    if (new Date(date) < cutoff) continue;
+    const d = byDay.get(date) || { costCents: 0, requests: 0, errors: 0 };
+    d.costCents += Number(r.cost_cents);
+    d.requests++;
+    if (r.error_code) d.errors++;
+    byDay.set(date, d);
+  }
+
+  return Array.from(byDay.entries())
+    .map(([date, d]) => ({ date, ...d }))
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export async function getAdminUserBreakdown(): Promise<UserBreakdown[]> {
@@ -392,19 +480,17 @@ export async function getAdminUserBreakdown(): Promise<UserBreakdown[]> {
   if (!keys?.length) return [];
 
   const keyToUser = new Map(keys.map((k) => [k.id, k.user_id]));
+  const rows = await getAllRequests();
 
-  const { data: requests } = await db
-    .from('requests')
-    .select('api_key_id, cost_cents, created_at')
-    .limit(50000);
-
-  const users = new Map<string, { requests: number; spendCents: number; lastActive: string }>();
-  for (const r of requests || []) {
+  const users = new Map<string, { requests: number; spendCents: number; errors: number; totalLatency: number; lastActive: string }>();
+  for (const r of rows) {
     const uid = keyToUser.get(r.api_key_id);
     if (!uid) continue;
-    const u = users.get(uid) || { requests: 0, spendCents: 0, lastActive: '' };
+    const u = users.get(uid) || { requests: 0, spendCents: 0, errors: 0, totalLatency: 0, lastActive: '' };
     u.requests++;
     u.spendCents += Number(r.cost_cents);
+    if (r.error_code) u.errors++;
+    u.totalLatency += r.latency_ms;
     if (r.created_at > u.lastActive) u.lastActive = r.created_at;
     users.set(uid, u);
   }
@@ -420,20 +506,20 @@ export async function getAdminUserBreakdown(): Promise<UserBreakdown[]> {
       userId,
       plan: acctMap.get(userId)?.plan || 'free',
       note: acctMap.get(userId)?.note || null,
-      ...u,
+      requests: u.requests,
+      spendCents: u.spendCents,
+      errors: u.errors,
+      avgLatencyMs: u.requests > 0 ? Math.round(u.totalLatency / u.requests) : 0,
+      lastActive: u.lastActive,
     }))
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
 export async function getAdminTopModels(): Promise<ModelBreakdown[]> {
-  const db = createServerClient();
-  const { data: requests } = await db
-    .from('requests')
-    .select('model, provider, cost_cents')
-    .limit(50000);
+  const rows = await getAllRequests();
 
   const models = new Map<string, { provider: string; requests: number; spendCents: number }>();
-  for (const r of requests || []) {
+  for (const r of rows) {
     const m = models.get(r.model) || { provider: r.provider, requests: 0, spendCents: 0 };
     m.requests++;
     m.spendCents += Number(r.cost_cents);
