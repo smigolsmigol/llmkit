@@ -19,39 +19,7 @@ const ALL_PROVIDERS = [
   { id: 'openrouter', name: 'OpenRouter', hint: 'sk-or-...' },
 ] as const;
 
-function KeyRow({ k, onRevoke }: { k: ProviderKeyRow; onRevoke: (id: string) => void }) {
-  const [revoking, setRevoking] = useState(false);
-
-  async function handleRevoke() {
-    setRevoking(true);
-    try {
-      await onRevoke(k.id);
-    } finally {
-      setRevoking(false);
-    }
-  }
-
-  return (
-    <div className="flex items-center justify-between border-t border-border/30 py-2 first:border-0 first:pt-0">
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-xs text-muted-foreground">{k.key_prefix}</span>
-        {k.key_name !== 'default' && (
-          <span className="text-xs text-muted-foreground/60">({k.key_name})</span>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={handleRevoke}
-        disabled={revoking}
-        className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
-      >
-        {revoking ? '...' : 'Disconnect'}
-      </button>
-    </div>
-  );
-}
-
-function ProviderCard({
+function ConnectedCard({
   provider,
   keys,
 }: {
@@ -59,48 +27,55 @@ function ProviderCard({
   keys: ProviderKeyRow[];
 }) {
   const router = useRouter();
-  const [expanded, setExpanded] = useState(false);
-  const connected = keys.length > 0;
+  const [revoking, setRevoking] = useState<string | null>(null);
 
   async function handleRevoke(keyId: string) {
+    setRevoking(keyId);
     try {
       await revokeProviderKey(keyId);
       router.refresh();
     } catch {
       alert('Failed to revoke');
+    } finally {
+      setRevoking(null);
     }
   }
 
   return (
-    <div className={`rounded-lg border p-4 ${connected ? 'border-green-500/30 bg-green-500/5' : 'border-border bg-card'}`}>
-      <button
-        type="button"
-        onClick={() => connected && setExpanded(!expanded)}
-        className="flex w-full items-center justify-between text-left"
-      >
+    <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+          <div className="h-2.5 w-2.5 rounded-full bg-green-500" />
           <span className="text-sm font-medium">{provider.name}</span>
         </div>
-        {connected ? (
-          <span className="text-xs text-green-500">
-            {keys.length} key{keys.length !== 1 ? 's' : ''}
-            {keys.length > 1 ? (expanded ? ' ▴' : ' ▾') : ''}
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            {provider.hint ? provider.hint : 'not connected'}
-          </span>
-        )}
-      </button>
+        <span className="text-xs text-green-500">
+          {keys.length} key{keys.length !== 1 ? 's' : ''}
+        </span>
+      </div>
 
-      {connected && (keys.length === 1 || expanded) && (
-        <div className="mt-3 space-y-0">
-          {keys.map((k) => (
-            <KeyRow key={k.id} k={k} onRevoke={handleRevoke} />
-          ))}
-        </div>
-      )}
+      <div className="mt-3 space-y-0">
+        {keys.map((k) => (
+          <div
+            key={k.id}
+            className="flex items-center justify-between border-t border-green-500/10 py-2 first:border-0 first:pt-0"
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs text-muted-foreground">{k.key_prefix}</span>
+              {k.key_name !== 'default' && (
+                <span className="text-xs text-muted-foreground/60">({k.key_name})</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => handleRevoke(k.id)}
+              disabled={revoking === k.id}
+              className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+            >
+              {revoking === k.id ? '...' : 'Disconnect'}
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -113,22 +88,42 @@ export function ProviderGrid({ storedKeys }: { storedKeys: ProviderKeyRow[] }) {
     keysByProvider.set(k.provider, existing);
   }
 
-  const connectedProviders = new Set(storedKeys.map((k) => k.provider));
+  const connectedIds = new Set(storedKeys.map((k) => k.provider));
+  const connected = ALL_PROVIDERS.filter((p) => connectedIds.has(p.id));
+  const notConnected = ALL_PROVIDERS.filter((p) => !connectedIds.has(p.id));
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <span className="text-sm text-muted-foreground">
-          {connectedProviders.size} of {ALL_PROVIDERS.length} providers connected
-          {storedKeys.length > connectedProviders.size && ` (${storedKeys.length} keys total)`}
-        </span>
-      </div>
+    <div className="space-y-6">
+      {connected.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+            Connected ({connected.length})
+          </h2>
+          <div className="grid grid-cols-3 gap-3">
+            {connected.map((p) => (
+              <ConnectedCard key={p.id} provider={p} keys={keysByProvider.get(p.id)!} />
+            ))}
+          </div>
+        </div>
+      )}
 
-      <div className="grid grid-cols-3 gap-3">
-        {ALL_PROVIDERS.map((p) => (
-          <ProviderCard key={p.id} provider={p} keys={keysByProvider.get(p.id) || []} />
-        ))}
-      </div>
+      {notConnected.length > 0 && (
+        <div>
+          <h2 className="mb-3 text-sm font-medium text-muted-foreground">
+            Available ({notConnected.length})
+          </h2>
+          <div className="grid grid-cols-4 gap-3">
+            {notConnected.map((p) => (
+              <div key={p.id} className="rounded-lg border border-border bg-card p-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+                  <span className="text-sm text-muted-foreground">{p.name}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="rounded-lg border border-border bg-card p-4">
         <p className="text-sm font-medium">Adding provider keys</p>
