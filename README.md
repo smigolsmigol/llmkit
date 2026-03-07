@@ -17,10 +17,6 @@ Open-source API gateway that sits between your app and AI providers. Every reque
 
 Works with any language. Wrap your existing command with the CLI, or use the TypeScript SDK for full control.
 
-<a href="https://glama.ai/mcp/servers/@smigolsmigol/llmkit-mcp-server">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
-</a>
-
 ## Get started
 
 1. **Create an account** at [dashboard-two-zeta-54.vercel.app](https://dashboard-two-zeta-54.vercel.app) (free while in beta)
@@ -216,6 +212,10 @@ The middleware chain runs on every request: authenticate the API key, check the 
 | [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
 
 ## MCP Server
+
+<a href="https://glama.ai/mcp/servers/@smigolsmigol/llmkit-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
+</a>
 
 Query your AI costs from Claude Code or Cursor.
 
