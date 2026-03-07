@@ -13,7 +13,7 @@
 
 ---
 
-Open-source API gateway that sits between your app and AI providers. Every request gets logged with token counts and dollar costs. Set hard budget limits that actually reject requests when exceeded - not the "soft limits" other tools ship.
+Open-source API gateway that sits between your app and AI providers. Every request gets logged with token counts and dollar costs. Budget limits actually reject requests when exceeded, unlike the "soft limits" other tools ship.
 
 Works with any language. Wrap your existing command with the CLI, or use the TypeScript SDK for full control.
 
@@ -21,7 +21,7 @@ Works with any language. Wrap your existing command with the CLI, or use the Typ
 
 1. **Create an account** at [dashboard-two-zeta-54.vercel.app](https://dashboard-two-zeta-54.vercel.app) (free while in beta)
 2. **Create an API key** in the Keys tab
-3. **Use it** - pick any method below
+3. **Use it**: pick any method below
 
 ## Quick start
 
@@ -41,7 +41,7 @@ By model:
   gpt-4o                    2 reqs  $0.0059
 ```
 
-Works with Python, Ruby, Go, Rust - anything that calls the OpenAI or Anthropic API. The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` on the child process and runs a local transparent proxy. Your code doesn't know it's there.
+Works with Python, Ruby, Go, Rust, anything that calls the OpenAI or Anthropic API. The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` on the child process and runs a local transparent proxy. Your code doesn't know it's there.
 
 ```bash
 # see per-request costs as they happen
@@ -170,17 +170,17 @@ const { text } = await generateText({
 
 ## Why LLMKit
 
-**Budget enforcement that works.** Pre-request cost estimation rejects calls that would exceed the budget *before* they hit the provider. Per-key or per-session scope. Not the advisory "soft limits" that agents blow past.
+**Budget enforcement that works.** Cost estimation runs before every request. If it would blow the budget, it gets rejected before hitting the provider. Per-key or per-session scope. Not the advisory "soft limits" that agents blow past.
 
 **Per-agent cost tracking.** Tag requests with a session ID to track costs per agent, per conversation, per user. The dashboard and MCP server surface this data.
 
-**11 providers, one interface.** Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Provider fallback chains via header (`x-llmkit-fallback: anthropic,openai,gemini`).
+**11 providers, one interface.** Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Fallback chains via header (`x-llmkit-fallback: anthropic,openai,gemini`).
 
-**Edge-deployed proxy.** Runs on Cloudflare Workers. Requests route through the nearest datacenter, not a centralized server.
+**Edge-deployed proxy.** Runs on Cloudflare Workers. Requests route through the nearest datacenter.
 
-**Cache-aware pricing.** Prompt caching savings from Anthropic, DeepSeek, and Fireworks are tracked correctly in cost calculations. 40+ models priced.
+**Cache-aware pricing.** Prompt caching savings from Anthropic, DeepSeek, and Fireworks are tracked correctly. 40+ models priced.
 
-**Open source.** Proxy, SDK, CLI, and MCP server are MIT. Self-host or use the managed service.
+**Open source.** Proxy, SDK, CLI, and MCP server are all MIT. Self-host or use the managed service.
 
 ## How it works
 
