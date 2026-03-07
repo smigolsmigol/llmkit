@@ -606,6 +606,106 @@ export async function getProviderActivity(userId: string): Promise<ProviderActiv
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
+// ---- User analytics ----
+
+export interface ModelStats {
+  model: string;
+  provider: string;
+  requests: number;
+  spendCents: number;
+  avgLatencyMs: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+}
+
+export interface RequestSummary {
+  totalRequests: number;
+  totalSpendCents: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  avgCostCents: number;
+  avgLatencyMs: number;
+  projectedMonthlyCents: number;
+}
+
+export async function getModelBreakdown(userId: string): Promise<ModelStats[]> {
+  const requests = await getRecentRequests(userId, 10000);
+
+  const models = new Map<string, {
+    provider: string; requests: number; spendCents: number;
+    totalLatency: number; inputTokens: number; outputTokens: number;
+  }>();
+
+  for (const r of requests) {
+    const m = models.get(r.model) || {
+      provider: r.provider, requests: 0, spendCents: 0,
+      totalLatency: 0, inputTokens: 0, outputTokens: 0,
+    };
+    m.requests++;
+    m.spendCents += Number(r.cost_cents);
+    m.totalLatency += r.latency_ms;
+    m.inputTokens += r.input_tokens;
+    m.outputTokens += r.output_tokens;
+    models.set(r.model, m);
+  }
+
+  return Array.from(models.entries())
+    .map(([model, m]) => ({
+      model,
+      provider: m.provider,
+      requests: m.requests,
+      spendCents: m.spendCents,
+      avgLatencyMs: m.requests > 0 ? Math.round(m.totalLatency / m.requests) : 0,
+      totalInputTokens: m.inputTokens,
+      totalOutputTokens: m.outputTokens,
+    }))
+    .sort((a, b) => b.spendCents - a.spendCents);
+}
+
+export async function getRequestSummary(userId: string): Promise<RequestSummary> {
+  const requests = await getRecentRequests(userId, 10000);
+
+  let totalSpend = 0;
+  let totalLatency = 0;
+  let totalInput = 0;
+  let totalOutput = 0;
+
+  for (const r of requests) {
+    totalSpend += Number(r.cost_cents);
+    totalLatency += r.latency_ms;
+    totalInput += r.input_tokens;
+    totalOutput += r.output_tokens;
+  }
+
+  const count = requests.length;
+  const avgCost = count > 0 ? totalSpend / count : 0;
+  const avgLatency = count > 0 ? Math.round(totalLatency / count) : 0;
+
+  // projected monthly: find daily average from last 7 days, multiply by 30
+  const weekAgo = new Date(Date.now() - 7 * 86400000);
+  let weekSpend = 0;
+  let weekCount = 0;
+  for (const r of requests) {
+    if (new Date(r.created_at) >= weekAgo) {
+      weekSpend += Number(r.cost_cents);
+      weekCount++;
+    }
+  }
+  const daysActive = Math.max(1, Math.ceil((Date.now() - weekAgo.getTime()) / 86400000));
+  const dailyAvg = weekSpend / daysActive;
+  const projected = Math.round(dailyAvg * 30);
+
+  return {
+    totalRequests: count,
+    totalSpendCents: totalSpend,
+    totalInputTokens: totalInput,
+    totalOutputTokens: totalOutput,
+    avgCostCents: +avgCost.toFixed(4),
+    avgLatencyMs: avgLatency,
+    projectedMonthlyCents: projected,
+  };
+}
+
 // ---- Budgets and keys ----
 
 export async function getBudgets(userId: string): Promise<BudgetRow[]> {
