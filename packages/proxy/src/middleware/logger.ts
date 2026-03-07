@@ -9,6 +9,7 @@ export interface TrackParams {
   sessionId: string | undefined;
   apiKey: string | undefined;
   apiKeyId: string | undefined;
+  userId: string | undefined;
   budgetId: string | undefined;
   provider: string;
   model: string;
@@ -39,8 +40,9 @@ export async function trackRequest(p: TrackParams): Promise<void> {
     }
   }
 
-  if (p.apiKeyId && p.env.SUPABASE_URL && p.env.SUPABASE_KEY) {
+  if (p.apiKeyId && p.userId && p.env.SUPABASE_URL && p.env.SUPABASE_KEY) {
     const row: RequestInsert = {
+      user_id: p.userId,
       api_key_id: p.apiKeyId,
       session_id: p.sessionId || null,
       provider: p.provider,
@@ -70,6 +72,7 @@ export function costLogger() {
       sessionId: c.req.header('x-llmkit-session-id') || undefined,
       apiKey: c.get('apiKey'),
       apiKeyId: c.get('apiKeyId'),
+      userId: c.get('userId'),
       budgetId: c.get('budgetId'),
       provider: meta.provider,
       model: meta.model || 'unknown',

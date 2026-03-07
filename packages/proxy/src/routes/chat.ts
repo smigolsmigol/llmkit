@@ -194,6 +194,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           sessionId: c.req.header('x-llmkit-session-id') || undefined,
           apiKey: c.get('apiKey'),
           apiKeyId: c.get('apiKeyId'),
+          userId: c.get('userId'),
           budgetId: c.get('budgetId'),
           provider: providerName,
           model: usage.model,
