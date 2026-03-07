@@ -3,21 +3,29 @@ import { getTotalSpend, getSpendByProvider, getDailySpend, getRecentRequests, ge
 import { StatCard } from '@/components/stat-card';
 import { CostChart } from '@/components/charts/cost-chart';
 import { ProviderChart } from '@/components/charts/provider-chart';
+import { TimeRangeSelector } from '@/components/time-range-selector';
 import { RequestFeed } from '@/components/request-feed';
 import { formatCents } from '@/lib/format';
 
-export default async function OverviewPage() {
+export default async function OverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ days?: string }>;
+}) {
   const { userId } = await auth();
   if (!userId) return null;
 
+  const params = await searchParams;
+  const days = params.days !== undefined ? Number(params.days) : 30;
+
   const [spend, providers, dailySpend, recent, models, summary, sessions] = await Promise.all([
     getTotalSpend(userId),
-    getSpendByProvider(userId),
-    getDailySpend(userId, 30),
+    getSpendByProvider(userId, days),
+    getDailySpend(userId, days || 365),
     getRecentRequests(userId, 10),
-    getModelBreakdown(userId),
-    getRequestSummary(userId),
-    getSessions(userId, 10),
+    getModelBreakdown(userId, days),
+    getRequestSummary(userId, days),
+    getSessions(userId, 10, days),
   ]);
 
   const chartData = dailySpend.map((d) => ({
@@ -37,7 +45,10 @@ export default async function OverviewPage() {
 
   return (
     <div className="space-y-8">
-      <h1 className="text-xl font-semibold">Overview</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Overview</h1>
+        <TimeRangeSelector />
+      </div>
 
       {totalRequests === 0 && (
         <div className="rounded-lg border border-primary/20 bg-card p-6">
@@ -70,6 +81,9 @@ export default async function OverviewPage() {
         <StatCard
           label="Avg Latency"
           value={`${summary.avgLatencyMs}ms`}
+          sublabel={summary.totalRequests > 0
+            ? `~${Math.round((summary.totalInputTokens + summary.totalOutputTokens) / summary.totalRequests).toLocaleString()} tokens/req`
+            : undefined}
         />
         <StatCard
           label="Tokens Processed"
@@ -111,7 +125,8 @@ export default async function OverviewPage() {
                   <th className="pb-2 font-medium">Model</th>
                   <th className="pb-2 font-medium text-right">Reqs</th>
                   <th className="pb-2 font-medium text-right">Spend</th>
-                  <th className="pb-2 font-medium text-right">Avg Latency</th>
+                  <th className="pb-2 font-medium text-right">Avg ms</th>
+                  <th className="pb-2 font-medium text-right">$/1k tok</th>
                 </tr>
               </thead>
               <tbody>
@@ -120,7 +135,8 @@ export default async function OverviewPage() {
                     <td className="py-1.5 font-mono text-xs">{m.model}</td>
                     <td className="py-1.5 text-right text-muted-foreground">{m.requests}</td>
                     <td className="py-1.5 text-right font-mono">{formatCents(m.spendCents)}</td>
-                    <td className="py-1.5 text-right text-muted-foreground">{m.avgLatencyMs}ms</td>
+                    <td className="py-1.5 text-right text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
+                    <td className="py-1.5 text-right font-mono text-muted-foreground">{formatCents(m.costPer1kTokens)}</td>
                   </tr>
                 ))}
               </tbody>
