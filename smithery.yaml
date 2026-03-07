@@ -1,0 +1,32 @@
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - supabaseUrl
+      - supabaseKey
+      - userId
+    properties:
+      supabaseUrl:
+        type: string
+        description: "Supabase project URL"
+      supabaseKey:
+        type: string
+        description: "Supabase anon/service key"
+      userId:
+        type: string
+        description: "Your LLMKit user ID"
+      proxyUrl:
+        type: string
+        description: "LLMKit proxy URL (optional, for health checks)"
+  commandFunction: |
+    (config) => ({
+      command: "node",
+      args: ["packages/mcp-server/dist/index.js"],
+      env: {
+        LLMKIT_SUPABASE_URL: config.supabaseUrl,
+        LLMKIT_SUPABASE_KEY: config.supabaseKey,
+        LLMKIT_USER_ID: config.userId,
+        ...(config.proxyUrl ? { LLMKIT_PROXY_URL: config.proxyUrl } : {})
+      }
+    })
