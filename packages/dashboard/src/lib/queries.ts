@@ -531,7 +531,7 @@ export async function getAdminTopModels(): Promise<ModelBreakdown[]> {
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
-// ---- Provider keys ----
+// ---- Provider keys + usage ----
 
 export interface ProviderKeyRow {
   id: string;
@@ -540,6 +540,16 @@ export interface ProviderKeyRow {
   key_name: string;
   created_at: string;
   revoked_at: string | null;
+}
+
+export interface ProviderActivity {
+  provider: string;
+  requests: number;
+  spendCents: number;
+  lastUsed: string;
+  lastError: string | null;
+  lastErrorTime: string | null;
+  models: { model: string; count: number }[];
 }
 
 export async function getProviderKeys(userId: string): Promise<ProviderKeyRow[]> {
@@ -552,6 +562,48 @@ export async function getProviderKeys(userId: string): Promise<ProviderKeyRow[]>
     .order('created_at', { ascending: false });
 
   return (data as ProviderKeyRow[]) || [];
+}
+
+export async function getProviderActivity(userId: string): Promise<ProviderActivity[]> {
+  const requests = await getRecentRequests(userId, 10000);
+
+  const providers = new Map<string, {
+    requests: number;
+    spendCents: number;
+    lastUsed: string;
+    lastError: string | null;
+    lastErrorTime: string | null;
+    models: Map<string, number>;
+  }>();
+
+  for (const r of requests) {
+    const p = providers.get(r.provider) || {
+      requests: 0, spendCents: 0, lastUsed: '', lastError: null, lastErrorTime: null, models: new Map(),
+    };
+    p.requests++;
+    p.spendCents += Number(r.cost_cents);
+    if (r.created_at > p.lastUsed) p.lastUsed = r.created_at;
+    if (r.error_code && (!p.lastErrorTime || r.created_at > p.lastErrorTime)) {
+      p.lastError = r.error_code;
+      p.lastErrorTime = r.created_at;
+    }
+    p.models.set(r.model, (p.models.get(r.model) || 0) + 1);
+    providers.set(r.provider, p);
+  }
+
+  return Array.from(providers.entries())
+    .map(([provider, p]) => ({
+      provider,
+      requests: p.requests,
+      spendCents: p.spendCents,
+      lastUsed: p.lastUsed,
+      lastError: p.lastError,
+      lastErrorTime: p.lastErrorTime,
+      models: Array.from(p.models.entries())
+        .map(([model, count]) => ({ model, count }))
+        .sort((a, b) => b.count - a.count),
+    }))
+    .sort((a, b) => b.spendCents - a.spendCents);
 }
 
 // ---- Budgets and keys ----
