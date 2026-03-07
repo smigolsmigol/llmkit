@@ -25,7 +25,9 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   return (
     <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-md">
       <p className="text-muted-foreground">{formatDateShort(label)}</p>
-      <p className="font-mono font-semibold text-primary">${payload[0].value.toFixed(2)}</p>
+      <p className="font-mono font-semibold text-primary">
+        ${payload[0].value < 0.01 ? payload[0].value.toFixed(4) : payload[0].value.toFixed(2)}
+      </p>
     </div>
   );
 }
@@ -62,8 +64,13 @@ export function CostChart({ data }: { data: DataPoint[] }) {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(v: number) => `$${v.toFixed(0)}`}
-          width={48}
+          tickFormatter={(v: number) => {
+            if (v === 0) return '$0';
+            if (v < 0.01) return `$${v.toFixed(4)}`;
+            if (v < 1) return `$${v.toFixed(2)}`;
+            return `$${v.toFixed(0)}`;
+          }}
+          width={56}
         />
         <Tooltip content={<ChartTooltip />} />
         <Area

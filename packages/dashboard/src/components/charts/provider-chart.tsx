@@ -25,7 +25,9 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: { paylo
   return (
     <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-md">
       <p className="font-medium">{data.provider}</p>
-      <p className="font-mono text-primary">${data.cost.toFixed(2)}</p>
+      <p className="font-mono text-primary">
+        ${data.cost < 0.01 ? data.cost.toFixed(4) : data.cost.toFixed(2)}
+      </p>
       <p className="text-muted-foreground">{data.count} requests</p>
     </div>
   );
@@ -50,7 +52,12 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(v: number) => `$${v.toFixed(0)}`}
+          tickFormatter={(v: number) => {
+            if (v === 0) return '$0';
+            if (v < 0.01) return `$${v.toFixed(4)}`;
+            if (v < 1) return `$${v.toFixed(2)}`;
+            return `$${v.toFixed(0)}`;
+          }}
         />
         <YAxis
           type="category"
