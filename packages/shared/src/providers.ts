@@ -146,6 +146,10 @@ const PRICING: Record<ProviderName, PricingTable> = {
   openrouter: {},
 };
 
+export function stripDateSuffix(model: string): string {
+  return model.replace(/-\d{4}-\d{2}-\d{2}$/, '');
+}
+
 export function getModelPricing(
   provider: ProviderName,
   model: string
@@ -155,6 +159,10 @@ export function getModelPricing(
 
   // exact match first
   if (providerPricing[model]) return providerPricing[model];
+
+  // try without date suffix: gpt-4.1-mini-2025-04-14 -> gpt-4.1-mini
+  const stripped = stripDateSuffix(model);
+  if (stripped !== model && providerPricing[stripped]) return providerPricing[stripped];
 
   // prefix match for versioned models (e.g. "claude-sonnet-4" matches "claude-sonnet-4-20250514")
   // longest match wins to avoid "gpt-4o" matching before "gpt-4o-mini"
@@ -175,16 +183,10 @@ export function getModelPricing(
   return best;
 }
 
-export function calculateCostBreakdown(
-  provider: ProviderName,
-  model: string,
+export function calculateCostFromPricing(
+  pricing: ModelPricing,
   usage: TokenUsage,
 ): CostBreakdown {
-  const pricing = getModelPricing(provider, model);
-  if (!pricing) {
-    return { inputCost: 0, outputCost: 0, totalCost: 0, currency: 'USD' };
-  }
-
   const perM = 1_000_000;
   const inputCost = (usage.inputTokens / perM) * pricing.inputPerMillion;
   const outputCost = (usage.outputTokens / perM) * pricing.outputPerMillion;
@@ -203,6 +205,18 @@ export function calculateCostBreakdown(
     totalCost: +(inputCost + outputCost + cacheReadCost + cacheWriteCost).toFixed(8),
     currency: 'USD',
   };
+}
+
+export function calculateCostBreakdown(
+  provider: ProviderName,
+  model: string,
+  usage: TokenUsage,
+): CostBreakdown {
+  const pricing = getModelPricing(provider, model);
+  if (!pricing) {
+    return { inputCost: 0, outputCost: 0, totalCost: 0, currency: 'USD' };
+  }
+  return calculateCostFromPricing(pricing, usage);
 }
 
 export function calculateCost(

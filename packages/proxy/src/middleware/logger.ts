@@ -32,6 +32,12 @@ export async function trackRequest(p: TrackParams): Promise<void> {
     cost: p.cost,
   }));
 
+  if (p.cost.totalCost === 0 && (p.usage.inputTokens > 0 || p.usage.outputTokens > 0)) {
+    console.warn(
+      `ZERO COST WARNING: ${p.provider}/${p.model} processed ${p.usage.inputTokens + p.usage.outputTokens} tokens but cost is $0. Model likely missing from pricing data.`,
+    );
+  }
+
   if (p.budgetId && p.cost.totalCost > 0) {
     const costCents = Math.ceil(p.cost.totalCost * 100);
     const alert = await recordUsage(p.env.BUDGET_DO, p.budgetId, p.sessionId, costCents);
