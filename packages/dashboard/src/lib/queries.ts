@@ -306,7 +306,7 @@ export async function ensureAccount(userId: string): Promise<AccountRow> {
 
   const { data: created, error } = await db
     .from('accounts')
-    .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true })
+    .upsert({ user_id: userId, plan: 'beta' }, { onConflict: 'user_id', ignoreDuplicates: true })
     .select('*')
     .single();
 
