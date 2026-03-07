@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { getRequestsPaginated, getDistinctProviders, getDistinctModels } from '@/lib/queries';
+import { getRequestsPaginated, getDistinctProviders, getDistinctModels, getRequestSummary } from '@/lib/queries';
 import type { RequestFilters } from '@/lib/queries';
 import { formatCents, formatDate } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
@@ -29,13 +29,15 @@ export default async function RequestsPage({ searchParams }: PageProps) {
   let result = { data: [] as Awaited<ReturnType<typeof getRequestsPaginated>>['data'], total: 0, page, pageSize };
   let providers: string[] = [];
   let models: string[] = [];
+  let summary = { totalRequests: 0, totalSpendCents: 0, totalInputTokens: 0, totalOutputTokens: 0, avgCostCents: 0, avgLatencyMs: 0, projectedMonthlyCents: 0 };
   let connected = true;
 
   try {
-    [result, providers, models] = await Promise.all([
+    [result, providers, models, summary] = await Promise.all([
       getRequestsPaginated(userId, page, pageSize, filters),
       getDistinctProviders(userId),
       getDistinctModels(userId),
+      getRequestSummary(userId),
     ]);
   } catch {
     connected = false;
@@ -63,6 +65,32 @@ export default async function RequestsPage({ searchParams }: PageProps) {
         <Filters providers={providers} models={models} />
       </div>
 
+      {/* Summary cards */}
+      <div className="grid grid-cols-5 gap-3">
+        <div className="rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">Total Spend</p>
+          <p className="mt-0.5 font-mono text-lg font-semibold">{formatCents(summary.totalSpendCents)}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">Requests</p>
+          <p className="mt-0.5 font-mono text-lg font-semibold">{summary.totalRequests.toLocaleString()}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">Avg Cost</p>
+          <p className="mt-0.5 font-mono text-lg font-semibold">{formatCents(summary.avgCostCents)}</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">Avg Latency</p>
+          <p className="mt-0.5 font-mono text-lg font-semibold">{summary.avgLatencyMs}ms</p>
+        </div>
+        <div className="rounded-lg border border-border bg-card px-4 py-3">
+          <p className="text-xs text-muted-foreground">Tokens</p>
+          <p className="mt-0.5 font-mono text-lg font-semibold">
+            {((summary.totalInputTokens + summary.totalOutputTokens) / 1000).toFixed(1)}k
+          </p>
+        </div>
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead>
@@ -70,7 +98,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               <th className="px-4 py-2.5 font-medium">Time</th>
               <th className="px-4 py-2.5 font-medium">Provider</th>
               <th className="px-4 py-2.5 font-medium">Model</th>
-              <th className="px-4 py-2.5 font-medium text-right">Tokens</th>
+              <th className="px-4 py-2.5 font-medium text-right">In / Out</th>
               <th className="px-4 py-2.5 font-medium text-right">Cost</th>
               <th className="px-4 py-2.5 font-medium text-right">Latency</th>
               <th className="px-4 py-2.5 font-medium">Status</th>
@@ -78,7 +106,6 @@ export default async function RequestsPage({ searchParams }: PageProps) {
           </thead>
           <tbody>
             {result.data.map((req) => {
-              const tokens = req.input_tokens + req.output_tokens;
               const ok = !req.error_code;
               return (
                 <tr key={req.id} className="border-b border-border/50 transition-colors hover:bg-secondary/50">
@@ -86,7 +113,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                   <td className="px-4 py-2.5 font-mono text-xs">{req.provider}</td>
                   <td className="px-4 py-2.5 font-mono text-xs text-foreground">{req.model}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
-                    {tokens.toLocaleString()}
+                    {req.input_tokens.toLocaleString()} / {req.output_tokens.toLocaleString()}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">
                     {formatCents(Number(req.cost_cents))}
