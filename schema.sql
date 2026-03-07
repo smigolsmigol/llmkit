@@ -52,6 +52,18 @@ create table provider_keys (
   revoked_at timestamptz
 );
 
+create table accounts (
+  user_id text primary key,
+  plan text not null default 'free',
+  plan_expires_at timestamptz,
+  stripe_customer_id text unique,
+  stripe_subscription_id text unique,
+  granted_by text,
+  note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create index idx_api_keys_user_id on api_keys(user_id);
 create index idx_requests_api_key on requests(api_key_id);
 create index idx_requests_session on requests(session_id) where session_id is not null;

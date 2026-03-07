@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, List, Key, Settings } from 'lucide-react';
+import { LayoutDashboard, List, Key, Settings, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -12,8 +12,11 @@ const navItems = [
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
-export function Sidebar() {
+const adminItem = { href: '/dashboard/admin', label: 'Admin', icon: Shield };
+
+export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
   const pathname = usePathname();
+  const items = isAdmin ? [...navItems, adminItem] : navItems;
 
   return (
     <aside className="fixed left-0 top-0 flex h-full w-56 flex-col border-r border-border bg-background px-3 py-6">
@@ -22,7 +25,7 @@ export function Sidebar() {
       </Link>
 
       <nav className="flex flex-1 flex-col gap-1">
-        {navItems.map((item) => {
+        {items.map((item) => {
           const active = pathname === item.href;
           const Icon = item.icon;
           return (

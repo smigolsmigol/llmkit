@@ -280,6 +280,61 @@ export async function getDailyCacheBreakdown(userId: string, days = 30): Promise
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// ---- Accounts ----
+
+export interface AccountRow {
+  user_id: string;
+  plan: string;
+  plan_expires_at: string | null;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
+  granted_by: string | null;
+  note: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function ensureAccount(userId: string): Promise<AccountRow> {
+  const db = createServerClient();
+  const { data: existing } = await db
+    .from('accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  if (existing) return existing as AccountRow;
+
+  const { data: created, error } = await db
+    .from('accounts')
+    .upsert({ user_id: userId }, { onConflict: 'user_id', ignoreDuplicates: true })
+    .select('*')
+    .single();
+
+  if (error) throw new Error('failed to provision account');
+  return created as AccountRow;
+}
+
+export async function getAccount(userId: string): Promise<AccountRow | null> {
+  const db = createServerClient();
+  const { data } = await db
+    .from('accounts')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  return (data as AccountRow) || null;
+}
+
+export async function getAllAccounts(): Promise<AccountRow[]> {
+  const db = createServerClient();
+  const { data } = await db
+    .from('accounts')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  return (data as AccountRow[]) || [];
+}
+
 // ---- Budgets and keys ----
 
 export async function getBudgets(userId: string): Promise<BudgetRow[]> {
