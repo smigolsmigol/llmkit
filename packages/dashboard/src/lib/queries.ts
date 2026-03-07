@@ -531,6 +531,29 @@ export async function getAdminTopModels(): Promise<ModelBreakdown[]> {
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
+// ---- Provider keys ----
+
+export interface ProviderKeyRow {
+  id: string;
+  provider: string;
+  key_prefix: string;
+  key_name: string;
+  created_at: string;
+  revoked_at: string | null;
+}
+
+export async function getProviderKeys(userId: string): Promise<ProviderKeyRow[]> {
+  const db = createServerClient();
+  const { data } = await db
+    .from('provider_keys')
+    .select('id, provider, key_prefix, key_name, created_at, revoked_at')
+    .eq('user_id', userId)
+    .is('revoked_at', null)
+    .order('created_at', { ascending: false });
+
+  return (data as ProviderKeyRow[]) || [];
+}
+
 // ---- Budgets and keys ----
 
 export async function getBudgets(userId: string): Promise<BudgetRow[]> {

@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, List, Key, Settings, Shield } from 'lucide-react';
+import { LayoutDashboard, List, Key, Plug, Settings, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/requests', label: 'Requests', icon: List },
   { href: '/dashboard/keys', label: 'API Keys', icon: Key },
+  { href: '/dashboard/providers', label: 'Providers', icon: Plug },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
