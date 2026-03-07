@@ -44,7 +44,18 @@ app.use('/v1/*', costLogger());
 app.route('/v1', providerRouter);
 app.route('/v1', keysRouter);
 
+// MCP server card for discovery (Smithery, Glama connectors)
+app.get('/.well-known/mcp/server-card.json', (c) => c.json({
+  name: 'llmkit',
+  description: 'AI API cost tracking and budget enforcement across 11 providers',
+  version: '0.1.0',
+  url: 'https://llmkit-proxy.smigolsmigol.workers.dev/mcp',
+  authentication: { type: 'bearer' },
+  capabilities: { tools: true },
+}));
+
 // MCP endpoint: auth only, no budget/rate-limit (read-only queries)
+app.use('/mcp', auth());
 app.use('/mcp/*', auth());
 app.route('/mcp', mcpRouter);
 
