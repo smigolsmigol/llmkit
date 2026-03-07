@@ -9,10 +9,40 @@ interface ModelPricing {
 
 type PricingTable = Record<string, ModelPricing>;
 
-// last updated: 2026-02-20
+// last updated: 2026-03-07
 // prices in USD per 1M tokens
 const PRICING: Record<ProviderName, PricingTable> = {
   anthropic: {
+    'claude-opus-4-6': {
+      inputPerMillion: 5.0,
+      outputPerMillion: 25.0,
+      cacheReadPerMillion: 0.5,
+      cacheWritePerMillion: 6.25,
+    },
+    'claude-sonnet-4-6': {
+      inputPerMillion: 3.0,
+      outputPerMillion: 15.0,
+      cacheReadPerMillion: 0.3,
+      cacheWritePerMillion: 3.75,
+    },
+    'claude-opus-4-5': {
+      inputPerMillion: 5.0,
+      outputPerMillion: 25.0,
+      cacheReadPerMillion: 0.5,
+      cacheWritePerMillion: 6.25,
+    },
+    'claude-sonnet-4-5': {
+      inputPerMillion: 3.0,
+      outputPerMillion: 15.0,
+      cacheReadPerMillion: 0.3,
+      cacheWritePerMillion: 3.75,
+    },
+    'claude-haiku-4-5': {
+      inputPerMillion: 1.0,
+      outputPerMillion: 5.0,
+      cacheReadPerMillion: 0.1,
+      cacheWritePerMillion: 1.25,
+    },
     'claude-sonnet-4-20250514': {
       inputPerMillion: 3.0,
       outputPerMillion: 15.0,
@@ -38,6 +68,10 @@ const PRICING: Record<ProviderName, PricingTable> = {
   },
 
   openai: {
+    'gpt-4.1': { inputPerMillion: 2.0, outputPerMillion: 8.0 },
+    'gpt-4.1-mini': { inputPerMillion: 0.40, outputPerMillion: 1.60 },
+    'gpt-4.1-nano': { inputPerMillion: 0.10, outputPerMillion: 0.40 },
+    'o4-mini': { inputPerMillion: 1.10, outputPerMillion: 4.40 },
     'gpt-4o': { inputPerMillion: 2.5, outputPerMillion: 10.0 },
     'gpt-4o-mini': { inputPerMillion: 0.15, outputPerMillion: 0.6 },
     'o3': { inputPerMillion: 2.0, outputPerMillion: 8.0 },
@@ -94,14 +128,15 @@ const PRICING: Record<ProviderName, PricingTable> = {
 
   mistral: {
     'mistral-large-latest': { inputPerMillion: 2.0, outputPerMillion: 6.0 },
-    'mistral-small-latest': { inputPerMillion: 0.10, outputPerMillion: 0.30 },
+    'mistral-small-latest': { inputPerMillion: 0.06, outputPerMillion: 0.18 },
     'codestral-latest': { inputPerMillion: 0.30, outputPerMillion: 0.90 },
   },
 
   xai: {
-    'grok-2': { inputPerMillion: 2.0, outputPerMillion: 10.0 },
+    'grok-4': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
     'grok-3': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
     'grok-3-mini': { inputPerMillion: 0.30, outputPerMillion: 0.50 },
+    'grok-2': { inputPerMillion: 2.0, outputPerMillion: 10.0 },
   },
 
   // local models - no cost

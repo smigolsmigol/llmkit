@@ -260,7 +260,7 @@ async function handleCall(method: string, params: Record<string, unknown>, id: u
       const toolName = params.name as string;
       const args = (params.arguments as Record<string, unknown>) || {};
 
-      let result;
+      let result: { content: { type: string; text: string }[] };
       switch (toolName) {
         case 'llmkit_usage_stats': result = await handleUsageStats(url, key, userId, args); break;
         case 'llmkit_cost_query': result = await handleCostQuery(url, key, userId, args); break;
