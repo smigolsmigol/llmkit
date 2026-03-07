@@ -19,79 +19,114 @@ const ALL_PROVIDERS = [
   { id: 'openrouter', name: 'OpenRouter', hint: 'sk-or-...' },
 ] as const;
 
-function ProviderCard({
-  provider,
-  stored,
-}: {
-  provider: (typeof ALL_PROVIDERS)[number];
-  stored: ProviderKeyRow | null;
-}) {
-  const router = useRouter();
+function KeyRow({ k, onRevoke }: { k: ProviderKeyRow; onRevoke: (id: string) => void }) {
   const [revoking, setRevoking] = useState(false);
 
   async function handleRevoke() {
-    if (!stored) return;
     setRevoking(true);
     try {
-      await revokeProviderKey(stored.id);
-      router.refresh();
-    } catch {
-      alert('Failed to revoke');
+      await onRevoke(k.id);
     } finally {
       setRevoking(false);
     }
   }
 
-  const connected = !!stored;
+  return (
+    <div className="flex items-center justify-between border-t border-border/30 py-2 first:border-0 first:pt-0">
+      <div className="flex items-center gap-2">
+        <span className="font-mono text-xs text-muted-foreground">{k.key_prefix}</span>
+        {k.key_name !== 'default' && (
+          <span className="text-xs text-muted-foreground/60">({k.key_name})</span>
+        )}
+      </div>
+      <button
+        type="button"
+        onClick={handleRevoke}
+        disabled={revoking}
+        className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
+      >
+        {revoking ? '...' : 'Disconnect'}
+      </button>
+    </div>
+  );
+}
+
+function ProviderCard({
+  provider,
+  keys,
+}: {
+  provider: (typeof ALL_PROVIDERS)[number];
+  keys: ProviderKeyRow[];
+}) {
+  const router = useRouter();
+  const [expanded, setExpanded] = useState(false);
+  const connected = keys.length > 0;
+
+  async function handleRevoke(keyId: string) {
+    try {
+      await revokeProviderKey(keyId);
+      router.refresh();
+    } catch {
+      alert('Failed to revoke');
+    }
+  }
 
   return (
     <div className={`rounded-lg border p-4 ${connected ? 'border-green-500/30 bg-green-500/5' : 'border-border bg-card'}`}>
-      <div className="flex items-center justify-between">
+      <button
+        type="button"
+        onClick={() => connected && setExpanded(!expanded)}
+        className="flex w-full items-center justify-between text-left"
+      >
         <div className="flex items-center gap-3">
           <div className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
-          <span className="font-medium text-sm">{provider.name}</span>
+          <span className="text-sm font-medium">{provider.name}</span>
         </div>
-        {connected && (
-          <span className="font-mono text-xs text-muted-foreground">{stored.key_prefix}</span>
+        {connected ? (
+          <span className="text-xs text-green-500">
+            {keys.length} key{keys.length !== 1 ? 's' : ''}
+            {keys.length > 1 ? (expanded ? ' ▴' : ' ▾') : ''}
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {provider.hint ? provider.hint : 'not connected'}
+          </span>
         )}
-      </div>
+      </button>
 
-      {connected ? (
-        <div className="mt-3 flex items-center justify-between">
-          <span className="text-xs text-green-500">Connected</span>
-          <button
-            type="button"
-            onClick={handleRevoke}
-            disabled={revoking}
-            className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50"
-          >
-            {revoking ? '...' : 'Disconnect'}
-          </button>
+      {connected && (keys.length === 1 || expanded) && (
+        <div className="mt-3 space-y-0">
+          {keys.map((k) => (
+            <KeyRow key={k.id} k={k} onRevoke={handleRevoke} />
+          ))}
         </div>
-      ) : (
-        <p className="mt-3 text-xs text-muted-foreground">
-          {provider.hint ? `Key format: ${provider.hint}` : 'Not connected'}
-        </p>
       )}
     </div>
   );
 }
 
 export function ProviderGrid({ storedKeys }: { storedKeys: ProviderKeyRow[] }) {
-  const keysByProvider = new Map(storedKeys.map((k) => [k.provider, k]));
-  const connectedCount = storedKeys.length;
+  const keysByProvider = new Map<string, ProviderKeyRow[]>();
+  for (const k of storedKeys) {
+    const existing = keysByProvider.get(k.provider) || [];
+    existing.push(k);
+    keysByProvider.set(k.provider, existing);
+  }
+
+  const connectedProviders = new Set(storedKeys.map((k) => k.provider));
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4">
         <span className="text-sm text-muted-foreground">
-          {connectedCount} of {ALL_PROVIDERS.length} providers connected
+          {connectedProviders.size} of {ALL_PROVIDERS.length} providers connected
+          {storedKeys.length > connectedProviders.size && ` (${storedKeys.length} keys total)`}
         </span>
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         {ALL_PROVIDERS.map((p) => (
-          <ProviderCard key={p.id} provider={p} stored={keysByProvider.get(p.id) || null} />
+          <ProviderCard key={p.id} provider={p} keys={keysByProvider.get(p.id) || []} />
         ))}
       </div>
 
