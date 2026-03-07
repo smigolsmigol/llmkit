@@ -17,6 +17,12 @@ Open-source API gateway that sits between your app and AI providers. Every reque
 
 Works with any language. Wrap your existing command with the CLI, or use the TypeScript SDK for full control.
 
+## Get started
+
+1. **Create an account** at [dashboard-two-zeta-54.vercel.app](https://dashboard-two-zeta-54.vercel.app) (free while in beta)
+2. **Create an API key** in the Keys tab
+3. **Use it** - pick any method below
+
 ## Quick start
 
 The CLI intercepts OpenAI and Anthropic API calls, forwards them transparently, and prints a cost summary when your process exits. No code changes.
@@ -55,8 +61,8 @@ Point your existing OpenAI client at the LLMKit proxy. The proxy returns OpenAI-
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://your-proxy.llmkit.dev/v1",
-    api_key="your-llmkit-key",
+    base_url="https://llmkit-proxy.smigolsmigol.workers.dev/v1",
+    api_key="llmk_...",  # from dashboard -> Keys tab
     default_headers={"x-llmkit-provider-key": "sk-your-openai-key"},
 )
 
@@ -79,7 +85,8 @@ print(response.headers.get("x-llmkit-provider"))   # "openai"
 Or skip code changes entirely with env vars:
 
 ```bash
-export OPENAI_BASE_URL=https://your-proxy.llmkit.dev/v1
+export OPENAI_BASE_URL=https://llmkit-proxy.smigolsmigol.workers.dev/v1
+export OPENAI_API_KEY=llmk_...  # your LLMKit key
 python my_agent.py
 ```
 
@@ -220,13 +227,6 @@ Query your AI costs from Claude Code or Cursor.
 ```
 
 Tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`.
-
-## Why LLMKit
-
-- **Budget enforcement that actually works**: pre-request checks with 402 rejection, not post-hoc alerts
-- **TypeScript-native**: built for the JS/TS ecosystem, Vercel AI SDK provider included
-- **Self-host on CF Workers free tier**: no Docker, no Kubernetes, deploy in 2 minutes
-- **MIT licensed**: use it however you want
 
 ## Self-host
 
