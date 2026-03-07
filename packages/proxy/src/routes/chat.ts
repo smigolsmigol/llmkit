@@ -64,7 +64,11 @@ providerRouter.post('/chat/completions', async (c) => {
       c.env.SUPABASE_URL, c.env.SUPABASE_KEY, c.get('userId')!, provider,
     );
     if (stored) {
-      providerKey = await decrypt(stored.encrypted_key, stored.iv, c.env.ENCRYPTION_KEY, `${stored.user_id}:${stored.provider}`);
+      try {
+        providerKey = await decrypt(stored.encrypted_key, stored.iv, c.env.ENCRYPTION_KEY, `${stored.user_id}:${stored.provider}`);
+      } catch {
+        throw new ValidationError('stored provider key could not be decrypted, please re-add it in the dashboard');
+      }
     }
   }
 

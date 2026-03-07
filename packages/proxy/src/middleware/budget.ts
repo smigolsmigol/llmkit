@@ -83,6 +83,7 @@ export async function recordUsage(
 
 export async function sendAlert(alert: { webhookUrl: string; body: Record<string, unknown> }): Promise<void> {
   try {
+    if (!alert.webhookUrl.startsWith('https://')) return;
     await fetch(alert.webhookUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
