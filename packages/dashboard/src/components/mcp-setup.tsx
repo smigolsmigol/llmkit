@@ -53,8 +53,8 @@ export function McpSetup({ userId, supabaseUrl, supabaseAnonKey }: McpSetupProps
           </button>
         </div>
         <p className="mt-3 text-xs text-muted-foreground">
-          Paste into <code className="text-primary">~/.claude/claude_desktop_config.json</code> for
-          Claude Desktop, or <code className="text-primary">.cursor/mcp.json</code> for Cursor.
+          Paste into <code className="text-primary">.mcp.json</code> (project root) for
+          Claude Code, or <code className="text-primary">.cursor/mcp.json</code> for Cursor.
         </p>
       </div>
     </div>

@@ -6,12 +6,12 @@
     "url": "https://github.com/smigolsmigol/llmkit",
     "source": "github"
   },
-  "version": "0.0.3",
+  "version": "0.1.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@f3d1/llmkit-mcp-server",
-      "version": "0.0.3",
+      "version": "0.1.0",
       "transport": {
         "type": "stdio"
       },
