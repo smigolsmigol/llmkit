@@ -44,10 +44,16 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
 
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data} layout="vertical" margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" horizontal={false} />
+      <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" vertical={false} />
         <XAxis
-          type="number"
+          dataKey="provider"
+          stroke="#a3a3a3"
+          fontSize={12}
+          tickLine={false}
+          axisLine={false}
+        />
+        <YAxis
           stroke="#a3a3a3"
           fontSize={12}
           tickLine={false}
@@ -58,18 +64,10 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
             if (v < 1) return `$${v.toFixed(2)}`;
             return `$${v.toFixed(0)}`;
           }}
-        />
-        <YAxis
-          type="category"
-          dataKey="provider"
-          stroke="#a3a3a3"
-          fontSize={12}
-          tickLine={false}
-          axisLine={false}
-          width={80}
+          width={56}
         />
         <Tooltip content={<ChartTooltip />} />
-        <Bar dataKey="cost" radius={[0, 4, 4, 0]}>
+        <Bar dataKey="cost" radius={[4, 4, 0, 0]}>
           {data.map((_, i) => (
             <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
           ))}
