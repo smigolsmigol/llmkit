@@ -49,7 +49,7 @@ export default async function OverviewPage({
   const totalRequests = providers.reduce((sum, p) => sum + p.count, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Overview</h1>
         <TimeRangeSelector />
@@ -104,44 +104,47 @@ export default async function OverviewPage({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-          <div className="mb-4 border-b border-[#1f1f1f] pb-3">
-            <h2 className="text-sm font-medium">Daily Spend</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Cost per day in USD</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+            <h2 className="text-xs font-medium">Daily Spend</h2>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#7c3aed]" /> Input</span>
+              <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a78bfa]" /> Output</span>
+            </p>
           </div>
           <CostChart data={chartData} />
         </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-          <div className="mb-4 border-b border-[#1f1f1f] pb-3">
-            <h2 className="text-sm font-medium">Request Volume</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">API calls per day</p>
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+            <h2 className="text-xs font-medium">Request Volume</h2>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">API calls per day</p>
           </div>
           <RequestChart data={chartData} />
         </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-          <div className="mb-4 border-b border-[#1f1f1f] pb-3">
-            <h2 className="text-sm font-medium">By Provider</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Spend distribution</p>
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+            <h2 className="text-xs font-medium">By Provider</h2>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">Spend distribution</p>
           </div>
           <ProviderChart data={providerData} />
         </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-          <div className="mb-4 border-b border-[#1f1f1f] pb-3">
-            <h2 className="text-sm font-medium">Token Usage</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              <span className="mr-3"><span className="inline-block h-2 w-2 rounded-full bg-[#3b82f6]" /> Input</span>
-              <span><span className="inline-block h-2 w-2 rounded-full bg-[#06b6d4]" /> Output</span>
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+            <h2 className="text-xs font-medium">Token Usage</h2>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">
+              <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3b82f6]" /> Input</span>
+              <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#06b6d4]" /> Output</span>
             </p>
           </div>
           <TokenChart data={chartData} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-          <div className="mb-3 border-b border-[#1f1f1f] pb-3">
-            <h2 className="text-sm font-medium">Cost by Model</h2>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+            <h2 className="text-xs font-medium">Cost by Model</h2>
           </div>
           {models.length === 0 ? (
             <p className="text-sm text-muted-foreground/60">No data yet</p>
@@ -158,7 +161,7 @@ export default async function OverviewPage({
               </thead>
               <tbody>
                 {models.slice(0, 8).map((m) => (
-                  <tr key={m.model} className="border-t border-[#1f1f1f]">
+                  <tr key={m.model} className="border-t border-[#1a1a1a]">
                     <td className="py-1.5 font-mono text-xs">{m.model}</td>
                     <td className="py-1.5 text-right text-muted-foreground">{m.requests}</td>
                     <td className="py-1.5 text-right font-mono">{formatCents(m.spendCents)}</td>
@@ -171,9 +174,9 @@ export default async function OverviewPage({
           )}
         </div>
 
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-          <div className="mb-3 border-b border-[#1f1f1f] pb-3">
-            <h2 className="text-sm font-medium">Recent Sessions</h2>
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+            <h2 className="text-xs font-medium">Recent Sessions</h2>
           </div>
           {sessions.length === 0 ? (
             <p className="text-sm text-muted-foreground/60">No sessions yet. Pass x-llmkit-session-id header to group requests.</p>
@@ -189,7 +192,7 @@ export default async function OverviewPage({
               </thead>
               <tbody>
                 {sessions.slice(0, 8).map((s) => (
-                  <tr key={s.sessionId} className="border-t border-[#1f1f1f]">
+                  <tr key={s.sessionId} className="border-t border-[#1a1a1a]">
                     <td className="max-w-[180px] truncate py-1.5 font-mono text-xs">{s.sessionId}</td>
                     <td className="py-1.5 text-right text-muted-foreground">{s.requestCount}</td>
                     <td className="py-1.5 text-right font-mono">{formatCents(s.totalCostCents)}</td>
@@ -202,9 +205,9 @@ export default async function OverviewPage({
         </div>
       </div>
 
-      <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-        <div className="mb-3 border-b border-[#1f1f1f] pb-3">
-          <h2 className="text-sm font-medium">Recent Requests</h2>
+      <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+        <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+          <h2 className="text-xs font-medium">Recent Requests</h2>
         </div>
         <RequestFeed requests={recent} />
       </div>

@@ -20,10 +20,14 @@ function formatDateShort(dateStr: string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: { value: number }[];
+  label?: string;
+}) {
   if (!active || !payload?.length || !label) return null;
   return (
-    <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-md">
+    <div className="rounded-md border border-border bg-popover px-2 py-1.5 text-xs shadow-md">
       <p className="text-muted-foreground">{formatDateShort(label)}</p>
       <p className="font-mono font-semibold text-primary">
         {payload[0].value} requests
@@ -35,33 +39,33 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 export function RequestChart({ data }: { data: DataPoint[] }) {
   if (!data.length) {
     return (
-      <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex h-[180px] items-center justify-center text-xs text-muted-foreground">
         No request data yet
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={180}>
       <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id="requestGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.8} />
-            <stop offset="100%" stopColor="#14b8a6" stopOpacity={0.3} />
+            <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.9} />
+            <stop offset="100%" stopColor="#14b8a6" stopOpacity={0.35} />
           </linearGradient>
         </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
         <XAxis
           dataKey="date"
-          stroke="#a3a3a3"
-          fontSize={12}
+          stroke="#555"
+          fontSize={10}
           tickLine={false}
           axisLine={false}
           tickFormatter={formatDateShort}
         />
         <YAxis
-          stroke="#a3a3a3"
-          fontSize={12}
+          stroke="#555"
+          fontSize={10}
           tickLine={false}
           axisLine={false}
           width={40}
