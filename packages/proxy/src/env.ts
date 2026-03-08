@@ -18,6 +18,8 @@ export type Env = {
     SUPABASE_KEY?: string;
     DEV_MODE?: string;
     ENCRYPTION_KEY?: string; // base64 32-byte AES key. rotation requires re-encrypting all provider_keys rows.
+    TELEGRAM_BOT_TOKEN?: string;
+    TELEGRAM_CHAT_ID?: string;
   };
   Variables: {
     apiKey: string;
