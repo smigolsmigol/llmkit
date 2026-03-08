@@ -35,8 +35,9 @@ app.onError(async (err, c) => {
     let provider = c.get('requestProvider') || c.req.header('x-llmkit-provider') || 'unknown';
     let model = c.get('requestModel') || 'unknown';
     if (model === 'unknown') {
-      try { const b = await c.req.json(); model = b?.model || 'unknown'; provider = provider === 'unknown' ? (b?.provider || 'unknown') : provider; } catch {}
+      try { const b = await c.req.json(); model = b?.model || 'unknown'; if (provider === 'unknown') provider = b?.provider || 'anthropic'; } catch {}
     }
+    if (provider === 'unknown') provider = 'anthropic';
     c.executionCtx.waitUntil(
       logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
         user_id: userId,
