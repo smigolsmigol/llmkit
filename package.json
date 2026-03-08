@@ -11,6 +11,13 @@
     "clean": "turbo clean",
     "check-all": "pnpm typecheck && biome check packages/proxy/src packages/sdk/src packages/cli/src packages/shared/src packages/ai-sdk-provider/src packages/mcp-server/src && knip --exclude types,exports && publint packages/shared && publint packages/sdk && publint packages/cli && publint packages/ai-sdk-provider && publint packages/mcp-server"
   },
+  "pnpm": {
+    "overrides": {
+      "hono": ">=4.12.4",
+      "express-rate-limit": ">=8.2.2",
+      "@hono/node-server": ">=1.19.10"
+    }
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.2",
     "knip": "^5.85.0",
