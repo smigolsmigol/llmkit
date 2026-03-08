@@ -314,6 +314,39 @@ export async function getDailyCacheBreakdown(userId: string, days = 30): Promise
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// ---- Timeseries (raw per-request data for interactive charts) ----
+
+export interface TimeseriesPoint {
+  t: string;
+  costCents: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export async function getRequestTimeseries(userId: string, days = 30): Promise<TimeseriesPoint[]> {
+  const requests = filterByDays(await getRecentRequests(userId, 10000), days);
+  return requests
+    .map((r) => ({
+      t: r.created_at,
+      costCents: Number(r.cost_cents),
+      inputTokens: r.input_tokens,
+      outputTokens: r.output_tokens,
+    }))
+    .sort((a, b) => a.t.localeCompare(b.t));
+}
+
+export async function getAdminRequestTimeseries(days = 0): Promise<TimeseriesPoint[]> {
+  const rows = filterByDays(await getAllRequests(), days);
+  return rows
+    .map((r) => ({
+      t: r.created_at,
+      costCents: Number(r.cost_cents),
+      inputTokens: r.input_tokens,
+      outputTokens: r.output_tokens,
+    }))
+    .sort((a, b) => a.t.localeCompare(b.t));
+}
+
 // ---- Accounts ----
 
 export interface AccountRow {

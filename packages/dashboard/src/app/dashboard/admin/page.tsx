@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import {
   getAllAccounts,
   getAdminStats,
-  getAdminDailyStats,
+  getAdminRequestTimeseries,
   getAdminUserBreakdown,
   getAdminTopModels,
   getAccountPlan,
@@ -28,21 +28,13 @@ export default async function AdminPage({
   const params = await searchParams;
   const days = params.days !== undefined ? Number(params.days) : 30;
 
-  const [accounts, stats, dailyStats, userBreakdown, topModels] = await Promise.all([
+  const [accounts, stats, timeseries, userBreakdown, topModels] = await Promise.all([
     getAllAccounts(),
     getAdminStats(days),
-    getAdminDailyStats(days),
+    getAdminRequestTimeseries(days),
     getAdminUserBreakdown(days),
     getAdminTopModels(days),
   ]);
-
-  const chartData = dailyStats.map((d) => ({
-    date: d.date,
-    cost: d.costCents / 100,
-    requests: d.requests,
-    inputTokens: d.inputTokens,
-    outputTokens: d.outputTokens,
-  }));
 
   const totalTokens = stats.totalInputTokens + stats.totalOutputTokens;
 
@@ -98,14 +90,14 @@ export default async function AdminPage({
             <h2 className="text-xs font-medium">Daily Platform Spend</h2>
             <p className="mt-0.5 text-[10px] text-muted-foreground">All users combined</p>
           </div>
-          <CostChart data={chartData} />
+          <CostChart data={timeseries} />
         </div>
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="mb-2 border-b border-[#1a1a1a] pb-2">
             <h2 className="text-xs font-medium">Daily Request Volume</h2>
             <p className="mt-0.5 text-[10px] text-muted-foreground">Platform-wide API calls</p>
           </div>
-          <RequestChart data={chartData} />
+          <RequestChart data={timeseries} />
         </div>
       </div>
 
