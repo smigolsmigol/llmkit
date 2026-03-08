@@ -4,11 +4,11 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 
-function assertAdmin(userId: string | null) {
-  const adminIds = process.env.ADMIN_USER_ID?.split(',') ?? [];
-  if (!userId || !adminIds.includes(userId)) {
-    throw new Error('Unauthorized');
-  }
+async function assertAdmin(userId: string | null) {
+  if (!userId) throw new Error('Unauthorized');
+  const db = createServerClient();
+  const { data } = await db.from('accounts').select('plan').eq('user_id', userId).single();
+  if (data?.plan !== 'admin') throw new Error('Unauthorized');
 }
 
 export async function updateAccount(
@@ -18,7 +18,7 @@ export async function updateAccount(
   note: string,
 ) {
   const { userId } = await auth();
-  assertAdmin(userId);
+  await assertAdmin(userId);
 
   const db = createServerClient();
   const { error } = await db

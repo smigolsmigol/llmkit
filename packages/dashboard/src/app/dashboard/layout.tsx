@@ -1,12 +1,10 @@
 import { auth } from '@clerk/nextjs/server';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
-import { ensureAccount } from '@/lib/queries';
+import { ensureAccount, getAccountPlan } from '@/lib/queries';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
-  const adminIds = process.env.ADMIN_USER_ID?.split(',') ?? [];
-  const isAdmin = !!userId && adminIds.includes(userId);
 
   if (userId) {
     try {
@@ -15,6 +13,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
       // supabase might be down - don't block the dashboard
     }
   }
+
+  const plan = userId ? await getAccountPlan(userId) : null;
+  const isAdmin = plan === 'admin';
 
   return (
     <div className="flex min-h-screen">
