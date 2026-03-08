@@ -3,25 +3,26 @@
 import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import echarts from '@/lib/echarts';
-import type { TimeseriesPoint } from './types';
+import { type TimeseriesPoint, bucketByHour, dataBounds, slimSlider, insideZoom, baseTooltip } from './types';
 
 export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
   const option = useMemo(() => {
-    if (!data.length) return null;
+    const buckets = bucketByHour(data);
+    if (!buckets.length) return null;
 
-    const seriesData: [number, number][] = data.map((d) => [
-      new Date(d.t).getTime(),
-      1,
-    ]);
+    const bounds = dataBounds(buckets);
+    const seriesData: [number, number][] = buckets.map((b) => [b.ts, b.count]);
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 36, right: 12, top: 8, bottom: 44 },
+      grid: { left: 32, right: 8, top: 8, bottom: 28 },
       xAxis: {
         type: 'time' as const,
+        min: bounds.min,
+        max: bounds.max,
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: '#555', fontSize: 10 },
+        axisLabel: { color: '#555', fontSize: 9 },
         splitLine: { show: false },
       },
       yAxis: {
@@ -29,48 +30,30 @@ export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
         axisLine: { show: false },
         axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
-        axisLabel: { color: '#555', fontSize: 10 },
+        axisLabel: { color: '#555', fontSize: 9 },
         minInterval: 1,
       },
       tooltip: {
-        trigger: 'axis' as const,
-        axisPointer: { type: 'shadow' as const, shadowStyle: { color: 'rgba(255,255,255,0.04)' } },
-        backgroundColor: 'rgba(15,15,20,0.95)',
-        borderColor: '#333',
-        textStyle: { color: '#e0e0e0', fontSize: 11 },
+        ...baseTooltip,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         formatter: (params: any) => {
           if (!Array.isArray(params) || !params.length) return '';
           const date = new Date(params[0].value[0]);
-          const label = date.toLocaleString('en-US', {
-            month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-          });
+          const label = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
+          const count = params[0].value[1];
           return `<div style="font-size:10px;color:#888;margin-bottom:2px">${label}</div>` +
-            `<div style="font-size:11px;font-family:monospace;font-weight:600;color:#14b8a6">1 request</div>`;
+            `<div style="font-size:11px;font-family:monospace;font-weight:600;color:#14b8a6">${count} request${count !== 1 ? 's' : ''}</div>`;
         },
       },
-      dataZoom: [
-        {
-          type: 'slider' as const,
-          xAxisIndex: 0,
-          height: 18,
-          bottom: 2,
-          borderColor: 'transparent',
-          backgroundColor: '#111',
-          fillerColor: 'rgba(20, 184, 166, 0.15)',
-          handleStyle: { color: '#14b8a6', borderColor: '#14b8a6' },
-          textStyle: { color: '#666', fontSize: 9 },
-          dataBackground: { lineStyle: { color: '#333' }, areaStyle: { color: '#1a1a2e' } },
-        },
-        { type: 'inside' as const, xAxisIndex: 0, zoomOnMouseWheel: true, moveOnMouseMove: false },
-      ],
+      dataZoom: [slimSlider('#14b8a6'), insideZoom],
       series: [
         {
           name: 'Requests',
           type: 'bar' as const,
           data: seriesData,
           itemStyle: { color: '#14b8a6' },
-          barMaxWidth: 20,
+          barMinWidth: 6,
+          barMaxWidth: 28,
           emphasis: { itemStyle: { color: '#2dd4bf' } },
         },
       ],
