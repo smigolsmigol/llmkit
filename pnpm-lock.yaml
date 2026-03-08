@@ -104,9 +104,6 @@ importers:
 
   packages/mcp-server:
     dependencies:
-      '@f3d1/llmkit-shared':
-        specifier: workspace:*
-        version: link:../shared
       '@modelcontextprotocol/sdk':
         specifier: ^1.12.0
         version: 1.26.0(zod@4.3.6)
