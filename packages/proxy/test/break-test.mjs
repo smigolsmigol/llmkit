@@ -1,4 +1,6 @@
 const BASE = process.env.BASE_URL || 'http://localhost:8787';
+const API_KEY = process.env.API_KEY || 'x';
+const AUTH = `Bearer ${API_KEY}`;
 
 const tests = [];
 let passed = 0;
@@ -53,7 +55,7 @@ test('no bearer prefix -> 401 (requires Bearer scheme)', async () => {
 
 test('missing model -> 400', async () => {
   const { status, json } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { messages: [{ role: 'user', content: 'hi' }] },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -62,7 +64,7 @@ test('missing model -> 400', async () => {
 
 test('empty messages -> 400', async () => {
   const { status, json } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [] },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -70,7 +72,7 @@ test('empty messages -> 400', async () => {
 
 test('invalid role -> 400', async () => {
   const { status, json } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [{ role: 'tool', content: 'hi' }] },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -79,7 +81,7 @@ test('invalid role -> 400', async () => {
 
 test('non-string content -> 400', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 123 }] },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -87,7 +89,7 @@ test('non-string content -> 400', async () => {
 
 test('temperature out of range (high) -> 400', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }], temperature: 3 },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -95,7 +97,7 @@ test('temperature out of range (high) -> 400', async () => {
 
 test('temperature out of range (negative) -> 400', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }], temperature: -1 },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -103,7 +105,7 @@ test('temperature out of range (negative) -> 400', async () => {
 
 test('max_tokens as float -> 400', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1.5 },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -111,7 +113,7 @@ test('max_tokens as float -> 400', async () => {
 
 test('max_tokens as zero -> 400', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }], max_tokens: 0 },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -119,7 +121,7 @@ test('max_tokens as zero -> 400', async () => {
 
 test('maxTokens (camelCase) also validated -> 400', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }], maxTokens: -5 },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -127,7 +129,7 @@ test('maxTokens (camelCase) also validated -> 400', async () => {
 
 test('extra fields ignored (no crash) -> not 500', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x' },
+    headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }], foo: 'bar', nested: { a: 1 } },
   });
   assert(status !== 500, `expected non-500, got ${status}`);
@@ -137,7 +139,7 @@ test('extra fields ignored (no crash) -> not 500', async () => {
 
 test('invalid provider -> 400', async () => {
   const { status, json } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x', 'x-llmkit-provider': 'doesnotexist' },
+    headers: { Authorization: AUTH, 'x-llmkit-provider': 'doesnotexist' },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }] },
   });
   assert(status === 400, `expected 400, got ${status}`);
@@ -146,7 +148,7 @@ test('invalid provider -> 400', async () => {
 
 test('ollama provider (no local server) -> 503', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x', 'x-llmkit-provider': 'ollama' },
+    headers: { Authorization: AUTH, 'x-llmkit-provider': 'ollama' },
     body: { model: 'llama3', messages: [{ role: 'user', content: 'hi' }] },
   });
   // ollama adapter exists but can't reach localhost:11434 -> AllProvidersFailed (503)
@@ -155,7 +157,7 @@ test('ollama provider (no local server) -> 503', async () => {
 
 test('empty provider key -> provider error (not crash)', async () => {
   const { status } = await req('/v1/chat/completions', {
-    headers: { Authorization: 'Bearer x', 'x-llmkit-provider': 'anthropic' },
+    headers: { Authorization: AUTH, 'x-llmkit-provider': 'anthropic' },
     body: { model: 'claude-sonnet-4-20250514', messages: [{ role: 'user', content: 'hi' }] },
   });
   // should be 503 (AllProvidersFailed) not 500 (unhandled crash)
@@ -179,7 +181,7 @@ test('rate limit headers present on valid request', async () => {
 test('no body at all -> 400 (JSON parse)', async () => {
   const res = await fetch(`${BASE}/v1/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer x' },
+    headers: { 'Content-Type': 'application/json', Authorization: AUTH },
   });
   assert(res.status === 400, `expected 400, got ${res.status}`);
 });
@@ -187,7 +189,7 @@ test('no body at all -> 400 (JSON parse)', async () => {
 test('malformed JSON body -> 400 (JSON parse)', async () => {
   const res = await fetch(`${BASE}/v1/chat/completions`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer x' },
+    headers: { 'Content-Type': 'application/json', Authorization: AUTH },
     body: '{not json',
   });
   assert(res.status === 400, `expected 400, got ${res.status}`);
