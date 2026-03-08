@@ -73,7 +73,7 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
 
   if (!data.length || !option) {
     return (
-      <div className="flex h-[160px] items-center justify-center text-xs text-muted-foreground">
+      <div className="flex h-20 items-center justify-center text-xs text-muted-foreground">
         No provider data yet
       </div>
     );

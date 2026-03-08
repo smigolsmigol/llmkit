@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import echarts from '@/lib/echarts';
-import { type TimeseriesPoint, bucketByHour, dataBounds, slimSlider, insideZoom, baseTooltip } from './types';
+import { type TimeseriesPoint, bucketByHour, dataBounds, dataZoomConfig, baseTooltip } from './types';
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -15,32 +15,27 @@ export function TokenChart({ data }: { data: TimeseriesPoint[] }) {
   const option = useMemo(() => {
     const buckets = bucketByHour(data);
     if (!buckets.length) return null;
-
-    const hasTokens = buckets.some((b) => b.inputTokens + b.outputTokens > 0);
-    if (!hasTokens) return null;
+    if (!buckets.some((b) => b.inputTokens + b.outputTokens > 0)) return null;
 
     const bounds = dataBounds(buckets);
+    const zoom = dataZoomConfig('#3b82f6', buckets.length);
+    const hasZoom = zoom.length > 0;
     const inputData: [number, number][] = buckets.map((b) => [b.ts, b.inputTokens]);
     const outputData: [number, number][] = buckets.map((b) => [b.ts, b.outputTokens]);
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 40, right: 8, top: 6, bottom: 24 },
+      grid: { left: 40, right: 8, top: 6, bottom: hasZoom ? 24 : 4 },
       xAxis: {
         type: 'time' as const,
-        min: bounds.min,
-        max: bounds.max,
-        axisLine: { show: false },
-        axisTick: { show: false },
+        min: bounds.min, max: bounds.max,
+        axisLine: { show: false }, axisTick: { show: false },
         axisLabel: { color: '#555', fontSize: 9 },
         splitLine: { show: false },
       },
       yAxis: {
-        type: 'value' as const,
-        min: 0,
-        minInterval: 1,
-        axisLine: { show: false },
-        axisTick: { show: false },
+        type: 'value' as const, min: 0, minInterval: 1,
+        axisLine: { show: false }, axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
         axisLabel: { color: '#555', fontSize: 9, formatter: formatTokens },
       },
@@ -62,35 +57,27 @@ export function TokenChart({ data }: { data: TimeseriesPoint[] }) {
           return html;
         },
       },
-      dataZoom: [slimSlider('#3b82f6'), insideZoom],
+      ...(hasZoom ? { dataZoom: zoom } : {}),
       series: [
         {
-          name: 'Input',
-          type: 'bar' as const,
-          stack: 'tokens',
-          data: inputData,
-          itemStyle: { color: '#3b82f6' },
-          barMinWidth: 6,
-          barMaxWidth: 28,
+          name: 'Input', type: 'bar' as const, stack: 'tokens',
+          data: inputData, itemStyle: { color: '#3b82f6' },
+          barMinWidth: 6, barMaxWidth: 28,
           emphasis: { itemStyle: { color: '#60a5fa' } },
         },
         {
-          name: 'Output',
-          type: 'bar' as const,
-          stack: 'tokens',
-          data: outputData,
-          itemStyle: { color: '#06b6d4', borderRadius: [2, 2, 0, 0] },
-          barMinWidth: 6,
-          barMaxWidth: 28,
+          name: 'Output', type: 'bar' as const, stack: 'tokens',
+          data: outputData, itemStyle: { color: '#06b6d4', borderRadius: [2, 2, 0, 0] },
+          barMinWidth: 6, barMaxWidth: 28,
           emphasis: { itemStyle: { color: '#22d3ee' } },
         },
       ],
     };
   }, [data]);
 
-  if (!data.length || !option) {
+  if (!option) {
     return (
-      <div className="flex h-[160px] items-center justify-center text-xs text-muted-foreground">
+      <div className="flex h-20 items-center justify-center text-xs text-muted-foreground">
         No token data yet
       </div>
     );

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import echarts from '@/lib/echarts';
-import { type TimeseriesPoint, bucketByHour, dataBounds, slimSlider, insideZoom, baseTooltip } from './types';
+import { type TimeseriesPoint, bucketByHour, dataBounds, dataZoomConfig, baseTooltip } from './types';
 
 function formatCost(v: number): string {
   if (v === 0) return '$0';
@@ -17,11 +17,11 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
   const option = useMemo(() => {
     const buckets = bucketByHour(data);
     if (!buckets.length) return null;
-
-    const hasCost = buckets.some((b) => b.costCents > 0);
-    if (!hasCost) return null;
+    if (!buckets.some((b) => b.costCents > 0)) return null;
 
     const bounds = dataBounds(buckets);
+    const zoom = dataZoomConfig('#7c3aed', buckets.length);
+    const hasZoom = zoom.length > 0;
     const inputData: [number, number][] = [];
     const outputData: [number, number][] = [];
 
@@ -40,21 +40,17 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 44, right: 8, top: 6, bottom: 24 },
+      grid: { left: 44, right: 8, top: 6, bottom: hasZoom ? 24 : 4 },
       xAxis: {
         type: 'time' as const,
-        min: bounds.min,
-        max: bounds.max,
-        axisLine: { show: false },
-        axisTick: { show: false },
+        min: bounds.min, max: bounds.max,
+        axisLine: { show: false }, axisTick: { show: false },
         axisLabel: { color: '#555', fontSize: 9 },
         splitLine: { show: false },
       },
       yAxis: {
-        type: 'value' as const,
-        min: 0,
-        axisLine: { show: false },
-        axisTick: { show: false },
+        type: 'value' as const, min: 0,
+        axisLine: { show: false }, axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
         axisLabel: { color: '#555', fontSize: 9, formatter: formatCost },
       },
@@ -81,35 +77,27 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
           return html;
         },
       },
-      dataZoom: [slimSlider('#7c3aed'), insideZoom],
+      ...(hasZoom ? { dataZoom: zoom } : {}),
       series: [
         {
-          name: 'Input',
-          type: 'bar' as const,
-          stack: 'cost',
-          data: inputData,
-          itemStyle: { color: '#7c3aed' },
-          barMinWidth: 6,
-          barMaxWidth: 28,
+          name: 'Input', type: 'bar' as const, stack: 'cost',
+          data: inputData, itemStyle: { color: '#7c3aed' },
+          barMinWidth: 6, barMaxWidth: 28,
           emphasis: { itemStyle: { color: '#8b5cf6' } },
         },
         {
-          name: 'Output',
-          type: 'bar' as const,
-          stack: 'cost',
-          data: outputData,
-          itemStyle: { color: '#a78bfa', borderRadius: [2, 2, 0, 0] },
-          barMinWidth: 6,
-          barMaxWidth: 28,
+          name: 'Output', type: 'bar' as const, stack: 'cost',
+          data: outputData, itemStyle: { color: '#a78bfa', borderRadius: [2, 2, 0, 0] },
+          barMinWidth: 6, barMaxWidth: 28,
           emphasis: { itemStyle: { color: '#c4b5fd' } },
         },
       ],
     };
   }, [data]);
 
-  if (!data.length || !option) {
+  if (!option) {
     return (
-      <div className="flex h-[160px] items-center justify-center text-xs text-muted-foreground">
+      <div className="flex h-20 items-center justify-center text-xs text-muted-foreground">
         No spend data yet
       </div>
     );

@@ -42,27 +42,31 @@ export function dataBounds(buckets: HourBucket[]): { min: number; max: number } 
   };
 }
 
-export const slimSlider = (accentColor: string) => ({
-  type: 'slider' as const,
-  xAxisIndex: 0,
-  height: 12,
-  bottom: 0,
-  borderColor: 'transparent',
-  backgroundColor: 'rgba(255,255,255,0.03)',
-  fillerColor: `${accentColor}22`,
-  handleSize: '60%',
-  handleStyle: { color: accentColor, borderColor: accentColor, borderWidth: 1 },
-  textStyle: { color: '#555', fontSize: 9 },
-  dataBackground: { lineStyle: { color: '#222' }, areaStyle: { color: 'transparent' } },
-  selectedDataBackground: { lineStyle: { color: '#333' }, areaStyle: { color: 'transparent' } },
-});
-
-export const insideZoom = {
-  type: 'inside' as const,
-  xAxisIndex: 0,
-  zoomOnMouseWheel: true,
-  moveOnMouseMove: false,
-};
+export function dataZoomConfig(accentColor: string, bucketCount: number) {
+  if (bucketCount < 3) return [];
+  return [
+    {
+      type: 'slider' as const,
+      xAxisIndex: 0,
+      height: 12,
+      bottom: 2,
+      borderColor: 'transparent',
+      backgroundColor: 'rgba(255,255,255,0.03)',
+      fillerColor: `${accentColor}22`,
+      handleSize: '60%',
+      handleStyle: { color: accentColor, borderColor: accentColor, borderWidth: 1 },
+      textStyle: { color: '#555', fontSize: 9 },
+      dataBackground: { lineStyle: { color: '#222' }, areaStyle: { color: 'transparent' } },
+      selectedDataBackground: { lineStyle: { color: '#333' }, areaStyle: { color: 'transparent' } },
+    },
+    {
+      type: 'inside' as const,
+      xAxisIndex: 0,
+      zoomOnMouseWheel: true,
+      moveOnMouseMove: false,
+    },
+  ];
+}
 
 export const baseTooltip = {
   trigger: 'axis' as const,
