@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getApiKeys } from '@/lib/queries';
 import { formatDate } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
-import { CreateKeyDialog } from '@/components/create-key-dialog';
+import { CreateKeyForm } from './create-key-form';
 import { RevokeKeyButton } from '@/components/revoke-key-button';
 
 export default async function KeysPage() {
@@ -35,7 +35,7 @@ export default async function KeysPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">API Keys</h1>
-        <CreateKeyDialog />
+        <CreateKeyForm />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border">
