@@ -88,6 +88,15 @@ export async function recordUsage(
   return null;
 }
 
+export async function releaseReservation(
+  doNamespace: DurableObjectNamespace<BudgetDO>,
+  budgetId: string,
+  reservationId: string,
+): Promise<void> {
+  const stub = doNamespace.get(doNamespace.idFromName(budgetId));
+  await stub.release(reservationId);
+}
+
 export async function sendAlert(alert: { webhookUrl: string; body: Record<string, unknown> }): Promise<void> {
   try {
     if (!alert.webhookUrl.startsWith('https://')) return;

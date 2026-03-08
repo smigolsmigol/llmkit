@@ -77,6 +77,8 @@ res = client.chat.completions.create(
 )
 print(res.choices[0].message.content)`;
 
+    const cliSnippet = `LLMKIT_KEY=${newKey} npx @f3d1/llmkit-cli -- python your_app.py`;
+
     const envSnippet = `export OPENAI_BASE_URL=${PROXY_URL}
 export OPENAI_API_KEY=${newKey}
 python your_app.py`;
@@ -86,7 +88,7 @@ python your_app.py`;
         <div className="mx-4 w-full max-w-lg rounded-lg border border-border bg-card p-6">
           <h2 className="text-lg font-semibold">Key Created</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Save this key now - you won&apos;t see it again.
+            Save this key now. You won&apos;t see it again.
           </p>
 
           <div className="mt-3 rounded-md bg-secondary p-3">
@@ -106,11 +108,12 @@ python your_app.py`;
           <div className="mt-5 border-t border-border pt-4">
             <h3 className="text-sm font-semibold">Quick start</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Replace <code className="rounded bg-secondary px-1">sk-your-openai-key</code> with your actual OpenAI key.
+              Replace <code className="rounded bg-secondary px-1">sk-your-openai-key</code> with your actual provider key.
             </p>
 
             <div className="mt-3 space-y-3">
-              <SnippetBlock label="Python (zero code changes)" code={envSnippet} onCopy={copyText} />
+              <SnippetBlock label="CLI (any language, zero code changes)" code={cliSnippet} onCopy={copyText} />
+              <SnippetBlock label="Env vars (Python/Node)" code={envSnippet} onCopy={copyText} />
               <SnippetBlock label="Python (explicit)" code={pythonSnippet} onCopy={copyText} />
             </div>
           </div>
