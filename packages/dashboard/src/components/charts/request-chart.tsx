@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import echarts from '@/lib/echarts';
-import { type TimeseriesPoint, bucketByHour, dataBounds, slimSlider, insideZoom, baseTooltip } from './types';
+import { type TimeseriesPoint, bucketByHour, dataBounds, dataZoomConfig, baseTooltip } from './types';
 
 export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
   const option = useMemo(() => {
@@ -11,28 +11,25 @@ export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
     if (!buckets.length) return null;
 
     const bounds = dataBounds(buckets);
+    const zoom = dataZoomConfig('#14b8a6', buckets.length);
+    const hasZoom = zoom.length > 0;
     const seriesData: [number, number][] = buckets.map((b) => [b.ts, b.count]);
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 28, right: 8, top: 6, bottom: 24 },
+      grid: { left: 28, right: 8, top: 6, bottom: hasZoom ? 24 : 4 },
       xAxis: {
         type: 'time' as const,
-        min: bounds.min,
-        max: bounds.max,
-        axisLine: { show: false },
-        axisTick: { show: false },
+        min: bounds.min, max: bounds.max,
+        axisLine: { show: false }, axisTick: { show: false },
         axisLabel: { color: '#555', fontSize: 9 },
         splitLine: { show: false },
       },
       yAxis: {
-        type: 'value' as const,
-        min: 0,
-        axisLine: { show: false },
-        axisTick: { show: false },
+        type: 'value' as const, min: 0, minInterval: 1,
+        axisLine: { show: false }, axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
         axisLabel: { color: '#555', fontSize: 9 },
-        minInterval: 1,
       },
       tooltip: {
         ...baseTooltip,
@@ -46,24 +43,21 @@ export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
             `<div style="font-size:11px;font-family:monospace;font-weight:600;color:#14b8a6">${count} request${count !== 1 ? 's' : ''}</div>`;
         },
       },
-      dataZoom: [slimSlider('#14b8a6'), insideZoom],
+      ...(hasZoom ? { dataZoom: zoom } : {}),
       series: [
         {
-          name: 'Requests',
-          type: 'bar' as const,
-          data: seriesData,
-          itemStyle: { color: '#14b8a6' },
-          barMinWidth: 6,
-          barMaxWidth: 28,
+          name: 'Requests', type: 'bar' as const,
+          data: seriesData, itemStyle: { color: '#14b8a6' },
+          barMinWidth: 6, barMaxWidth: 28,
           emphasis: { itemStyle: { color: '#2dd4bf' } },
         },
       ],
     };
   }, [data]);
 
-  if (!data.length || !option) {
+  if (!option) {
     return (
-      <div className="flex h-[160px] items-center justify-center text-xs text-muted-foreground">
+      <div className="flex h-20 items-center justify-center text-xs text-muted-foreground">
         No request data yet
       </div>
     );
