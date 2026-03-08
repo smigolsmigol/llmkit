@@ -24,7 +24,7 @@ app.use('*', cors({
   allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'],
 }));
 
-app.onError((err, c) => {
+app.onError(async (err, c) => {
   const code = err instanceof LLMKitError ? err.code : 'INTERNAL_ERROR';
   const status = err instanceof LLMKitError ? err.statusCode : 500;
 
@@ -32,8 +32,11 @@ app.onError((err, c) => {
   const apiKeyId = c.get('apiKeyId');
   const userId = c.get('userId');
   if (apiKeyId && userId && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
-    const provider = c.get('requestProvider') || c.req.header('x-llmkit-provider') || 'unknown';
-    const model = c.get('requestModel') || 'unknown';
+    let provider = c.get('requestProvider') || c.req.header('x-llmkit-provider') || 'unknown';
+    let model = c.get('requestModel') || 'unknown';
+    if (model === 'unknown') {
+      try { const b = await c.req.json(); model = b?.model || 'unknown'; provider = provider === 'unknown' ? (b?.provider || 'unknown') : provider; } catch {}
+    }
     c.executionCtx.waitUntil(
       logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
         user_id: userId,
