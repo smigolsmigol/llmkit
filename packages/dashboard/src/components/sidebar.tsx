@@ -27,7 +27,7 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
         <span className="font-mono text-xl font-semibold tracking-tight text-primary">LLMKit</span>
       </Link>
 
-      <nav className="flex flex-1 flex-col gap-1">
+      <nav className="flex flex-1 flex-col gap-2">
         {items.map((item) => {
           const active = pathname === item.href;
           const Icon = item.icon;
@@ -36,13 +36,13 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                'flex items-center gap-3 rounded-md px-3 py-2.5 text-base transition-colors',
                 active
                   ? 'bg-primary/10 text-primary'
                   : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
               )}
             >
-              <Icon className="h-4 w-4 shrink-0" />
+              <Icon className="h-5 w-5 shrink-0" />
               {item.label}
             </Link>
           );
