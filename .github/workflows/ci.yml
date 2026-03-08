@@ -7,7 +7,20 @@ on:
     branches: [main]
 
 jobs:
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   check:
+    needs: secrets-scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +33,9 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: audit dependencies
+        run: pnpm audit --audit-level=high
 
       # typecheck all packages (turbo handles dependency order)
       - name: typecheck
@@ -55,7 +71,7 @@ jobs:
           node packages/sdk/test/tracker-test.mjs
 
   deploy:
-    needs: check
+    needs: [secrets-scan, check]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:

@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Pre-commit hook: block commits containing secrets or credentials.
+# Install: git config core.hooksPath .github/hooks
+
+set -euo pipefail
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$STAGED" ] && exit 0
+
+BLOCKED=0
+
+# 1. Block known credential file patterns
+while IFS= read -r file; do
+  case "$file" in
+    *.pem|*.key|*.p12|*.pfx|*.keystore|*_token|*_secret)
+      echo "BLOCKED: credential file staged: $file"
+      BLOCKED=1
+      ;;
+    .env|.env.*|.dev.vars|.dev.keys|.npmrc)
+      echo "BLOCKED: env/config file staged: $file"
+      BLOCKED=1
+      ;;
+    *credentials*|*secret*)
+      echo "BLOCKED: suspicious filename: $file"
+      BLOCKED=1
+      ;;
+  esac
+done <<< "$STAGED"
+
+# 2. Scan staged file contents for high-confidence secret patterns
+PATTERNS=(
+  'sk-[a-zA-Z0-9]{20,}'           # OpenAI / Stripe secret keys
+  'sk-ant-[a-zA-Z0-9-]{20,}'      # Anthropic keys
+  'AKIA[0-9A-Z]{16}'              # AWS access key IDs
+  'ghp_[a-zA-Z0-9]{36}'           # GitHub personal access tokens
+  'gho_[a-zA-Z0-9]{36}'           # GitHub OAuth tokens
+  'github_pat_[a-zA-Z0-9_]{82}'   # GitHub fine-grained PATs
+  'xoxb-[0-9]{10,}'               # Slack bot tokens
+  'xoxp-[0-9]{10,}'               # Slack user tokens
+  'pk_live_[a-zA-Z0-9]{20,}'      # Stripe publishable live keys
+  'sk_live_[a-zA-Z0-9]{20,}'      # Stripe secret live keys
+  'whsec_[a-zA-Z0-9]{20,}'        # Stripe webhook secrets
+  'eyJ[a-zA-Z0-9_-]{50,}\.'       # JWTs (base64 header.payload.sig)
+  'PRIVATE KEY-----'              # PEM private keys
+  'password\s*[:=]\s*["\x27][^"\x27]{8,}' # hardcoded passwords
+)
+
+for pattern in "${PATTERNS[@]}"; do
+  MATCHES=$(git diff --cached -G"$pattern" --name-only -- ':!.github/hooks/*' 2>/dev/null || true)
+  if [ -n "$MATCHES" ]; then
+    echo "BLOCKED: secret pattern ($pattern) found in:"
+    echo "$MATCHES" | sed 's/^/  /'
+    BLOCKED=1
+  fi
+done
+
+if [ "$BLOCKED" -ne 0 ]; then
+  echo ""
+  echo "Commit blocked by secret scanner. If this is a false positive,"
+  echo "review carefully and use --no-verify (only if you're certain)."
+  exit 1
+fi
+
+exit 0

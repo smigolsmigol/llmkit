@@ -15,7 +15,14 @@ dist/
 # credentials - never commit these
 *.pem
 *.key
+*.p12
+*.pfx
+*.keystore
 credentials.json
+*_token
+*_secret
+.mcpregistry_*
+.npmrc
 
 # os
 .DS_Store

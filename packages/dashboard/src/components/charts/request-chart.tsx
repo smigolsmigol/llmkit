@@ -66,7 +66,7 @@ export function RequestChart({ data }: { data: DataPoint[] }) {
           axisLine={false}
           width={40}
         />
-        <Tooltip content={<ChartTooltip />} />
+        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
         <Bar dataKey="requests" fill="url(#requestGradient)" radius={[2, 2, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
