@@ -8,6 +8,7 @@ import { auth } from './middleware/auth';
 import { budgetCheck, releaseReservation } from './middleware/budget';
 import { costLogger } from './middleware/logger';
 import { rateLimit } from './middleware/ratelimit';
+import { analyticsRouter } from './routes/analytics';
 import { providerRouter } from './routes/chat';
 import { keysRouter } from './routes/keys';
 import { mcpRouter } from './routes/mcp';
@@ -79,6 +80,7 @@ app.use('/v1/*', costLogger());
 
 app.route('/v1', providerRouter);
 app.route('/v1', keysRouter);
+app.route('/v1', analyticsRouter);
 
 // MCP server card for discovery (Smithery, Glama connectors)
 app.get('/.well-known/mcp/server-card.json', (c) => c.json({

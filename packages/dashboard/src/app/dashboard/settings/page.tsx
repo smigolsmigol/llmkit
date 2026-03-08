@@ -86,11 +86,7 @@ export default async function SettingsPage() {
 
           <BudgetManager budgets={budgets} />
 
-          <McpSetup
-            userId={userId}
-            supabaseUrl={process.env.SUPABASE_URL || ''}
-            supabaseAnonKey={process.env.SUPABASE_ANON_KEY || ''}
-          />
+          <McpSetup />
 
           <div className="space-y-4">
             <h2 className="text-sm font-medium text-muted-foreground">Account</h2>

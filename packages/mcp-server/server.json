@@ -17,29 +17,15 @@
       },
       "environmentVariables": [
         {
-          "name": "LLMKIT_SUPABASE_URL",
-          "description": "Supabase project URL for data queries",
-          "isRequired": true,
-          "format": "string",
-          "isSecret": false
-        },
-        {
-          "name": "LLMKIT_SUPABASE_KEY",
-          "description": "Supabase anon or service key",
+          "name": "LLMKIT_API_KEY",
+          "description": "Your LLMKit API key (create one at the dashboard)",
           "isRequired": true,
           "format": "string",
           "isSecret": true
         },
         {
-          "name": "LLMKIT_USER_ID",
-          "description": "Your LLMKit user/account ID",
-          "isRequired": true,
-          "format": "string",
-          "isSecret": false
-        },
-        {
           "name": "LLMKIT_PROXY_URL",
-          "description": "LLMKit proxy URL for health checks",
+          "description": "LLMKit proxy URL (defaults to hosted service)",
           "isRequired": false,
           "format": "string",
           "isSecret": false
