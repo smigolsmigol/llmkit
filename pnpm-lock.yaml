@@ -118,8 +118,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       hono:
-        specifier: ^4.7.0
-        version: 4.11.10
+        specifier: ^4.12.4
+        version: 4.12.4
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20250214.0
@@ -222,6 +222,7 @@ packages:
   '@clerk/clerk-react@5.61.0':
     resolution: {integrity: sha512-M20kv1rSftll7pZdc3gD5jppcbJSHWDnFHr26CXDOzsqLCYP4ESlqJgv75U0PUcNoM4TgmqsbAP5MrbWIx5Xmg==}
     engines: {node: '>=18.17.0'}
+    deprecated: 'This package is no longer supported. Please use @clerk/react instead. See the upgrade guide for more info: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/core-3'
     peerDependencies:
       react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
       react-dom: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
@@ -249,6 +250,7 @@ packages:
   '@clerk/types@4.101.17':
     resolution: {integrity: sha512-jg98vDHMew5dSrNKiucgqqd4cbxtLf1CktT8B0G5IqCG+CqbKUawmBEZzm+z7jaQ/zfONN5O8TAC7gK32JbeyA==}
     engines: {node: '>=18.17.0'}
+    deprecated: 'This package is no longer supported. Please import types from @clerk/shared/types instead. See the upgrade guide for more info: https://clerk.com/docs/guides/development/upgrading/upgrade-guides/core-3'
 
   '@cloudflare/kv-asset-handler@0.3.4':
     resolution: {integrity: sha512-YLPHc8yASwjNkmcDMQMY35yiWjoKAKnhUbPRszBRS0YgH+IXtsMp61j+yTcnCE3oO2DgP0U3iejLC8FTtKDC8Q==}
@@ -1438,6 +1440,10 @@ packages:
 
   hono@4.11.10:
     resolution: {integrity: sha512-kyWP5PAiMooEvGrA9jcD3IXF7ATu8+o7B3KCbPXid5se52NPqnOpM/r9qeW2heMnOekF4kqR1fXJqCYeCLKrZg==}
+    engines: {node: '>=16.9.0'}
+
+  hono@4.12.4:
+    resolution: {integrity: sha512-ooiZW1Xy8rQ4oELQ++otI2T9DsKpV0M6c6cO6JGx4RTfav9poFFLlet9UMXHZnoM1yG0HWGlQLswBGX3RZmHtg==}
     engines: {node: '>=16.9.0'}
 
   http-errors@2.0.1:
@@ -3243,6 +3249,8 @@ snapshots:
       function-bind: 1.1.2
 
   hono@4.11.10: {}
+
+  hono@4.12.4: {}
 
   http-errors@2.0.1:
     dependencies:
