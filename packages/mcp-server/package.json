@@ -15,6 +15,7 @@
       "import": "./dist/index.js"
     }
   },
+  "mcpName": "io.github.smigolsmigol/llmkit",
   "keywords": ["mcp", "model-context-protocol", "claude-code", "cursor", "llm", "ai", "cost-tracking", "ai-agents"],
   "files": [
     "dist"

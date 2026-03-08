@@ -1,0 +1,50 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.smigolsmigol/llmkit",
+  "description": "Track AI API costs across 11 LLM providers. Query spend by model, session, or time range from Claude Code or Cursor.",
+  "repository": {
+    "url": "https://github.com/smigolsmigol/llmkit",
+    "source": "github"
+  },
+  "version": "0.0.3",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@f3d1/llmkit-mcp-server",
+      "version": "0.0.3",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "LLMKIT_SUPABASE_URL",
+          "description": "Supabase project URL for data queries",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "LLMKIT_SUPABASE_KEY",
+          "description": "Supabase anon or service key",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "LLMKIT_USER_ID",
+          "description": "Your LLMKit user/account ID",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "LLMKIT_PROXY_URL",
+          "description": "LLMKit proxy URL for health checks",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        }
+      ]
+    }
+  ]
+}
