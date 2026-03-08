@@ -40,7 +40,7 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 44, right: 8, top: 6, bottom: hasZoom ? 24 : 4 },
+      grid: { left: 44, right: 8, top: 6, bottom: hasZoom ? 38 : 4 },
       xAxis: {
         type: 'time' as const,
         min: bounds.min, max: bounds.max,

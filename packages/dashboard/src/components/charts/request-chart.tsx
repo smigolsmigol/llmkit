@@ -17,7 +17,7 @@ export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 28, right: 8, top: 6, bottom: hasZoom ? 24 : 4 },
+      grid: { left: 28, right: 8, top: 6, bottom: hasZoom ? 38 : 4 },
       xAxis: {
         type: 'time' as const,
         min: bounds.min, max: bounds.max,
