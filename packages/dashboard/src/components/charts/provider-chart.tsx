@@ -66,7 +66,7 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
           }}
           width={56}
         />
-        <Tooltip content={<ChartTooltip />} />
+        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
         <Bar dataKey="cost" radius={[4, 4, 0, 0]}>
           {data.map((_, i) => (
             <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />

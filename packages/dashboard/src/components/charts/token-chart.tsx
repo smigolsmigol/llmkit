@@ -80,7 +80,7 @@ export function TokenChart({ data }: { data: DataPoint[] }) {
           tickFormatter={formatTokens}
           width={48}
         />
-        <Tooltip content={<ChartTooltip />} />
+        <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#333', strokeWidth: 1 }} />
         <Area
           type="monotone"
           dataKey="inputTokens"

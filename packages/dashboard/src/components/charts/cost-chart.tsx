@@ -72,7 +72,7 @@ export function CostChart({ data }: { data: DataPoint[] }) {
           }}
           width={56}
         />
-        <Tooltip content={<ChartTooltip />} />
+        <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#333', strokeWidth: 1 }} />
         <Area
           type="monotone"
           dataKey="cost"
