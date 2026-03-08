@@ -8,6 +8,7 @@
   Know exactly what your AI agents cost.
 </p>
 
+[![CI](https://github.com/smigolsmigol/llmkit/actions/workflows/ci.yml/badge.svg)](https://github.com/smigolsmigol/llmkit/actions/workflows/ci.yml)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
 
@@ -231,6 +232,24 @@ Query your AI costs from Claude Code or Cursor.
 ```
 
 Tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`.
+
+## Testing
+
+114 tests across the monorepo, run on every push via GitHub Actions.
+
+| Suite | What it covers |
+|-------|----------------|
+| Unit (29) | Provider adapters, cost calculation, fallback routing, error handling |
+| Crypto (10) | AES-GCM encrypt/decrypt roundtrips, tampered ciphertext, AAD context |
+| Budget (18) | Cost estimation, period resets, max_tokens clamping, affordable output calculation |
+| Reservation (10) | Concurrent budget checks, reservation settle/release, session scope, lazy init |
+| Budget bypass (16) | Adversarial vectors: session hopping, period manipulation, replay attacks, stale reservations |
+| CLI parser (15) | OpenAI/Anthropic response and stream parsing, edge cases |
+| SDK tracker (16) | CostTracker aggregation, listeners, multi-session, provider/model grouping |
+
+Budget enforcement is additionally tested with live concurrency against the deployed proxy, not just mocks.
+
+See [SECURITY.md](SECURITY.md) for the security audit methodology.
 
 ## Self-host
 
