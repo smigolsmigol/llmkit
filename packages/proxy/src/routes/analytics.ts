@@ -23,7 +23,7 @@ interface RequestRow {
 async function getUserRequests(
   url: string, key: string, userId: string, days: number,
 ): Promise<RequestRow[]> {
-  const keysRes = await postgrest(url, key, `api_keys?user_id=eq.${userId}&select=id`);
+  const keysRes = await postgrest(url, key, `api_keys?user_id=eq.${encodeURIComponent(userId)}&select=id`);
   if (!keysRes.ok) return [];
   const keys = (await keysRes.json()) as { id: string }[];
   if (!keys.length) return [];
@@ -128,7 +128,7 @@ analyticsRouter.get('/analytics/keys', async (c) => {
 
   const res = await postgrest(
     c.env.SUPABASE_URL, c.env.SUPABASE_KEY,
-    `api_keys?user_id=eq.${userId}&order=created_at.desc&select=id,name,key_prefix,budget_id,created_at,revoked_at`,
+    `api_keys?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc&select=id,name,key_prefix,budget_id,created_at,revoked_at`,
   );
   if (!res.ok) return c.json({ keys: [] });
   const keys = await res.json();
@@ -143,7 +143,7 @@ analyticsRouter.get('/analytics/budgets', async (c) => {
 
   const res = await postgrest(
     c.env.SUPABASE_URL, c.env.SUPABASE_KEY,
-    `budgets?user_id=eq.${userId}&order=created_at.desc&select=id,name,limit_cents,period,created_at`,
+    `budgets?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc&select=id,name,limit_cents,period,created_at`,
   );
   if (!res.ok) return c.json({ budgets: [] });
   const budgets = await res.json();
