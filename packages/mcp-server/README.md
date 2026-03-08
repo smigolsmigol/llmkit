@@ -17,16 +17,14 @@ Part of [LLMKit](https://github.com/smigolsmigol/llmkit), an open-source API gat
       "command": "npx",
       "args": ["@f3d1/llmkit-mcp-server"],
       "env": {
-        "LLMKIT_SUPABASE_URL": "https://cwfjofyplyfjtanzavsm.supabase.co",
-        "LLMKIT_SUPABASE_KEY": "your-anon-key",
-        "LLMKIT_USER_ID": "your-user-id"
+        "LLMKIT_API_KEY": "llmk_your_key_here"
       }
     }
   }
 }
 ```
 
-Your user ID and Supabase credentials are on the Settings page in the dashboard.
+Paste into `.mcp.json` (project root) for Claude Code, or `.cursor/mcp.json` for Cursor.
 
 ## Tools
 
@@ -40,16 +38,14 @@ Your user ID and Supabase credentials are on the Settings page in the dashboard.
 
 **llmkit_list_keys** : Show all API keys with status and creation date.
 
-**llmkit_health** : Ping the LLMKit proxy to check if it's reachable (requires `LLMKIT_PROXY_URL` env var).
+**llmkit_health** : Ping the LLMKit proxy to check if it's reachable.
 
 ## Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `LLMKIT_SUPABASE_URL` | Yes | Your Supabase project URL |
-| `LLMKIT_SUPABASE_KEY` | Yes | Supabase anon key (read-only, safe to use locally) |
-| `LLMKIT_USER_ID` | Yes | Your LLMKit account user ID |
-| `LLMKIT_PROXY_URL` | No | Proxy URL for the health check tool |
+| `LLMKIT_API_KEY` | Yes | Your LLMKit API key |
+| `LLMKIT_PROXY_URL` | No | Proxy URL (defaults to `https://llmkit-proxy.smigolsmigol.workers.dev`) |
 
 ## Example
 

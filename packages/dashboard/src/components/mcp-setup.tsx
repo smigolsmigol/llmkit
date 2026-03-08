@@ -3,12 +3,10 @@
 import { useState } from 'react';
 
 interface McpSetupProps {
-  userId: string;
-  supabaseUrl: string;
-  supabaseAnonKey: string;
+  apiKeyPlaceholder?: string;
 }
 
-export function McpSetup({ userId, supabaseUrl, supabaseAnonKey }: McpSetupProps) {
+export function McpSetup({ apiKeyPlaceholder }: McpSetupProps) {
   const [copied, setCopied] = useState(false);
 
   const config = JSON.stringify({
@@ -17,9 +15,7 @@ export function McpSetup({ userId, supabaseUrl, supabaseAnonKey }: McpSetupProps
         command: 'npx',
         args: ['@f3d1/llmkit-mcp-server'],
         env: {
-          LLMKIT_SUPABASE_URL: supabaseUrl,
-          LLMKIT_SUPABASE_KEY: supabaseAnonKey,
-          LLMKIT_USER_ID: userId,
+          LLMKIT_API_KEY: apiKeyPlaceholder || 'llmk_your_key_here',
         },
       },
     },
@@ -31,14 +27,12 @@ export function McpSetup({ userId, supabaseUrl, supabaseAnonKey }: McpSetupProps
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (!supabaseUrl || !supabaseAnonKey) return null;
-
   return (
     <div className="space-y-4">
       <h2 className="text-sm font-medium text-muted-foreground">MCP Server</h2>
       <div className="rounded-lg border border-border bg-card p-6">
         <p className="text-sm text-muted-foreground">
-          Add this to your Claude Code or Cursor MCP config to query costs from your editor.
+          Query your costs from Claude Code or Cursor. Use the same API key you created in the Keys tab.
         </p>
         <div className="relative mt-4">
           <pre className="overflow-x-auto rounded-md bg-secondary/50 p-4 text-xs font-mono text-primary">
