@@ -440,6 +440,8 @@ export interface DailyAdminStats {
   costCents: number;
   requests: number;
   errors: number;
+  inputTokens: number;
+  outputTokens: number;
 }
 
 export async function getAdminStats(days = 0): Promise<AdminStats> {
@@ -498,12 +500,14 @@ export async function getAdminStats(days = 0): Promise<AdminStats> {
 export async function getAdminDailyStats(days = 0): Promise<DailyAdminStats[]> {
   const rows = filterByDays(await getAllRequests(), days);
 
-  const byDay = new Map<string, { costCents: number; requests: number; errors: number }>();
+  const byDay = new Map<string, { costCents: number; requests: number; errors: number; inputTokens: number; outputTokens: number }>();
   for (const r of rows) {
     const date = r.created_at.slice(0, 10);
-    const d = byDay.get(date) || { costCents: 0, requests: 0, errors: 0 };
+    const d = byDay.get(date) || { costCents: 0, requests: 0, errors: 0, inputTokens: 0, outputTokens: 0 };
     d.costCents += Number(r.cost_cents);
     d.requests++;
+    d.inputTokens += r.input_tokens;
+    d.outputTokens += r.output_tokens;
     if (r.error_code) d.errors++;
     byDay.set(date, d);
   }

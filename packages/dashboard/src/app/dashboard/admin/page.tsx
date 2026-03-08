@@ -40,12 +40,14 @@ export default async function AdminPage({
     date: d.date,
     cost: d.costCents / 100,
     requests: d.requests,
+    inputTokens: d.inputTokens,
+    outputTokens: d.outputTokens,
   }));
 
   const totalTokens = stats.totalInputTokens + stats.totalOutputTokens;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Admin</h1>
         <TimeRangeSelector />
@@ -90,28 +92,28 @@ export default async function AdminPage({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-          <div className="mb-4 border-b border-[#1f1f1f] pb-3">
-            <h2 className="text-sm font-medium">Daily Platform Spend</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">All users combined</p>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+            <h2 className="text-xs font-medium">Daily Platform Spend</h2>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">All users combined</p>
           </div>
           <CostChart data={chartData} />
         </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-          <div className="mb-4 border-b border-[#1f1f1f] pb-3">
-            <h2 className="text-sm font-medium">Daily Request Volume</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Platform-wide API calls</p>
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+            <h2 className="text-xs font-medium">Daily Request Volume</h2>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">Platform-wide API calls</p>
           </div>
           <RequestChart data={chartData} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2">
         {topModels.length > 0 && (
-          <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-            <div className="mb-3 border-b border-[#1f1f1f] pb-3">
-              <h2 className="text-sm font-medium">Top Models</h2>
+          <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+            <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+              <h2 className="text-xs font-medium">Top Models</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -128,7 +130,7 @@ export default async function AdminPage({
                 </thead>
                 <tbody>
                   {topModels.slice(0, 10).map((m) => (
-                    <tr key={m.model} className="border-t border-[#1f1f1f]">
+                    <tr key={m.model} className="border-t border-[#1a1a1a]">
                       <td className="py-1.5 font-mono text-xs">{m.model}</td>
                       <td className="py-1.5 text-xs text-muted-foreground">{m.provider}</td>
                       <td className="py-1.5 text-right text-xs">{m.requests}</td>
@@ -145,9 +147,9 @@ export default async function AdminPage({
         )}
 
         {userBreakdown.length > 0 && (
-          <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-            <div className="mb-3 border-b border-[#1f1f1f] pb-3">
-              <h2 className="text-sm font-medium">Per-User Breakdown</h2>
+          <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+            <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+              <h2 className="text-xs font-medium">Per-User Breakdown</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -163,7 +165,7 @@ export default async function AdminPage({
                 </thead>
                 <tbody>
                   {userBreakdown.map((u) => (
-                    <tr key={u.userId} className="border-t border-[#1f1f1f]">
+                    <tr key={u.userId} className="border-t border-[#1a1a1a]">
                       <td className="py-1.5 font-mono text-xs" title={u.userId}>
                         {u.note || u.userId.slice(0, 12) + '...'}
                       </td>
@@ -181,9 +183,9 @@ export default async function AdminPage({
         )}
       </div>
 
-      <div className="rounded-lg border border-[#2a2a2a] bg-card p-5">
-        <div className="mb-3 border-b border-[#1f1f1f] pb-3">
-          <h2 className="text-sm font-medium">Accounts ({accounts.length})</h2>
+      <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+        <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+          <h2 className="text-xs font-medium">Accounts ({accounts.length})</h2>
         </div>
         <AccountTable accounts={accounts} />
       </div>

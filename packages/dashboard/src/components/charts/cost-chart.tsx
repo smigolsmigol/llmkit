@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -13,6 +13,14 @@ import {
 interface DataPoint {
   date: string;
   cost: number;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+interface ProcessedPoint {
+  date: string;
+  inputCost: number;
+  outputCost: number;
 }
 
 function formatDateShort(dateStr: string) {
@@ -20,13 +28,31 @@ function formatDateShort(dateStr: string) {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
+function formatCost(v: number): string {
+  if (v === 0) return '$0';
+  if (v < 0.01) return `$${v.toFixed(4)}`;
+  if (v < 0.1) return `$${v.toFixed(3)}`;
+  if (v < 1) return `$${v.toFixed(2)}`;
+  return `$${v.toFixed(0)}`;
+}
+
+function ChartTooltip({ active, payload, label }: {
+  active?: boolean;
+  payload?: { name: string; value: number; color: string }[];
+  label?: string;
+}) {
   if (!active || !payload?.length || !label) return null;
+  const total = payload.reduce((s, p) => s + p.value, 0);
   return (
-    <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-md">
+    <div className="rounded-md border border-border bg-popover px-2 py-1.5 text-xs shadow-md">
       <p className="text-muted-foreground">{formatDateShort(label)}</p>
-      <p className="font-mono font-semibold text-primary">
-        ${payload[0].value < 0.01 ? payload[0].value.toFixed(4) : payload[0].value.toFixed(2)}
+      {payload.map((p) => (
+        <p key={p.name} className="font-mono" style={{ color: p.color }}>
+          {p.name === 'inputCost' ? 'Input' : 'Output'}: {formatCost(p.value)}
+        </p>
+      ))}
+      <p className="mt-0.5 border-t border-border pt-0.5 font-mono font-semibold text-primary">
+        Total: {formatCost(total)}
       </p>
     </div>
   );
@@ -35,52 +61,47 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 export function CostChart({ data }: { data: DataPoint[] }) {
   if (!data.length) {
     return (
-      <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex h-[180px] items-center justify-center text-xs text-muted-foreground">
         No spend data yet
       </div>
     );
   }
 
+  const processed: ProcessedPoint[] = data.map((d) => {
+    const totalTokens = d.inputTokens + d.outputTokens;
+    if (totalTokens === 0) return { date: d.date, inputCost: d.cost, outputCost: 0 };
+    const ratio = d.inputTokens / totalTokens;
+    return {
+      date: d.date,
+      inputCost: d.cost * ratio,
+      outputCost: d.cost * (1 - ratio),
+    };
+  });
+
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-        <defs>
-          <linearGradient id="costGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.3} />
-            <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" vertical={false} />
+    <ResponsiveContainer width="100%" height={180}>
+      <BarChart data={processed} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
         <XAxis
           dataKey="date"
-          stroke="#a3a3a3"
-          fontSize={12}
+          stroke="#555"
+          fontSize={10}
           tickLine={false}
           axisLine={false}
           tickFormatter={formatDateShort}
         />
         <YAxis
-          stroke="#a3a3a3"
-          fontSize={12}
+          stroke="#555"
+          fontSize={10}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(v: number) => {
-            if (v === 0) return '$0';
-            if (v < 0.01) return `$${v.toFixed(4)}`;
-            if (v < 1) return `$${v.toFixed(2)}`;
-            return `$${v.toFixed(0)}`;
-          }}
-          width={56}
+          tickFormatter={formatCost}
+          width={48}
         />
-        <Tooltip content={<ChartTooltip />} cursor={{ stroke: '#333', strokeWidth: 1 }} />
-        <Area
-          type="monotone"
-          dataKey="cost"
-          stroke="#7c3aed"
-          strokeWidth={2}
-          fill="url(#costGradient)"
-        />
-      </AreaChart>
+        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+        <Bar dataKey="inputCost" stackId="cost" fill="#7c3aed" radius={[0, 0, 0, 0]} />
+        <Bar dataKey="outputCost" stackId="cost" fill="#a78bfa" radius={[2, 2, 0, 0]} />
+      </BarChart>
     </ResponsiveContainer>
   );
 }

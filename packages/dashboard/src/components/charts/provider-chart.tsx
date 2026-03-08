@@ -19,16 +19,19 @@ interface DataPoint {
   count: number;
 }
 
-function ChartTooltip({ active, payload }: { active?: boolean; payload?: { payload: DataPoint }[] }) {
+function ChartTooltip({ active, payload }: {
+  active?: boolean;
+  payload?: { payload: DataPoint }[];
+}) {
   if (!active || !payload?.length) return null;
-  const data = payload[0].payload;
+  const d = payload[0].payload;
   return (
-    <div className="rounded-md border border-border bg-popover px-3 py-2 text-sm shadow-md">
-      <p className="font-medium">{data.provider}</p>
+    <div className="rounded-md border border-border bg-popover px-2 py-1.5 text-xs shadow-md">
+      <p className="font-medium">{d.provider}</p>
       <p className="font-mono text-primary">
-        ${data.cost < 0.01 ? data.cost.toFixed(4) : data.cost.toFixed(2)}
+        ${d.cost < 0.01 ? d.cost.toFixed(4) : d.cost.toFixed(2)}
       </p>
-      <p className="text-muted-foreground">{data.count} requests</p>
+      <p className="text-muted-foreground">{d.count} requests</p>
     </div>
   );
 }
@@ -36,26 +39,26 @@ function ChartTooltip({ active, payload }: { active?: boolean; payload?: { paylo
 export function ProviderChart({ data }: { data: DataPoint[] }) {
   if (!data.length) {
     return (
-      <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex h-[180px] items-center justify-center text-xs text-muted-foreground">
         No provider data yet
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={200}>
+    <ResponsiveContainer width="100%" height={180}>
       <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1f1f1f" vertical={false} />
+        <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
         <XAxis
           dataKey="provider"
-          stroke="#a3a3a3"
-          fontSize={12}
+          stroke="#555"
+          fontSize={10}
           tickLine={false}
           axisLine={false}
         />
         <YAxis
-          stroke="#a3a3a3"
-          fontSize={12}
+          stroke="#555"
+          fontSize={10}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v: number) => {
@@ -67,7 +70,7 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
           width={56}
         />
         <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-        <Bar dataKey="cost" radius={[4, 4, 0, 0]}>
+        <Bar dataKey="cost" radius={[2, 2, 0, 0]}>
           {data.map((_, i) => (
             <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
           ))}
