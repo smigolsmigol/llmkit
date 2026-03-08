@@ -1,5 +1,11 @@
 import { createServerClient } from './supabase';
 
+export async function getAccountPlan(userId: string): Promise<string | null> {
+  const db = createServerClient();
+  const { data } = await db.from('accounts').select('plan').eq('user_id', userId).single();
+  return data?.plan ?? null;
+}
+
 export interface RequestRow {
   id: string;
   api_key_id: string;

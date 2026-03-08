@@ -6,6 +6,7 @@ import {
   getAdminDailyStats,
   getAdminUserBreakdown,
   getAdminTopModels,
+  getAccountPlan,
 } from '@/lib/queries';
 import { StatCard } from '@/components/stat-card';
 import { CostChart } from '@/components/charts/cost-chart';
@@ -20,10 +21,9 @@ export default async function AdminPage({
   searchParams: Promise<{ days?: string }>;
 }) {
   const { userId } = await auth();
-  const adminIds = process.env.ADMIN_USER_ID?.split(',') ?? [];
-  if (!userId || !adminIds.includes(userId)) {
-    redirect('/dashboard');
-  }
+  if (!userId) redirect('/dashboard');
+  const plan = await getAccountPlan(userId);
+  if (plan !== 'admin') redirect('/dashboard');
 
   const params = await searchParams;
   const days = params.days !== undefined ? Number(params.days) : 30;
