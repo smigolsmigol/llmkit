@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
 import echarts from '@/lib/echarts';
+import { baseTooltip } from './types';
 
 const COLORS = ['#7c3aed', '#14b8a6', '#3b82f6', '#a855f7', '#06b6d4'];
 
@@ -23,29 +24,29 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
   const option = useMemo(() => {
     if (!data.length) return null;
 
+    const hasCost = data.some((d) => d.cost > 0);
+    if (!hasCost) return null;
+
     return {
       backgroundColor: 'transparent',
-      grid: { left: 48, right: 12, top: 8, bottom: 20 },
+      grid: { left: 44, right: 8, top: 6, bottom: 16 },
       xAxis: {
         type: 'category' as const,
         data: data.map((d) => d.provider),
         axisLine: { show: false },
         axisTick: { show: false },
-        axisLabel: { color: '#555', fontSize: 10 },
+        axisLabel: { color: '#555', fontSize: 9 },
       },
       yAxis: {
         type: 'value' as const,
+        min: 0,
         axisLine: { show: false },
         axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
-        axisLabel: { color: '#555', fontSize: 10, formatter: formatCost },
+        axisLabel: { color: '#555', fontSize: 9, formatter: formatCost },
       },
       tooltip: {
-        trigger: 'axis' as const,
-        axisPointer: { type: 'shadow' as const, shadowStyle: { color: 'rgba(255,255,255,0.04)' } },
-        backgroundColor: 'rgba(15,15,20,0.95)',
-        borderColor: '#333',
-        textStyle: { color: '#e0e0e0', fontSize: 11 },
+        ...baseTooltip,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         formatter: (params: any) => {
           if (!Array.isArray(params) || !params.length) return '';
@@ -72,11 +73,11 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
 
   if (!data.length || !option) {
     return (
-      <div className="flex h-[180px] items-center justify-center text-xs text-muted-foreground">
+      <div className="flex h-[160px] items-center justify-center text-xs text-muted-foreground">
         No provider data yet
       </div>
     );
   }
 
-  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 180, width: '100%' }} />;
+  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 160, width: '100%' }} />;
 }

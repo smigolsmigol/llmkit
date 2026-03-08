@@ -8,7 +8,7 @@ import { type TimeseriesPoint, bucketByHour, dataBounds, slimSlider, insideZoom,
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
-  return String(n);
+  return String(Math.round(n));
 }
 
 export function TokenChart({ data }: { data: TimeseriesPoint[] }) {
@@ -16,13 +16,16 @@ export function TokenChart({ data }: { data: TimeseriesPoint[] }) {
     const buckets = bucketByHour(data);
     if (!buckets.length) return null;
 
+    const hasTokens = buckets.some((b) => b.inputTokens + b.outputTokens > 0);
+    if (!hasTokens) return null;
+
     const bounds = dataBounds(buckets);
     const inputData: [number, number][] = buckets.map((b) => [b.ts, b.inputTokens]);
     const outputData: [number, number][] = buckets.map((b) => [b.ts, b.outputTokens]);
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 40, right: 8, top: 8, bottom: 28 },
+      grid: { left: 40, right: 8, top: 6, bottom: 24 },
       xAxis: {
         type: 'time' as const,
         min: bounds.min,
@@ -34,6 +37,8 @@ export function TokenChart({ data }: { data: TimeseriesPoint[] }) {
       },
       yAxis: {
         type: 'value' as const,
+        min: 0,
+        minInterval: 1,
         axisLine: { show: false },
         axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
@@ -85,11 +90,11 @@ export function TokenChart({ data }: { data: TimeseriesPoint[] }) {
 
   if (!data.length || !option) {
     return (
-      <div className="flex h-[200px] items-center justify-center text-xs text-muted-foreground">
+      <div className="flex h-[160px] items-center justify-center text-xs text-muted-foreground">
         No token data yet
       </div>
     );
   }
 
-  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 200, width: '100%' }} />;
+  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 160, width: '100%' }} />;
 }

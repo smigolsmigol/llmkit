@@ -41,14 +41,14 @@ export default async function OverviewPage({
   const totalRequests = providers.reduce((sum, p) => sum + p.count, 0);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Overview</h1>
         <TimeRangeSelector />
       </div>
 
       {totalRequests === 0 && (
-        <div className="rounded-lg border border-primary/20 bg-card p-6">
+        <div className="rounded-lg border border-primary/20 bg-card p-4">
           <p className="font-medium">Get started</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Create an API key in the Keys tab, then point your OpenAI or Anthropic
@@ -58,10 +58,10 @@ export default async function OverviewPage({
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-3">
-        <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-4">
+      <div className="grid grid-cols-4 gap-1.5">
+        <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
           <p className="text-xs text-muted-foreground">Total Spend (30d)</p>
-          <p className="mt-1 font-mono text-2xl font-bold text-primary">
+          <p className="mt-0.5 font-mono text-2xl font-bold text-primary">
             {formatCents(spend.month)}
           </p>
         </div>
@@ -70,7 +70,7 @@ export default async function OverviewPage({
         <StatCard label="Total Requests" value={totalRequests.toLocaleString()} />
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-1.5">
         <StatCard
           label="Avg Cost / Request"
           value={formatCents(summary.avgCostCents)}
@@ -96,35 +96,35 @@ export default async function OverviewPage({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Spend</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
+            <p className="text-[10px] text-muted-foreground">
               <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#7c3aed]" /> Input</span>
               <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a78bfa]" /> Output</span>
             </p>
           </div>
           <CostChart data={timeseries} />
         </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Request Volume</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Requests per hour</p>
+            <p className="text-[10px] text-muted-foreground">Requests per hour</p>
           </div>
           <RequestChart data={timeseries} />
         </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">By Provider</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Spend distribution</p>
+            <p className="text-[10px] text-muted-foreground">Spend distribution</p>
           </div>
           <ProviderChart data={providerData} />
         </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Token Usage</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">
+            <p className="text-[10px] text-muted-foreground">
               <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3b82f6]" /> Input</span>
               <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#06b6d4]" /> Output</span>
             </p>
@@ -133,9 +133,9 @@ export default async function OverviewPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Cost by Model</h2>
           </div>
           {models.length === 0 ? (
@@ -144,21 +144,21 @@ export default async function OverviewPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-muted-foreground">
-                  <th className="pb-2 font-medium">Model</th>
-                  <th className="pb-2 font-medium text-right">Reqs</th>
-                  <th className="pb-2 font-medium text-right">Spend</th>
-                  <th className="pb-2 font-medium text-right">Avg ms</th>
-                  <th className="pb-2 font-medium text-right">$/1k tok</th>
+                  <th className="pb-1 font-medium">Model</th>
+                  <th className="pb-1 font-medium text-right">Reqs</th>
+                  <th className="pb-1 font-medium text-right">Spend</th>
+                  <th className="pb-1 font-medium text-right">Avg ms</th>
+                  <th className="pb-1 font-medium text-right">$/1k tok</th>
                 </tr>
               </thead>
               <tbody>
                 {models.slice(0, 8).map((m) => (
                   <tr key={m.model} className="border-t border-[#1a1a1a]">
-                    <td className="py-1.5 font-mono text-xs">{m.model}</td>
-                    <td className="py-1.5 text-right text-muted-foreground">{m.requests}</td>
-                    <td className="py-1.5 text-right font-mono">{formatCents(m.spendCents)}</td>
-                    <td className="py-1.5 text-right text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
-                    <td className="py-1.5 text-right font-mono text-muted-foreground">{formatCents(m.costPer1kTokens)}</td>
+                    <td className="py-1 font-mono text-xs">{m.model}</td>
+                    <td className="py-1 text-right text-muted-foreground">{m.requests}</td>
+                    <td className="py-1 text-right font-mono">{formatCents(m.spendCents)}</td>
+                    <td className="py-1 text-right text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
+                    <td className="py-1 text-right font-mono text-muted-foreground">{formatCents(m.costPer1kTokens)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -166,8 +166,8 @@ export default async function OverviewPage({
           )}
         </div>
 
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Recent Sessions</h2>
           </div>
           {sessions.length === 0 ? (
@@ -176,19 +176,19 @@ export default async function OverviewPage({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-muted-foreground">
-                  <th className="pb-2 font-medium">Session</th>
-                  <th className="pb-2 font-medium text-right">Reqs</th>
-                  <th className="pb-2 font-medium text-right">Cost</th>
-                  <th className="pb-2 font-medium text-right">Providers</th>
+                  <th className="pb-1 font-medium">Session</th>
+                  <th className="pb-1 font-medium text-right">Reqs</th>
+                  <th className="pb-1 font-medium text-right">Cost</th>
+                  <th className="pb-1 font-medium text-right">Providers</th>
                 </tr>
               </thead>
               <tbody>
                 {sessions.slice(0, 8).map((s) => (
                   <tr key={s.sessionId} className="border-t border-[#1a1a1a]">
-                    <td className="max-w-[180px] truncate py-1.5 font-mono text-xs">{s.sessionId}</td>
-                    <td className="py-1.5 text-right text-muted-foreground">{s.requestCount}</td>
-                    <td className="py-1.5 text-right font-mono">{formatCents(s.totalCostCents)}</td>
-                    <td className="py-1.5 text-right text-xs text-muted-foreground">{s.providers.join(', ')}</td>
+                    <td className="max-w-[180px] truncate py-1 font-mono text-xs">{s.sessionId}</td>
+                    <td className="py-1 text-right text-muted-foreground">{s.requestCount}</td>
+                    <td className="py-1 text-right font-mono">{formatCents(s.totalCostCents)}</td>
+                    <td className="py-1 text-right text-xs text-muted-foreground">{s.providers.join(', ')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -197,8 +197,8 @@ export default async function OverviewPage({
         </div>
       </div>
 
-      <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-        <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+      <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+        <div className="mb-1 border-b border-[#1a1a1a] pb-1">
           <h2 className="text-xs font-medium">Recent Requests</h2>
         </div>
         <RequestFeed requests={recent} />

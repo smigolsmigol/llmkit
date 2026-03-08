@@ -18,6 +18,9 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
     const buckets = bucketByHour(data);
     if (!buckets.length) return null;
 
+    const hasCost = buckets.some((b) => b.costCents > 0);
+    if (!hasCost) return null;
+
     const bounds = dataBounds(buckets);
     const inputData: [number, number][] = [];
     const outputData: [number, number][] = [];
@@ -37,7 +40,7 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 44, right: 8, top: 8, bottom: 28 },
+      grid: { left: 44, right: 8, top: 6, bottom: 24 },
       xAxis: {
         type: 'time' as const,
         min: bounds.min,
@@ -49,6 +52,7 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
       },
       yAxis: {
         type: 'value' as const,
+        min: 0,
         axisLine: { show: false },
         axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
@@ -105,11 +109,11 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
 
   if (!data.length || !option) {
     return (
-      <div className="flex h-[200px] items-center justify-center text-xs text-muted-foreground">
+      <div className="flex h-[160px] items-center justify-center text-xs text-muted-foreground">
         No spend data yet
       </div>
     );
   }
 
-  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 200, width: '100%' }} />;
+  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 160, width: '100%' }} />;
 }
