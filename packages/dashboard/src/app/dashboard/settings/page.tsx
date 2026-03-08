@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { getBudgets, getAccount } from '@/lib/queries';
 import { BudgetManager } from '@/components/budget-manager';
+import { McpSetup } from '@/components/mcp-setup';
 
 const planLabels: Record<string, string> = {
   free: 'Free',
@@ -84,6 +85,12 @@ export default async function SettingsPage() {
           </div>
 
           <BudgetManager budgets={budgets} />
+
+          <McpSetup
+            userId={userId}
+            supabaseUrl={process.env.SUPABASE_URL || ''}
+            supabaseAnonKey={process.env.SUPABASE_ANON_KEY || ''}
+          />
 
           <div className="space-y-4">
             <h2 className="text-sm font-medium text-muted-foreground">Account</h2>

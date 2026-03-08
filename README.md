@@ -225,11 +225,18 @@ Query your AI costs from Claude Code or Cursor.
   "mcpServers": {
     "llmkit": {
       "command": "npx",
-      "args": ["@f3d1/llmkit-mcp-server"]
+      "args": ["@f3d1/llmkit-mcp-server"],
+      "env": {
+        "LLMKIT_SUPABASE_URL": "https://cwfjofyplyfjtanzavsm.supabase.co",
+        "LLMKIT_SUPABASE_KEY": "your-anon-key",
+        "LLMKIT_USER_ID": "your-user-id"
+      }
     }
   }
 }
 ```
+
+Credentials are on the Settings page in the [dashboard](https://dashboard-two-zeta-54.vercel.app).
 
 Tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`.
 

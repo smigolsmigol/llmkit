@@ -223,7 +223,7 @@ async function handleBudgetStatus(args: Record<string, unknown> | undefined) {
 
   const lines = ['Budget Status', '─────────────────────────'];
   for (const b of filtered) {
-    // rough: total spend as a proxy for budget usage (real usage tracked in KV)
+    // approximate: summing request costs as a proxy for DO-tracked budget usage
     const totalSpend = [...spendByKey.values()].reduce((a, c) => a + c, 0);
     const pct = b.limit_cents > 0 ? Math.round((totalSpend / b.limit_cents) * 100) : 0;
     const remaining = Math.max(0, b.limit_cents - totalSpend);
