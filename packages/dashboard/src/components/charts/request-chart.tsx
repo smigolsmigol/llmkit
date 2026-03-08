@@ -15,7 +15,7 @@ export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
 
     return {
       backgroundColor: 'transparent',
-      grid: { left: 32, right: 8, top: 8, bottom: 28 },
+      grid: { left: 28, right: 8, top: 6, bottom: 24 },
       xAxis: {
         type: 'time' as const,
         min: bounds.min,
@@ -27,6 +27,7 @@ export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
       },
       yAxis: {
         type: 'value' as const,
+        min: 0,
         axisLine: { show: false },
         axisTick: { show: false },
         splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
@@ -62,11 +63,11 @@ export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
 
   if (!data.length || !option) {
     return (
-      <div className="flex h-[200px] items-center justify-center text-xs text-muted-foreground">
+      <div className="flex h-[160px] items-center justify-center text-xs text-muted-foreground">
         No request data yet
       </div>
     );
   }
 
-  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 200, width: '100%' }} />;
+  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 160, width: '100%' }} />;
 }

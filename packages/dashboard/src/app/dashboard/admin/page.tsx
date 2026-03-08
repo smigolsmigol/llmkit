@@ -39,16 +39,16 @@ export default async function AdminPage({
   const totalTokens = stats.totalInputTokens + stats.totalOutputTokens;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Admin</h1>
         <TimeRangeSelector />
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
-        <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-4">
+      <div className="grid grid-cols-4 gap-1.5">
+        <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
           <p className="text-xs text-muted-foreground">Platform Spend</p>
-          <p className="mt-1 font-mono text-2xl font-bold text-primary">
+          <p className="mt-0.5 font-mono text-2xl font-bold text-primary">
             {formatCents(stats.totalSpendCents)}
           </p>
         </div>
@@ -61,7 +61,7 @@ export default async function AdminPage({
         />
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-1.5">
         <StatCard
           label="Active Keys (today)"
           value={String(stats.activeKeysToday)}
@@ -84,52 +84,52 @@ export default async function AdminPage({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+      <div className="grid grid-cols-2 gap-1.5">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Platform Spend</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Hourly aggregation, all users</p>
+            <p className="text-[10px] text-muted-foreground">Hourly, all users</p>
           </div>
           <CostChart data={timeseries} />
         </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Request Volume</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Requests per hour, platform-wide</p>
+            <p className="text-[10px] text-muted-foreground">Per hour, platform-wide</p>
           </div>
           <RequestChart data={timeseries} />
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1.5">
         {topModels.length > 0 && (
-          <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-            <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+          <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="mb-1 border-b border-[#1a1a1a] pb-1">
               <h2 className="text-xs font-medium">Top Models</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-muted-foreground">
-                    <th className="pb-2">Model</th>
-                    <th className="pb-2">Provider</th>
-                    <th className="pb-2 text-right">Reqs</th>
-                    <th className="pb-2 text-right">Spend</th>
-                    <th className="pb-2 text-right">Avg ms</th>
-                    <th className="pb-2 text-right">Tok/req</th>
-                    <th className="pb-2 text-right">$/1k tok</th>
+                    <th className="pb-1">Model</th>
+                    <th className="pb-1">Provider</th>
+                    <th className="pb-1 text-right">Reqs</th>
+                    <th className="pb-1 text-right">Spend</th>
+                    <th className="pb-1 text-right">Avg ms</th>
+                    <th className="pb-1 text-right">Tok/req</th>
+                    <th className="pb-1 text-right">$/1k tok</th>
                   </tr>
                 </thead>
                 <tbody>
                   {topModels.slice(0, 10).map((m) => (
                     <tr key={m.model} className="border-t border-[#1a1a1a]">
-                      <td className="py-1.5 font-mono text-xs">{m.model}</td>
-                      <td className="py-1.5 text-xs text-muted-foreground">{m.provider}</td>
-                      <td className="py-1.5 text-right text-xs">{m.requests}</td>
-                      <td className="py-1.5 text-right font-mono text-xs">{formatCents(m.spendCents)}</td>
-                      <td className="py-1.5 text-right text-xs text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
-                      <td className="py-1.5 text-right text-xs text-muted-foreground">{m.avgTokensPerReq.toLocaleString()}</td>
-                      <td className="py-1.5 text-right font-mono text-xs">{formatCents(m.costPer1kTokens)}</td>
+                      <td className="py-1 font-mono text-xs">{m.model}</td>
+                      <td className="py-1 text-xs text-muted-foreground">{m.provider}</td>
+                      <td className="py-1 text-right text-xs">{m.requests}</td>
+                      <td className="py-1 text-right font-mono text-xs">{formatCents(m.spendCents)}</td>
+                      <td className="py-1 text-right text-xs text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
+                      <td className="py-1 text-right text-xs text-muted-foreground">{m.avgTokensPerReq.toLocaleString()}</td>
+                      <td className="py-1 text-right font-mono text-xs">{formatCents(m.costPer1kTokens)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -139,33 +139,33 @@ export default async function AdminPage({
         )}
 
         {userBreakdown.length > 0 && (
-          <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-            <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+          <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="mb-1 border-b border-[#1a1a1a] pb-1">
               <h2 className="text-xs font-medium">Per-User Breakdown</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-muted-foreground">
-                    <th className="pb-2">User</th>
-                    <th className="pb-2">Plan</th>
-                    <th className="pb-2 text-right">Reqs</th>
-                    <th className="pb-2 text-right">Spend</th>
-                    <th className="pb-2 text-right">Errs</th>
-                    <th className="pb-2 text-right">Avg ms</th>
+                    <th className="pb-1">User</th>
+                    <th className="pb-1">Plan</th>
+                    <th className="pb-1 text-right">Reqs</th>
+                    <th className="pb-1 text-right">Spend</th>
+                    <th className="pb-1 text-right">Errs</th>
+                    <th className="pb-1 text-right">Avg ms</th>
                   </tr>
                 </thead>
                 <tbody>
                   {userBreakdown.map((u) => (
                     <tr key={u.userId} className="border-t border-[#1a1a1a]">
-                      <td className="py-1.5 font-mono text-xs" title={u.userId}>
+                      <td className="py-1 font-mono text-xs" title={u.userId}>
                         {u.note || u.userId.slice(0, 12) + '...'}
                       </td>
-                      <td className="py-1.5 text-xs text-muted-foreground">{u.plan}</td>
-                      <td className="py-1.5 text-right text-xs">{u.requests}</td>
-                      <td className="py-1.5 text-right font-mono text-xs">{formatCents(u.spendCents)}</td>
-                      <td className="py-1.5 text-right text-xs text-red-400">{u.errors || ''}</td>
-                      <td className="py-1.5 text-right text-xs">{u.avgLatencyMs}</td>
+                      <td className="py-1 text-xs text-muted-foreground">{u.plan}</td>
+                      <td className="py-1 text-right text-xs">{u.requests}</td>
+                      <td className="py-1 text-right font-mono text-xs">{formatCents(u.spendCents)}</td>
+                      <td className="py-1 text-right text-xs text-red-400">{u.errors || ''}</td>
+                      <td className="py-1 text-right text-xs">{u.avgLatencyMs}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -175,8 +175,8 @@ export default async function AdminPage({
         )}
       </div>
 
-      <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
-        <div className="mb-2 border-b border-[#1a1a1a] pb-2">
+      <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+        <div className="mb-1 border-b border-[#1a1a1a] pb-1">
           <h2 className="text-xs font-medium">Accounts ({accounts.length})</h2>
         </div>
         <AccountTable accounts={accounts} />
