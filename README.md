@@ -75,15 +75,21 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 ```
 
-Cost data comes back in response headers:
+Cost data comes back in response headers (`x-llmkit-cost`, `x-llmkit-provider`, `x-llmkit-model`). Access them via the raw response:
 
 ```python
-# access via httpx response headers
-print(response.headers.get("x-llmkit-cost"))      # "0.0031"
-print(response.headers.get("x-llmkit-provider"))   # "openai"
+raw = client.chat.completions.with_raw_response.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "hello"}],
+)
+print(raw.headers.get("x-llmkit-cost"))      # "0.0031"
+print(raw.headers.get("x-llmkit-provider"))   # "openai"
+
+response = raw.parse()  # get the ChatCompletion as usual
+print(response.choices[0].message.content)
 ```
 
-Or skip code changes entirely with env vars:
+Or skip code changes entirely with env vars (requires provider keys stored in the [dashboard](https://dashboard-two-zeta-54.vercel.app) Provider Keys tab):
 
 ```bash
 export OPENAI_BASE_URL=https://llmkit-proxy.smigolsmigol.workers.dev/v1
@@ -92,6 +98,10 @@ python my_agent.py
 ```
 
 ## TypeScript SDK
+
+```bash
+npm install @f3d1/llmkit-sdk
+```
 
 ```typescript
 import { LLMKit } from '@f3d1/llmkit-sdk'
@@ -153,6 +163,10 @@ console.log(tracker.bySession())   // breakdown by session
 ```
 
 ## Vercel AI SDK
+
+```bash
+npm install @f3d1/llmkit-ai-sdk-provider ai
+```
 
 ```typescript
 import { generateText } from 'ai'
@@ -240,17 +254,18 @@ Tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmki
 
 ## Testing
 
-114 tests across the monorepo, run on every push via GitHub Actions.
+160 tests across the monorepo, run on every push via GitHub Actions.
 
 | Suite | What it covers |
 |-------|----------------|
-| Unit (29) | Provider adapters, cost calculation, fallback routing, error handling |
-| Crypto (10) | AES-GCM encrypt/decrypt roundtrips, tampered ciphertext, AAD context |
-| Budget (18) | Cost estimation, period resets, max_tokens clamping, affordable output calculation |
-| Reservation (10) | Concurrent budget checks, reservation settle/release, session scope, lazy init |
-| Budget bypass (16) | Adversarial vectors: session hopping, period manipulation, replay attacks, stale reservations |
-| CLI parser (15) | OpenAI/Anthropic response and stream parsing, edge cases |
-| SDK tracker (16) | CostTracker aggregation, listeners, multi-session, provider/model grouping |
+| Unit (30) | Provider adapters, cost calculation, fallback routing, error handling |
+| Crypto (11) | AES-GCM encrypt/decrypt roundtrips, tampered ciphertext, AAD context |
+| Budget (19) | Cost estimation, period resets, max_tokens clamping, affordable output calculation |
+| Reservation (11) | Concurrent budget checks, reservation settle/release, session scope, lazy init |
+| Budget bypass (17) | Adversarial vectors: session hopping, period manipulation, replay attacks, stale reservations |
+| Break (21) | Error handling, malformed input, edge cases, status code validation |
+| CLI parser (16) | OpenAI/Anthropic response and stream parsing, edge cases |
+| SDK tracker (17) | CostTracker aggregation, listeners, multi-session, provider/model grouping |
 
 Budget enforcement is additionally tested with live concurrency against the deployed proxy, not just mocks.
 
