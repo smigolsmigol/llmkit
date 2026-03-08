@@ -1,5 +1,5 @@
 import type { ProviderName } from '@f3d1/llmkit-shared';
-import { BudgetExceededError, ValidationError } from '@f3d1/llmkit-shared';
+import { BudgetExceededError, ValidationError, inferProvider } from '@f3d1/llmkit-shared';
 import { createMiddleware } from 'hono/factory';
 import type { BudgetDO } from '../do/budget-do';
 import type { Env } from '../env';
@@ -28,7 +28,8 @@ export function budgetCheck() {
     validateSessionId(sessionId);
 
     const body = await parseBody(c);
-    const provider = (c.req.header('x-llmkit-provider') || body.provider || 'anthropic') as ProviderName;
+    const model = body.model as string;
+    const provider = (c.req.header('x-llmkit-provider') || body.provider || inferProvider(model) || 'openai') as ProviderName;
     c.set('requestProvider', provider);
     if (body.model) c.set('requestModel', body.model as string);
     const estimated = await estimateCost(body, provider);

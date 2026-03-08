@@ -236,5 +236,31 @@ export function calculateCost(
   }).totalCost;
 }
 
+const MODEL_PREFIXES: [string, ProviderName][] = [
+  ['gpt-', 'openai'],
+  ['o1-', 'openai'],
+  ['o3-', 'openai'],
+  ['o4-', 'openai'],
+  ['chatgpt-', 'openai'],
+  ['claude-', 'anthropic'],
+  ['gemini-', 'gemini'],
+  ['deepseek-', 'deepseek'],
+  ['mistral-', 'mistral'],
+  ['mixtral-', 'mistral'],
+  ['codestral-', 'mistral'],
+  ['pixtral-', 'mistral'],
+  ['grok-', 'xai'],
+  ['llama-', 'groq'],
+  ['llama3', 'groq'],
+];
+
+export function inferProvider(model: string): ProviderName | undefined {
+  const lower = model.toLowerCase();
+  for (const [prefix, provider] of MODEL_PREFIXES) {
+    if (lower.startsWith(prefix)) return provider;
+  }
+  return undefined;
+}
+
 export { PRICING };
 export type { ModelPricing, PricingTable };

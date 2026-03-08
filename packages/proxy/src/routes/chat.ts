@@ -5,6 +5,7 @@ import {
   type ProviderName,
   type TokenUsage,
   ValidationError,
+  inferProvider,
 } from '@f3d1/llmkit-shared';
 import type { Context } from 'hono';
 import { Hono } from 'hono';
@@ -50,7 +51,8 @@ providerRouter.post('/chat/completions', async (c) => {
   validateBody(body);
 
   const wantStream = body.stream === true;
-  const provider = (c.req.header('x-llmkit-provider') || body.provider || 'anthropic') as ProviderName;
+  const model = body.model as string;
+  const provider = (c.req.header('x-llmkit-provider') || body.provider || inferProvider(model) || 'openai') as ProviderName;
 
   const fallbackHeader = c.req.header('x-llmkit-fallback');
   const chain: ProviderName[] = fallbackHeader
