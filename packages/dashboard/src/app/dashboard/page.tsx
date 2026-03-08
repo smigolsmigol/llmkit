@@ -3,6 +3,8 @@ import { getTotalSpend, getSpendByProvider, getDailySpend, getRecentRequests, ge
 import { StatCard } from '@/components/stat-card';
 import { CostChart } from '@/components/charts/cost-chart';
 import { ProviderChart } from '@/components/charts/provider-chart';
+import { RequestChart } from '@/components/charts/request-chart';
+import { TokenChart } from '@/components/charts/token-chart';
 import { TimeRangeSelector } from '@/components/time-range-selector';
 import { RequestFeed } from '@/components/request-feed';
 import { formatCents } from '@/lib/format';
@@ -31,6 +33,9 @@ export default async function OverviewPage({
   const chartData = dailySpend.map((d) => ({
     date: d.date,
     cost: d.costCents / 100,
+    requests: d.requests,
+    inputTokens: d.inputTokens,
+    outputTokens: d.outputTokens,
   }));
 
   const providerData = providers
@@ -99,14 +104,29 @@ export default async function OverviewPage({
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 text-sm font-medium text-muted-foreground">Daily Spend</h2>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="mb-1 text-sm font-medium">Daily Spend</h2>
+          <p className="mb-3 text-xs text-muted-foreground">Cost per day in USD</p>
           <CostChart data={chartData} />
         </div>
         <div className="rounded-lg border border-border bg-card p-5">
-          <h2 className="mb-4 text-sm font-medium text-muted-foreground">By Provider</h2>
+          <h2 className="mb-1 text-sm font-medium">Request Volume</h2>
+          <p className="mb-3 text-xs text-muted-foreground">API calls per day</p>
+          <RequestChart data={chartData} />
+        </div>
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="mb-1 text-sm font-medium">By Provider</h2>
+          <p className="mb-3 text-xs text-muted-foreground">Spend distribution</p>
           <ProviderChart data={providerData} />
+        </div>
+        <div className="rounded-lg border border-border bg-card p-5">
+          <h2 className="mb-1 text-sm font-medium">Token Usage</h2>
+          <p className="mb-3 text-xs text-muted-foreground">
+            <span className="mr-3"><span className="inline-block h-2 w-2 rounded-full bg-[#3b82f6]" /> Input</span>
+            <span><span className="inline-block h-2 w-2 rounded-full bg-[#06b6d4]" /> Output</span>
+          </p>
+          <TokenChart data={chartData} />
         </div>
       </div>
 

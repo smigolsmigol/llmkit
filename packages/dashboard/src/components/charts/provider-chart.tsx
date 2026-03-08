@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts';
 
-const COLORS = ['#7c3aed', '#14b8a6', '#f59e0b', '#a855f7', '#f97316'];
+const COLORS = ['#7c3aed', '#14b8a6', '#3b82f6', '#a855f7', '#06b6d4'];
 
 interface DataPoint {
   provider: string;

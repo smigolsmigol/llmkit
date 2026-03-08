@@ -48,6 +48,9 @@ interface ProviderStats {
 interface DailySpend {
   date: string;
   costCents: number;
+  requests: number;
+  inputTokens: number;
+  outputTokens: number;
 }
 
 export async function getRecentRequests(userId: string, limit = 20): Promise<RequestRow[]> {
@@ -93,15 +96,20 @@ export async function getDailySpend(userId: string, days = 30): Promise<DailySpe
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
 
-  const byDay = new Map<string, number>();
+  const byDay = new Map<string, { costCents: number; requests: number; inputTokens: number; outputTokens: number }>();
   for (const req of requests) {
     const date = req.created_at.slice(0, 10);
     if (new Date(date) < cutoff) continue;
-    byDay.set(date, (byDay.get(date) || 0) + Number(req.cost_cents));
+    const d = byDay.get(date) || { costCents: 0, requests: 0, inputTokens: 0, outputTokens: 0 };
+    d.costCents += Number(req.cost_cents);
+    d.requests++;
+    d.inputTokens += req.input_tokens;
+    d.outputTokens += req.output_tokens;
+    byDay.set(date, d);
   }
 
   return Array.from(byDay.entries())
-    .map(([date, costCents]) => ({ date, costCents }))
+    .map(([date, d]) => ({ date, ...d }))
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
