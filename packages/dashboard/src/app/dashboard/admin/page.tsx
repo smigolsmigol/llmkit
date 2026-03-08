@@ -87,15 +87,15 @@ export default async function AdminPage({
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="mb-2 border-b border-[#1a1a1a] pb-2">
-            <h2 className="text-xs font-medium">Daily Platform Spend</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">All users combined</p>
+            <h2 className="text-xs font-medium">Platform Spend</h2>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">Hourly aggregation, all users</p>
           </div>
           <CostChart data={timeseries} />
         </div>
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="mb-2 border-b border-[#1a1a1a] pb-2">
-            <h2 className="text-xs font-medium">Daily Request Volume</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">Platform-wide API calls</p>
+            <h2 className="text-xs font-medium">Request Volume</h2>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">Requests per hour, platform-wide</p>
           </div>
           <RequestChart data={timeseries} />
         </div>
