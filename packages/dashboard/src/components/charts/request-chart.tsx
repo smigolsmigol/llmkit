@@ -35,14 +35,14 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
 export function RequestChart({ data }: { data: DataPoint[] }) {
   if (!data.length) {
     return (
-      <div className="flex h-[300px] items-center justify-center text-sm text-muted-foreground">
+      <div className="flex h-[200px] items-center justify-center text-sm text-muted-foreground">
         No request data yet
       </div>
     );
   }
 
   return (
-    <ResponsiveContainer width="100%" height={300}>
+    <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id="requestGradient" x1="0" y1="0" x2="0" y2="1">
