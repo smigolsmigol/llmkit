@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@f3d1/llmkit-shared": "workspace:*",
-    "hono": "^4.7.0"
+    "hono": "^4.12.4"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250214.0",
