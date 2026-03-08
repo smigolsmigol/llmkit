@@ -9,9 +9,6 @@ import { budgetCheck, releaseReservation } from './middleware/budget';
 import { costLogger } from './middleware/logger';
 import { rateLimit } from './middleware/ratelimit';
 import { formatErrorStreak, formatNewUser, notifyTelegram } from './notify';
-
-// per-isolate tracking for new-user notifications (resets on cold start)
-const notifiedUsers = new Set<string>();
 import { analyticsRouter } from './routes/analytics';
 import { providerRouter } from './routes/chat';
 import { keysRouter } from './routes/keys';
@@ -19,6 +16,46 @@ import { mcpRouter } from './routes/mcp';
 
 export { BudgetDO } from './do/budget-do';
 export { RateLimitDO } from './do/ratelimit-do';
+
+// per-isolate tracking for new-user notifications (resets on cold start)
+const notifiedUsers = new Set<string>();
+
+function resolveErrorContext(c: { get: (k: string) => string | undefined; req: { json(): Promise<Record<string, unknown>>; header(n: string): string | undefined } }) {
+  const provider = c.get('requestProvider') || c.req.header('x-llmkit-provider') || 'unknown';
+  const model = c.get('requestModel') || 'unknown';
+  return { provider, model };
+}
+
+async function resolveModelFromBody(c: { req: { json(): Promise<Record<string, unknown>> } }, ctx: { provider: string; model: string }) {
+  if (ctx.model !== 'unknown') return;
+  try {
+    const b = await c.req.json();
+    ctx.model = (b?.model as string) || 'unknown';
+    if (ctx.provider === 'unknown') ctx.provider = (b?.provider as string) || inferProvider(ctx.model) || 'unknown';
+  } catch {}
+}
+
+function sendErrorNotifications(
+  ctx: ExecutionContext,
+  env: Env['Bindings'],
+  userId: string,
+  apiKey: string,
+  code: string,
+  model: string,
+  provider: string,
+) {
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
+  const { TELEGRAM_BOT_TOKEN: token, TELEGRAM_CHAT_ID: chat } = env;
+
+  if (!notifiedUsers.has(userId)) {
+    notifiedUsers.add(userId);
+    ctx.waitUntil(notifyTelegram(token, chat, formatNewUser(userId, apiKey)));
+  }
+
+  if (code !== 'RATE_LIMIT' && code !== 'AUTH_ERROR') {
+    ctx.waitUntil(notifyTelegram(token, chat, formatErrorStreak(userId, apiKey, code, model, provider, 1)));
+  }
+}
 
 const app = new Hono<Env>();
 
@@ -33,22 +70,19 @@ app.onError(async (err, c) => {
   const code = err instanceof LLMKitError ? err.code : 'INTERNAL_ERROR';
   const status = err instanceof LLMKitError ? err.statusCode : 500;
 
-  // log failed requests to Supabase (only if auth succeeded, so we have user context)
   const apiKeyId = c.get('apiKeyId');
   const userId = c.get('userId');
   if (apiKeyId && userId && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
-    let provider = c.get('requestProvider') || c.req.header('x-llmkit-provider') || 'unknown';
-    let model = c.get('requestModel') || 'unknown';
-    if (model === 'unknown') {
-      try { const b = await c.req.json(); model = b?.model || 'unknown'; if (provider === 'unknown') provider = b?.provider || inferProvider(model) || 'unknown'; } catch {}
-    }
+    const ctx = resolveErrorContext(c);
+    await resolveModelFromBody(c, ctx);
+
     c.executionCtx.waitUntil(
       logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
         user_id: userId,
         api_key_id: apiKeyId,
         session_id: c.req.header('x-llmkit-session-id') || null,
-        provider,
-        model,
+        provider: ctx.provider,
+        model: ctx.model,
         input_tokens: 0,
         output_tokens: 0,
         cache_read_tokens: 0,
@@ -60,27 +94,9 @@ app.onError(async (err, c) => {
       }),
     );
 
-    if (c.env.TELEGRAM_BOT_TOKEN && c.env.TELEGRAM_CHAT_ID) {
-      const tg = { token: c.env.TELEGRAM_BOT_TOKEN, chat: c.env.TELEGRAM_CHAT_ID };
-
-      // notify on first-ever request from a new user
-      if (!notifiedUsers.has(userId)) {
-        notifiedUsers.add(userId);
-        c.executionCtx.waitUntil(
-          notifyTelegram(tg.token, tg.chat, formatNewUser(userId, c.get('apiKey') || '???')),
-        );
-      }
-
-      // notify on user errors (skip rate limit, auth - those are normal)
-      if (code !== 'RATE_LIMIT' && code !== 'AUTH_ERROR') {
-        c.executionCtx.waitUntil(
-          notifyTelegram(tg.token, tg.chat, formatErrorStreak(userId, c.get('apiKey') || '???', code, model, provider, 1)),
-        );
-      }
-    }
+    sendErrorNotifications(c.executionCtx, c.env, userId, c.get('apiKey') || '???', code, ctx.model, ctx.provider);
   }
 
-  // release budget reservation on error (don't lock up budget for failed requests)
   const budgetId = c.get('budgetId');
   const reservationId = c.get('budgetReservationId');
   if (budgetId && reservationId) {

@@ -52,34 +52,41 @@ export async function trackRequest(p: TrackParams): Promise<void> {
   }
 
   if (p.apiKeyId && p.userId && p.env.SUPABASE_URL && p.env.SUPABASE_KEY) {
-    const row: RequestInsert = {
-      user_id: p.userId,
-      api_key_id: p.apiKeyId,
-      session_id: p.sessionId || null,
-      provider: p.provider,
-      model: p.model,
-      input_tokens: p.usage.inputTokens,
-      output_tokens: p.usage.outputTokens,
-      cache_read_tokens: p.usage.cacheReadTokens || 0,
-      cache_write_tokens: p.usage.cacheWriteTokens || 0,
-      cost_cents: +(p.cost.totalCost * 100).toFixed(4),
-      latency_ms: p.latencyMs,
-      status: 'success',
-      error_code: null,
-    };
-    p.ctx.waitUntil(logRequest(p.env.SUPABASE_URL, p.env.SUPABASE_KEY, row));
+    persistAndNotify(p as TrackParams & { userId: string; apiKeyId: string });
+  }
+}
 
-    // notify admin on first successful request from a user (per-isolate dedup)
-    if (p.env.TELEGRAM_BOT_TOKEN && p.env.TELEGRAM_CHAT_ID && !seenUsers.has(p.userId)) {
-      seenUsers.add(p.userId);
-      p.ctx.waitUntil(
-        notifyTelegram(
-          p.env.TELEGRAM_BOT_TOKEN,
-          p.env.TELEGRAM_CHAT_ID,
-          formatFirstSuccess(p.userId, p.provider, p.model, p.cost.totalCost),
-        ),
-      );
-    }
+function persistAndNotify(p: TrackParams & { userId: string; apiKeyId: string }) {
+  const url = p.env.SUPABASE_URL;
+  const key = p.env.SUPABASE_KEY;
+  if (!url || !key) return;
+
+  const row: RequestInsert = {
+    user_id: p.userId,
+    api_key_id: p.apiKeyId,
+    session_id: p.sessionId || null,
+    provider: p.provider,
+    model: p.model,
+    input_tokens: p.usage.inputTokens,
+    output_tokens: p.usage.outputTokens,
+    cache_read_tokens: p.usage.cacheReadTokens || 0,
+    cache_write_tokens: p.usage.cacheWriteTokens || 0,
+    cost_cents: +(p.cost.totalCost * 100).toFixed(4),
+    latency_ms: p.latencyMs,
+    status: 'success',
+    error_code: null,
+  };
+  p.ctx.waitUntil(logRequest(url, key, row));
+
+  if (p.env.TELEGRAM_BOT_TOKEN && p.env.TELEGRAM_CHAT_ID && !seenUsers.has(p.userId)) {
+    seenUsers.add(p.userId);
+    p.ctx.waitUntil(
+      notifyTelegram(
+        p.env.TELEGRAM_BOT_TOKEN,
+        p.env.TELEGRAM_CHAT_ID,
+        formatFirstSuccess(p.userId, p.provider, p.model, p.cost.totalCost),
+      ),
+    );
   }
 }
 
