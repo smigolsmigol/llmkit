@@ -32,6 +32,9 @@ jobs:
       - name: knip
         run: npx knip --exclude types,exports
 
+      - name: build publishable packages
+        run: pnpm turbo build --filter=@f3d1/llmkit-shared --filter=@f3d1/llmkit-sdk --filter=@f3d1/llmkit-cli --filter=@f3d1/llmkit-ai-sdk-provider --filter=@f3d1/llmkit-mcp-server
+
       - name: publint
         run: |
           npx publint packages/shared
