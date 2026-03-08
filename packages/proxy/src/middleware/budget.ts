@@ -29,6 +29,8 @@ export function budgetCheck() {
 
     const body = await parseBody(c);
     const provider = (c.req.header('x-llmkit-provider') || body.provider || 'anthropic') as ProviderName;
+    c.set('requestProvider', provider);
+    if (body.model) c.set('requestModel', body.model as string);
     const estimated = await estimateCost(body, provider);
 
     const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName(budgetId));

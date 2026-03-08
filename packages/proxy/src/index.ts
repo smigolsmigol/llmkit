@@ -32,13 +32,15 @@ app.onError((err, c) => {
   const apiKeyId = c.get('apiKeyId');
   const userId = c.get('userId');
   if (apiKeyId && userId && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
+    const provider = c.get('requestProvider') || c.req.header('x-llmkit-provider') || 'unknown';
+    const model = c.get('requestModel') || 'unknown';
     c.executionCtx.waitUntil(
       logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
         user_id: userId,
         api_key_id: apiKeyId,
         session_id: c.req.header('x-llmkit-session-id') || null,
-        provider: c.req.header('x-llmkit-provider') || 'unknown',
-        model: 'unknown',
+        provider,
+        model,
         input_tokens: 0,
         output_tokens: 0,
         cache_read_tokens: 0,

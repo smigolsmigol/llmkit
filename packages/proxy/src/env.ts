@@ -29,6 +29,8 @@ export type Env = {
     budgetMaxTokens?: number;
     budgetReservationId?: string;
     rpmLimit?: number;
+    requestModel?: string;
+    requestProvider?: string;
     llmkit_response?: ResponseMeta;
   };
 };
