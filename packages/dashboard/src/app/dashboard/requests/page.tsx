@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
+import Link from 'next/link';
 import { getRequestsPaginated, getDistinctProviders, getDistinctModels, getRequestSummary } from '@/lib/queries';
 import type { RequestFilters } from '@/lib/queries';
 import { formatCents, formatDate } from '@/lib/format';
@@ -109,7 +110,11 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               const ok = !req.error_code;
               return (
                 <tr key={req.id} className="border-b border-border/50 transition-colors hover:bg-secondary/50">
-                  <td className="px-4 py-2.5 text-muted-foreground">{formatDate(req.created_at)}</td>
+                  <td className="px-4 py-2.5 text-muted-foreground">
+                    <Link href={`/dashboard/requests/${req.id}`} className="hover:underline">
+                      {formatDate(req.created_at)}
+                    </Link>
+                  </td>
                   <td className="px-4 py-2.5 font-mono text-xs">{req.provider}</td>
                   <td className="px-4 py-2.5 font-mono text-xs text-foreground">{req.model}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">

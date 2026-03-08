@@ -1,5 +1,10 @@
 // thin PostgREST client for Supabase - zero deps, just fetch
 
+export interface BudgetRow {
+  limit_cents: number;
+  period: 'daily' | 'weekly' | 'monthly' | 'total';
+}
+
 export interface ApiKeyRow {
   id: string;
   user_id: string;
@@ -7,6 +12,8 @@ export interface ApiKeyRow {
   key_prefix: string;
   name: string;
   budget_id: string | null;
+  budgets: BudgetRow | null;
+  rpm_limit: number;
   created_at: string;
   revoked_at: string | null;
 }
@@ -69,7 +76,7 @@ export async function findApiKey(
   const res = await postgrest(
     url,
     serviceKey,
-    `api_keys?key_hash=eq.${keyHash}&revoked_at=is.null&select=id,user_id,key_prefix,name,budget_id`,
+    `api_keys?key_hash=eq.${keyHash}&revoked_at=is.null&select=id,user_id,key_prefix,name,budget_id,rpm_limit,budgets(limit_cents,period)`,
   );
 
   if (!res.ok) {

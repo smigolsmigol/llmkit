@@ -32,9 +32,11 @@ export function budgetCheck() {
     const estimated = await estimateCost(body, provider);
 
     const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName(budgetId));
+    const budgetConfig = c.get('budgetConfig');
     const result = await stub.check({
       sessionId: sessionId || undefined,
       estimatedCents: estimated,
+      budgetConfig,
     });
 
     if (!result.allowed) {
@@ -43,11 +45,16 @@ export function budgetCheck() {
 
     const clamped = await affordableMaxTokens(result.remaining, body, provider);
     if (clamped !== undefined && clamped < 10) {
+      // release reservation before rejecting
+      if (result.reservationId) {
+        await stub.release(result.reservationId);
+      }
       throw new BudgetExceededError(budgetId, result.limitCents, result.usedCents);
     }
 
     c.set('budgetId', budgetId);
     c.set('budgetScope', result.scope);
+    c.set('budgetReservationId', result.reservationId);
     if (clamped !== undefined) c.set('budgetMaxTokens', clamped);
     await next();
   });
@@ -58,11 +65,10 @@ export async function recordUsage(
   budgetId: string,
   sessionId: string | undefined,
   costCents: number,
+  reservationId?: string,
 ): Promise<{ webhookUrl: string; body: Record<string, unknown> } | null> {
-  if (costCents <= 0) return null;
-
   const stub = doNamespace.get(doNamespace.idFromName(budgetId));
-  const result = await stub.record({ sessionId, costCents });
+  const result = await stub.record({ reservationId: reservationId || '', sessionId, costCents });
 
   if (result.alert) {
     return {

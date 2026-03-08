@@ -3,6 +3,7 @@ import { DurableObject } from 'cloudflare:workers';
 export interface BudgetState {
   limitCents: number;
   usedCents: number;
+  reservedCents: number;
   period: 'daily' | 'weekly' | 'monthly' | 'total';
   resetAt: number;
   scope?: 'key' | 'session';
@@ -14,17 +15,20 @@ export interface BudgetState {
 export interface CheckInput {
   sessionId?: string;
   estimatedCents: number;
+  budgetConfig?: { limitCents: number; period: string };
 }
 
 export interface CheckResult {
   allowed: boolean;
   remaining: number;
+  reservationId: string;
   scope: 'key' | 'session';
   limitCents: number;
   usedCents: number;
 }
 
 export interface RecordInput {
+  reservationId: string;
   sessionId?: string;
   costCents: number;
 }
@@ -44,20 +48,50 @@ export interface RecordResult {
 
 const DAY_MS = 86_400_000;
 const SESSION_TTL = 7 * DAY_MS;
+const RESERVATION_TTL = 5 * 60_000; // 5 min - stale reservations auto-expire
 
 export class BudgetDO extends DurableObject {
 
   async check(input: CheckInput): Promise<CheckResult> {
-    const root = await this.ctx.storage.get<BudgetState>('root');
-    if (!root) {
-      return { allowed: true, remaining: Infinity, scope: 'key', limitCents: 0, usedCents: 0 };
+    let root = await this.ctx.storage.get<BudgetState>('root');
+
+    // lazy-init from DB config on first request
+    if (!root && input.budgetConfig) {
+      const period = input.budgetConfig.period as BudgetState['period'];
+      root = {
+        limitCents: input.budgetConfig.limitCents,
+        usedCents: 0,
+        reservedCents: 0,
+        period,
+        resetAt: period !== 'total' ? nextReset(period) : 0,
+      };
+      await this.ctx.storage.put('root', root);
     }
 
+    if (!root) {
+      return { allowed: true, remaining: Infinity, reservationId: '', scope: 'key', limitCents: 0, usedCents: 0 };
+    }
+
+    // sync config changes from DB (limit or period updated in dashboard)
+    if (input.budgetConfig &&
+      (root.limitCents !== input.budgetConfig.limitCents || root.period !== input.budgetConfig.period)) {
+      root.limitCents = input.budgetConfig.limitCents;
+      const newPeriod = input.budgetConfig.period as BudgetState['period'];
+      if (root.period !== newPeriod) {
+        root.period = newPeriod;
+        root.resetAt = newPeriod !== 'total' ? nextReset(newPeriod) : 0;
+      }
+      await this.ctx.storage.put('root', root);
+    }
+
+    // period reset
     if (root.period !== 'total' && root.resetAt > 0 && Date.now() >= root.resetAt) {
       root.usedCents = 0;
+      root.reservedCents = 0;
       root.resetAt = nextReset(root.period);
       root.lastAlertAt = undefined;
       await this.ctx.storage.put('root', root);
+      await this.clearReservations();
     }
 
     let active = root;
@@ -70,6 +104,7 @@ export class BudgetDO extends DurableObject {
         session = {
           limitCents: root.limitCents,
           usedCents: 0,
+          reservedCents: 0,
           period: root.period,
           resetAt: root.resetAt,
           alertThreshold: root.alertThreshold,
@@ -81,32 +116,59 @@ export class BudgetDO extends DurableObject {
       await this.ctx.storage.put(`${sKey}:ts`, Date.now());
       active = session;
 
-      // schedule cleanup alarm if not already set
       const existing = await this.ctx.storage.getAlarm();
       if (!existing) {
         await this.ctx.storage.setAlarm(Date.now() + DAY_MS);
       }
     }
 
-    // enforce both session limit AND root aggregate limit
-    const sessionRemaining = active.limitCents - active.usedCents;
-    const rootRemaining = root.limitCents - root.usedCents;
+    // committed = spent + reserved (in-flight requests)
+    const sessionCommitted = active.usedCents + (active.reservedCents || 0);
+    const rootCommitted = root.usedCents + (root.reservedCents || 0);
+    const sessionRemaining = active.limitCents - sessionCommitted;
+    const rootRemaining = root.limitCents - rootCommitted;
     const remaining = Math.min(sessionRemaining, rootRemaining);
 
     if (remaining <= 0 || (input.estimatedCents > 0 && remaining < input.estimatedCents)) {
-      return { allowed: false, remaining: Math.max(0, remaining), scope: root.scope || 'key', limitCents: active.limitCents, usedCents: active.usedCents };
+      return { allowed: false, remaining: Math.max(0, remaining), reservationId: '', scope: root.scope || 'key', limitCents: active.limitCents, usedCents: active.usedCents };
     }
 
-    return { allowed: true, remaining, scope: root.scope || 'key', limitCents: active.limitCents, usedCents: active.usedCents };
+    // reserve the estimated amount atomically
+    const reservationId = crypto.randomUUID();
+    const reserveAmount = Math.max(input.estimatedCents, 1);
+
+    root.reservedCents = (root.reservedCents || 0) + reserveAmount;
+    await this.ctx.storage.put('root', root);
+
+    if (active !== root) {
+      active.reservedCents = (active.reservedCents || 0) + reserveAmount;
+      await this.ctx.storage.put(`s:${input.sessionId}`, active);
+    }
+
+    await this.ctx.storage.put(`r:${reservationId}`, {
+      amount: reserveAmount,
+      sessionId: input.sessionId,
+      createdAt: Date.now(),
+    });
+
+    return { allowed: true, remaining: remaining - reserveAmount, reservationId, scope: root.scope || 'key', limitCents: active.limitCents, usedCents: active.usedCents };
   }
 
   async record(input: RecordInput): Promise<RecordResult> {
-    if (input.costCents <= 0) {
-      return { usedCents: 0, limitCents: 0 };
-    }
-
     const root = await this.ctx.storage.get<BudgetState>('root');
     if (!root) return { usedCents: 0, limitCents: 0 };
+
+    // settle the reservation: release reserved amount, add actual cost
+    let reservedAmount = 0;
+    if (input.reservationId) {
+      const reservation = await this.ctx.storage.get<{ amount: number; sessionId?: string }>(
+        `r:${input.reservationId}`,
+      );
+      if (reservation) {
+        reservedAmount = reservation.amount;
+        await this.ctx.storage.delete(`r:${input.reservationId}`);
+      }
+    }
 
     let key = 'root';
     let target = root;
@@ -120,14 +182,23 @@ export class BudgetDO extends DurableObject {
       }
     }
 
-    target.usedCents += input.costCents;
+    // settle: remove reservation, add actual cost
+    target.reservedCents = Math.max(0, (target.reservedCents || 0) - reservedAmount);
+    if (input.costCents > 0) {
+      target.usedCents += input.costCents;
+    }
     await this.ctx.storage.put(key, target);
 
-    // always track aggregate spend on root so session-scoped budgets
-    // can't bypass the total limit by creating new sessions
     if (key !== 'root') {
-      root.usedCents += input.costCents;
+      root.reservedCents = Math.max(0, (root.reservedCents || 0) - reservedAmount);
+      if (input.costCents > 0) {
+        root.usedCents += input.costCents;
+      }
       await this.ctx.storage.put('root', root);
+    }
+
+    if (input.costCents <= 0) {
+      return { usedCents: target.usedCents, limitCents: target.limitCents };
     }
 
     const threshold = target.alertThreshold ?? root.alertThreshold ?? 0.8;
@@ -158,14 +229,42 @@ export class BudgetDO extends DurableObject {
     return { usedCents: target.usedCents, limitCents: target.limitCents, alert };
   }
 
-  async configure(state: BudgetState): Promise<void> {
-    await this.ctx.storage.put('root', state);
+  async release(reservationId: string): Promise<void> {
+    if (!reservationId) return;
+    const reservation = await this.ctx.storage.get<{ amount: number; sessionId?: string }>(
+      `r:${reservationId}`,
+    );
+    if (!reservation) return;
+
+    await this.ctx.storage.delete(`r:${reservationId}`);
+
+    const root = await this.ctx.storage.get<BudgetState>('root');
+    if (!root) return;
+
+    root.reservedCents = Math.max(0, (root.reservedCents || 0) - reservation.amount);
+    await this.ctx.storage.put('root', root);
+
+    if (root.scope === 'session' && reservation.sessionId) {
+      const sKey = `s:${reservation.sessionId}`;
+      const session = await this.ctx.storage.get<BudgetState>(sKey);
+      if (session) {
+        session.reservedCents = Math.max(0, (session.reservedCents || 0) - reservation.amount);
+        await this.ctx.storage.put(sKey, session);
+      }
+    }
+  }
+
+  async configure(state: Omit<BudgetState, 'reservedCents'> & { reservedCents?: number }): Promise<void> {
+    await this.ctx.storage.put('root', { ...state, reservedCents: state.reservedCents ?? 0 });
   }
 
   async alarm(): Promise<void> {
     const cutoff = Date.now() - SESSION_TTL;
-    const entries = await this.ctx.storage.list<number>({ prefix: 's:' });
+    const reservationCutoff = Date.now() - RESERVATION_TTL;
+    const entries = await this.ctx.storage.list({ prefix: 's:' });
+    const reservations = await this.ctx.storage.list<{ amount: number; sessionId?: string; createdAt: number }>({ prefix: 'r:' });
 
+    // clean stale sessions
     const toDelete: string[] = [];
     let hasSessions = false;
 
@@ -178,12 +277,37 @@ export class BudgetDO extends DurableObject {
       }
     }
 
+    // clean stale reservations (request crashed or timed out without settling)
+    let staleReserved = 0;
+    for (const [key, val] of reservations) {
+      if (val && typeof val === 'object' && val.createdAt < reservationCutoff) {
+        staleReserved += val.amount;
+        toDelete.push(key);
+      }
+    }
+
     if (toDelete.length > 0) {
       await this.ctx.storage.delete(toDelete);
     }
 
-    if (hasSessions) {
+    // reclaim stale reservation amounts from root
+    if (staleReserved > 0) {
+      const root = await this.ctx.storage.get<BudgetState>('root');
+      if (root) {
+        root.reservedCents = Math.max(0, (root.reservedCents || 0) - staleReserved);
+        await this.ctx.storage.put('root', root);
+      }
+    }
+
+    if (hasSessions || reservations.size > toDelete.length) {
       await this.ctx.storage.setAlarm(Date.now() + DAY_MS);
+    }
+  }
+
+  private async clearReservations(): Promise<void> {
+    const reservations = await this.ctx.storage.list({ prefix: 'r:' });
+    if (reservations.size > 0) {
+      await this.ctx.storage.delete([...reservations.keys()]);
     }
   }
 }

@@ -19,6 +19,7 @@ create table api_keys (
   key_prefix text not null,
   name text not null default 'default',
   budget_id uuid references budgets(id),
+  rpm_limit integer not null default 60,
   created_at timestamptz not null default now(),
   revoked_at timestamptz
 );

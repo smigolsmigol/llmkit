@@ -187,6 +187,26 @@ export async function getRequestsPaginated(
   };
 }
 
+export async function getRequestById(userId: string, requestId: string): Promise<RequestRow | null> {
+  const db = createServerClient();
+  const { data: keys } = await db
+    .from('api_keys')
+    .select('id')
+    .eq('user_id', userId);
+
+  if (!keys?.length) return null;
+
+  const keyIds = keys.map((k) => k.id);
+  const { data } = await db
+    .from('requests')
+    .select('*')
+    .eq('id', requestId)
+    .in('api_key_id', keyIds)
+    .single();
+
+  return (data as RequestRow) || null;
+}
+
 export async function getDistinctProviders(userId: string): Promise<string[]> {
   const requests = await getRecentRequests(userId, 1000);
   return [...new Set(requests.map((r) => r.provider))].sort();
