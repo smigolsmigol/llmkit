@@ -93,6 +93,14 @@ providerRouter.post('/chat/completions', async (c) => {
   return handleChat(c, req, chain);
 });
 
+async function releaseReservation(c: Context<Env>): Promise<void> {
+  const budgetId = c.get('budgetId');
+  const reservationId = c.get('budgetReservationId');
+  if (!budgetId || !reservationId) return;
+  const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName(budgetId));
+  await stub.release(reservationId);
+}
+
 async function handleChat(c: Context<Env>, req: ProviderRequest, chain: ProviderName[]) {
   const errors: ProviderError[] = [];
 
@@ -152,6 +160,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
     }
   }
 
+  await releaseReservation(c);
   throw new AllProvidersFailedError(errors);
 }
 
@@ -196,6 +205,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           apiKeyId: c.get('apiKeyId'),
           userId: c.get('userId'),
           budgetId: c.get('budgetId'),
+          budgetReservationId: c.get('budgetReservationId'),
           provider: providerName,
           model: usage.model,
           usage: usage.tokens,
@@ -212,6 +222,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
     }
   }
 
+  await releaseReservation(c);
   throw new AllProvidersFailedError(errors);
 }
 

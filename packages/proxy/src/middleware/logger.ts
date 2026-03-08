@@ -11,6 +11,7 @@ export interface TrackParams {
   apiKeyId: string | undefined;
   userId: string | undefined;
   budgetId: string | undefined;
+  budgetReservationId: string | undefined;
   provider: string;
   model: string;
   usage: TokenUsage;
@@ -38,9 +39,9 @@ export async function trackRequest(p: TrackParams): Promise<void> {
     );
   }
 
-  if (p.budgetId && p.cost.totalCost > 0) {
+  if (p.budgetId && (p.cost.totalCost > 0 || p.budgetReservationId)) {
     const costCents = Math.ceil(p.cost.totalCost * 100);
-    const alert = await recordUsage(p.env.BUDGET_DO, p.budgetId, p.sessionId, costCents);
+    const alert = await recordUsage(p.env.BUDGET_DO, p.budgetId, p.sessionId, costCents, p.budgetReservationId);
     if (alert) {
       p.ctx.waitUntil(sendAlert(alert));
     }
@@ -80,6 +81,7 @@ export function costLogger() {
       apiKeyId: c.get('apiKeyId'),
       userId: c.get('userId'),
       budgetId: c.get('budgetId'),
+      budgetReservationId: c.get('budgetReservationId'),
       provider: meta.provider,
       model: meta.model || 'unknown',
       usage: meta.usage,

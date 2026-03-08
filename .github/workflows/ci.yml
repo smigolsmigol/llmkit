@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # typecheck all packages (turbo handles dependency order)
+      - name: typecheck
+        run: pnpm typecheck
+
+      # lint + dead code + publish validation
+      - name: biome
+        run: biome check packages/proxy/src packages/sdk/src packages/cli/src packages/shared/src packages/ai-sdk-provider/src packages/mcp-server/src
+
+      - name: knip
+        run: knip --exclude types,exports
+
+      - name: publint
+        run: |
+          publint packages/shared
+          publint packages/sdk
+          publint packages/cli
+          publint packages/ai-sdk-provider
+          publint packages/mcp-server
+
+      # unit tests (no network, no secrets needed)
+      - name: test
+        run: |
+          node packages/proxy/test/unit-test.mjs
+          node packages/proxy/test/crypto-test.mjs
+          node packages/proxy/test/budget-test.mjs
+          node packages/proxy/test/reservation-test.mjs
+          node packages/cli/test/parser-test.mjs
+          node packages/sdk/test/tracker-test.mjs
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # shared must build first (proxy imports from it)
+      - name: build shared
+        run: pnpm --filter @f3d1/llmkit-shared run build
+
+      - name: deploy proxy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: packages/proxy

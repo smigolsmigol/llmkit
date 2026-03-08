@@ -24,8 +24,11 @@ export type Env = {
     apiKeyId?: string;
     userId?: string;
     budgetId?: string;
+    budgetConfig?: { limitCents: number; period: string };
     budgetScope?: 'key' | 'session';
     budgetMaxTokens?: number;
+    budgetReservationId?: string;
+    rpmLimit?: number;
     llmkit_response?: ResponseMeta;
   };
 };

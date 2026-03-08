@@ -27,9 +27,17 @@ export function auth() {
     c.set('apiKeyId', keyRecord.id);
     c.set('userId', keyRecord.user_id);
 
-    // attach budget from API key record (if configured)
     if (keyRecord.budget_id) {
       c.set('budgetId', keyRecord.budget_id);
+      if (keyRecord.budgets) {
+        c.set('budgetConfig', {
+          limitCents: keyRecord.budgets.limit_cents,
+          period: keyRecord.budgets.period,
+        });
+      }
+    }
+    if (keyRecord.rpm_limit) {
+      c.set('rpmLimit', keyRecord.rpm_limit);
     }
 
     await next();
