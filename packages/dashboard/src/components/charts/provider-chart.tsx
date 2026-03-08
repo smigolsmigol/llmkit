@@ -1,15 +1,8 @@
 'use client';
 
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { useMemo } from 'react';
+import ReactEChartsCore from 'echarts-for-react/lib/core';
+import echarts from '@/lib/echarts';
 
 const COLORS = ['#7c3aed', '#14b8a6', '#3b82f6', '#a855f7', '#06b6d4'];
 
@@ -19,25 +12,65 @@ interface DataPoint {
   count: number;
 }
 
-function ChartTooltip({ active, payload }: {
-  active?: boolean;
-  payload?: { payload: DataPoint }[];
-}) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload;
-  return (
-    <div className="rounded-md border border-border bg-popover px-2 py-1.5 text-xs shadow-md">
-      <p className="font-medium">{d.provider}</p>
-      <p className="font-mono text-primary">
-        ${d.cost < 0.01 ? d.cost.toFixed(4) : d.cost.toFixed(2)}
-      </p>
-      <p className="text-muted-foreground">{d.count} requests</p>
-    </div>
-  );
+function formatCost(v: number): string {
+  if (v === 0) return '$0';
+  if (v < 0.01) return `$${v.toFixed(4)}`;
+  if (v < 1) return `$${v.toFixed(2)}`;
+  return `$${v.toFixed(0)}`;
 }
 
 export function ProviderChart({ data }: { data: DataPoint[] }) {
-  if (!data.length) {
+  const option = useMemo(() => {
+    if (!data.length) return null;
+
+    return {
+      backgroundColor: 'transparent',
+      grid: { left: 48, right: 12, top: 8, bottom: 20 },
+      xAxis: {
+        type: 'category' as const,
+        data: data.map((d) => d.provider),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: '#555', fontSize: 10 },
+      },
+      yAxis: {
+        type: 'value' as const,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        splitLine: { lineStyle: { color: '#1a1a1a', type: 'dashed' as const } },
+        axisLabel: { color: '#555', fontSize: 10, formatter: formatCost },
+      },
+      tooltip: {
+        trigger: 'axis' as const,
+        axisPointer: { type: 'shadow' as const, shadowStyle: { color: 'rgba(255,255,255,0.04)' } },
+        backgroundColor: 'rgba(15,15,20,0.95)',
+        borderColor: '#333',
+        textStyle: { color: '#e0e0e0', fontSize: 11 },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        formatter: (params: any) => {
+          if (!Array.isArray(params) || !params.length) return '';
+          const idx = params[0].dataIndex;
+          const d = data[idx];
+          return `<div style="font-size:11px;font-weight:500;margin-bottom:2px">${d.provider}</div>` +
+            `<div style="font-family:monospace;color:#7c3aed">${formatCost(d.cost)}</div>` +
+            `<div style="font-size:10px;color:#888">${d.count} requests</div>`;
+        },
+      },
+      series: [
+        {
+          type: 'bar' as const,
+          data: data.map((d, i) => ({
+            value: d.cost,
+            itemStyle: { color: COLORS[i % COLORS.length] },
+          })),
+          barMaxWidth: 32,
+          itemStyle: { borderRadius: [2, 2, 0, 0] },
+        },
+      ],
+    };
+  }, [data]);
+
+  if (!data.length || !option) {
     return (
       <div className="flex h-[180px] items-center justify-center text-xs text-muted-foreground">
         No provider data yet
@@ -45,37 +78,5 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
     );
   }
 
-  return (
-    <ResponsiveContainer width="100%" height={180}>
-      <BarChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#1a1a1a" vertical={false} />
-        <XAxis
-          dataKey="provider"
-          stroke="#555"
-          fontSize={10}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis
-          stroke="#555"
-          fontSize={10}
-          tickLine={false}
-          axisLine={false}
-          tickFormatter={(v: number) => {
-            if (v === 0) return '$0';
-            if (v < 0.01) return `$${v.toFixed(4)}`;
-            if (v < 1) return `$${v.toFixed(2)}`;
-            return `$${v.toFixed(0)}`;
-          }}
-          width={56}
-        />
-        <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-        <Bar dataKey="cost" radius={[2, 2, 0, 0]}>
-          {data.map((_, i) => (
-            <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  );
+  return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height: 180, width: '100%' }} />;
 }

@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { getTotalSpend, getSpendByProvider, getDailySpend, getRecentRequests, getModelBreakdown, getRequestSummary, getSessions } from '@/lib/queries';
+import { getTotalSpend, getSpendByProvider, getRequestTimeseries, getRecentRequests, getModelBreakdown, getRequestSummary, getSessions } from '@/lib/queries';
 import { StatCard } from '@/components/stat-card';
 import { CostChart } from '@/components/charts/cost-chart';
 import { ProviderChart } from '@/components/charts/provider-chart';
@@ -20,23 +20,15 @@ export default async function OverviewPage({
   const params = await searchParams;
   const days = params.days !== undefined ? Number(params.days) : 30;
 
-  const [spend, providers, dailySpend, recent, models, summary, sessions] = await Promise.all([
+  const [spend, providers, timeseries, recent, models, summary, sessions] = await Promise.all([
     getTotalSpend(userId),
     getSpendByProvider(userId, days),
-    getDailySpend(userId, days || 365),
+    getRequestTimeseries(userId, days || 365),
     getRecentRequests(userId, 10),
     getModelBreakdown(userId, days),
     getRequestSummary(userId, days),
     getSessions(userId, 10, days),
   ]);
-
-  const chartData = dailySpend.map((d) => ({
-    date: d.date,
-    cost: d.costCents / 100,
-    requests: d.requests,
-    inputTokens: d.inputTokens,
-    outputTokens: d.outputTokens,
-  }));
 
   const providerData = providers
     .map((p) => ({
@@ -107,20 +99,20 @@ export default async function OverviewPage({
       <div className="grid grid-cols-2 gap-2">
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="mb-2 border-b border-[#1a1a1a] pb-2">
-            <h2 className="text-xs font-medium">Daily Spend</h2>
+            <h2 className="text-xs font-medium">Spend</h2>
             <p className="mt-0.5 text-[10px] text-muted-foreground">
               <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#7c3aed]" /> Input</span>
               <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a78bfa]" /> Output</span>
             </p>
           </div>
-          <CostChart data={chartData} />
+          <CostChart data={timeseries} />
         </div>
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="mb-2 border-b border-[#1a1a1a] pb-2">
             <h2 className="text-xs font-medium">Request Volume</h2>
-            <p className="mt-0.5 text-[10px] text-muted-foreground">API calls per day</p>
+            <p className="mt-0.5 text-[10px] text-muted-foreground">Per-request timeline</p>
           </div>
-          <RequestChart data={chartData} />
+          <RequestChart data={timeseries} />
         </div>
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="mb-2 border-b border-[#1a1a1a] pb-2">
@@ -137,7 +129,7 @@ export default async function OverviewPage({
               <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#06b6d4]" /> Output</span>
             </p>
           </div>
-          <TokenChart data={chartData} />
+          <TokenChart data={timeseries} />
         </div>
       </div>
 
