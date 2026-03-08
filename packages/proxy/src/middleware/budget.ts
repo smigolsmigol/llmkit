@@ -21,6 +21,7 @@ async function parseBody(c: { req: { json(): Promise<Record<string, unknown>> } 
 
 export function budgetCheck() {
   return createMiddleware<Env>(async (c, next) => {
+    if (c.req.method !== 'POST') return await next();
     const budgetId: string | undefined = c.get('budgetId');
     if (!budgetId) return await next();
 
