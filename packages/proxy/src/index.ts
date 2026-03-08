@@ -1,4 +1,4 @@
-import { LLMKitError } from '@f3d1/llmkit-shared';
+import { LLMKitError, inferProvider } from '@f3d1/llmkit-shared';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
@@ -35,9 +35,8 @@ app.onError(async (err, c) => {
     let provider = c.get('requestProvider') || c.req.header('x-llmkit-provider') || 'unknown';
     let model = c.get('requestModel') || 'unknown';
     if (model === 'unknown') {
-      try { const b = await c.req.json(); model = b?.model || 'unknown'; if (provider === 'unknown') provider = b?.provider || 'anthropic'; } catch {}
+      try { const b = await c.req.json(); model = b?.model || 'unknown'; if (provider === 'unknown') provider = b?.provider || inferProvider(model) || 'unknown'; } catch {}
     }
-    if (provider === 'unknown') provider = 'anthropic';
     c.executionCtx.waitUntil(
       logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
         user_id: userId,
