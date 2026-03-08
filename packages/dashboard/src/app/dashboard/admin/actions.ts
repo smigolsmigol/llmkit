@@ -5,7 +5,8 @@ import { createServerClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 
 function assertAdmin(userId: string | null) {
-  if (!userId || userId !== process.env.ADMIN_USER_ID) {
+  const adminIds = process.env.ADMIN_USER_ID?.split(',') ?? [];
+  if (!userId || !adminIds.includes(userId)) {
     throw new Error('Unauthorized');
   }
 }

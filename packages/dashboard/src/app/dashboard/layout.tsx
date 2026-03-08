@@ -5,7 +5,8 @@ import { ensureAccount } from '@/lib/queries';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
-  const isAdmin = userId === process.env.ADMIN_USER_ID;
+  const adminIds = process.env.ADMIN_USER_ID?.split(',') ?? [];
+  const isAdmin = !!userId && adminIds.includes(userId);
 
   if (userId) {
     try {

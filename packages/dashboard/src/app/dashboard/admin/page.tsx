@@ -20,7 +20,8 @@ export default async function AdminPage({
   searchParams: Promise<{ days?: string }>;
 }) {
   const { userId } = await auth();
-  if (!userId || userId !== process.env.ADMIN_USER_ID) {
+  const adminIds = process.env.ADMIN_USER_ID?.split(',') ?? [];
+  if (!userId || !adminIds.includes(userId)) {
     redirect('/dashboard');
   }
 
