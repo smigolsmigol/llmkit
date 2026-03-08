@@ -3,7 +3,11 @@ import { createMiddleware } from 'hono/factory';
 import type { RequestInsert } from '../db';
 import { logRequest } from '../db';
 import type { Env, ResponseMeta } from '../env';
+import { formatFirstSuccess, notifyTelegram } from '../notify';
 import { recordUsage, sendAlert } from './budget';
+
+// per-isolate dedup for first-success notifications (resets on cold start, which is fine)
+const seenUsers = new Set<string>();
 
 export interface TrackParams {
   sessionId: string | undefined;
@@ -64,6 +68,18 @@ export async function trackRequest(p: TrackParams): Promise<void> {
       error_code: null,
     };
     p.ctx.waitUntil(logRequest(p.env.SUPABASE_URL, p.env.SUPABASE_KEY, row));
+
+    // notify admin on first successful request from a user (per-isolate dedup)
+    if (p.env.TELEGRAM_BOT_TOKEN && p.env.TELEGRAM_CHAT_ID && !seenUsers.has(p.userId)) {
+      seenUsers.add(p.userId);
+      p.ctx.waitUntil(
+        notifyTelegram(
+          p.env.TELEGRAM_BOT_TOKEN,
+          p.env.TELEGRAM_CHAT_ID,
+          formatFirstSuccess(p.userId, p.provider, p.model, p.cost.totalCost),
+        ),
+      );
+    }
   }
 }
 

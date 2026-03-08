@@ -8,6 +8,10 @@ import { auth } from './middleware/auth';
 import { budgetCheck, releaseReservation } from './middleware/budget';
 import { costLogger } from './middleware/logger';
 import { rateLimit } from './middleware/ratelimit';
+import { formatErrorStreak, formatNewUser, notifyTelegram } from './notify';
+
+// per-isolate tracking for new-user notifications (resets on cold start)
+const notifiedUsers = new Set<string>();
 import { analyticsRouter } from './routes/analytics';
 import { providerRouter } from './routes/chat';
 import { keysRouter } from './routes/keys';
@@ -55,6 +59,25 @@ app.onError(async (err, c) => {
         error_code: code,
       }),
     );
+
+    if (c.env.TELEGRAM_BOT_TOKEN && c.env.TELEGRAM_CHAT_ID) {
+      const tg = { token: c.env.TELEGRAM_BOT_TOKEN, chat: c.env.TELEGRAM_CHAT_ID };
+
+      // notify on first-ever request from a new user
+      if (!notifiedUsers.has(userId)) {
+        notifiedUsers.add(userId);
+        c.executionCtx.waitUntil(
+          notifyTelegram(tg.token, tg.chat, formatNewUser(userId, c.get('apiKey') || '???')),
+        );
+      }
+
+      // notify on user errors (skip rate limit, auth - those are normal)
+      if (code !== 'RATE_LIMIT' && code !== 'AUTH_ERROR') {
+        c.executionCtx.waitUntil(
+          notifyTelegram(tg.token, tg.chat, formatErrorStreak(userId, c.get('apiKey') || '???', code, model, provider, 1)),
+        );
+      }
+    }
   }
 
   // release budget reservation on error (don't lock up budget for failed requests)
