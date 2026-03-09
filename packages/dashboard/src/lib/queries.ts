@@ -761,17 +761,21 @@ export interface ProviderHealth {
   avgLatencyMs: number;
   p95LatencyMs: number;
   spendCents: number;
+  lastErrorAt: string | null;
 }
 
 export async function getAdminProviderHealth(days = 0): Promise<ProviderHealth[]> {
   const rows = filterByDays(await getAllRequests(), days);
 
-  const providers = new Map<string, { total: number; errors: number; spendCents: number; latencies: number[] }>();
+  const providers = new Map<string, { total: number; errors: number; spendCents: number; latencies: number[]; lastErrorAt: string | null }>();
 
   for (const r of rows) {
-    const p = providers.get(r.provider) || { total: 0, errors: 0, spendCents: 0, latencies: [] };
+    const p = providers.get(r.provider) || { total: 0, errors: 0, spendCents: 0, latencies: [], lastErrorAt: null };
     p.total++;
-    if (r.error_code) p.errors++;
+    if (r.error_code) {
+      p.errors++;
+      if (!p.lastErrorAt || r.created_at > p.lastErrorAt) p.lastErrorAt = r.created_at;
+    }
     p.spendCents += Number(r.cost_cents);
     p.latencies.push(r.latency_ms);
     providers.set(r.provider, p);
@@ -789,6 +793,7 @@ export async function getAdminProviderHealth(days = 0): Promise<ProviderHealth[]
         avgLatencyMs: avgLatency,
         p95LatencyMs: p.latencies.length > 0 ? (p.latencies[p95Idx] ?? 0) : 0,
         spendCents: p.spendCents,
+        lastErrorAt: p.lastErrorAt,
       };
     })
     .sort((a, b) => b.requests - a.requests);
@@ -1165,4 +1170,133 @@ export async function getSessions(userId: string, limit = 50, days = 30) {
     .map((s) => ({ ...s, providers: Array.from(s.providers) }))
     .sort((a, b) => b.lastRequest.localeCompare(a.lastRequest))
     .slice(0, limit);
+}
+
+// ---- Admin: paginated request explorer ----
+
+export interface AdminRequestRow extends RequestRow {
+  user_id: string;
+}
+
+export interface AdminRequestFilters extends RequestFilters {
+  userId?: string;
+}
+
+export interface AdminPaginatedResult {
+  data: AdminRequestRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export async function getAdminRequestsPaginated(
+  page = 1,
+  pageSize = 25,
+  filters: AdminRequestFilters = {},
+): Promise<AdminPaginatedResult> {
+  const db = createServerClient();
+
+  // if filtering by user, resolve their key IDs first
+  let keyIds: string[] | null = null;
+  if (filters.userId) {
+    const { data: keys } = await db
+      .from('api_keys')
+      .select('id')
+      .eq('user_id', filters.userId);
+    if (!keys?.length) return { data: [], total: 0, page, pageSize };
+    keyIds = keys.map((k) => k.id);
+  }
+
+  let query = db
+    .from('requests')
+    .select('*', { count: 'exact' });
+
+  if (keyIds) query = query.in('api_key_id', keyIds);
+  if (filters.provider) query = query.eq('provider', filters.provider);
+  if (filters.model) query = query.eq('model', filters.model);
+  if (filters.sessionId) query = query.eq('session_id', filters.sessionId);
+  if (filters.status === 'error') query = query.not('error_code', 'is', null);
+  if (filters.status === 'ok') query = query.is('error_code', null);
+
+  const sortCol = filters.sortBy || 'created_at';
+  const ascending = filters.sortOrder === 'asc';
+  query = query.order(sortCol, { ascending });
+
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+  query = query.range(from, to);
+
+  const { data, count } = await query;
+  const rows = (data as RequestRow[]) || [];
+
+  // resolve user_id for each row via api_keys
+  const uniqueKeyIds = [...new Set(rows.map((r) => r.api_key_id))];
+  const keyUserMap = new Map<string, string>();
+
+  if (uniqueKeyIds.length > 0) {
+    const { data: keys } = await db
+      .from('api_keys')
+      .select('id, user_id')
+      .in('id', uniqueKeyIds);
+    for (const k of keys || []) {
+      keyUserMap.set(k.id, k.user_id);
+    }
+  }
+
+  const enriched: AdminRequestRow[] = rows.map((r) => ({
+    ...r,
+    user_id: keyUserMap.get(r.api_key_id) || 'unknown',
+  }));
+
+  return {
+    data: enriched,
+    total: count || 0,
+    page,
+    pageSize,
+  };
+}
+
+export async function getAdminDistinctProviders(): Promise<string[]> {
+  const db = createServerClient();
+  const { data } = await db
+    .from('requests')
+    .select('provider')
+    .limit(10000);
+
+  if (!data) return [];
+  return [...new Set(data.map((r: { provider: string }) => r.provider))].sort();
+}
+
+export async function getAdminDistinctModels(): Promise<string[]> {
+  const db = createServerClient();
+  const { data } = await db
+    .from('requests')
+    .select('model')
+    .limit(10000);
+
+  if (!data) return [];
+  return [...new Set(data.map((r: { model: string }) => r.model))].sort();
+}
+
+export interface AdminUserOption {
+  userId: string;
+  keyCount: number;
+}
+
+export async function getAdminDistinctUsers(): Promise<AdminUserOption[]> {
+  const db = createServerClient();
+  const { data: keys } = await db
+    .from('api_keys')
+    .select('user_id');
+
+  if (!keys?.length) return [];
+
+  const counts = new Map<string, number>();
+  for (const k of keys) {
+    counts.set(k.user_id, (counts.get(k.user_id) || 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .map(([userId, keyCount]) => ({ userId, keyCount }))
+    .sort((a, b) => b.keyCount - a.keyCount);
 }
