@@ -20,9 +20,21 @@ export interface LLMResponse {
   sessionId?: string;
 }
 
+export interface TextBlock {
+  type: 'text';
+  text: string;
+}
+
+export interface ImageUrlBlock {
+  type: 'image_url';
+  image_url: { url: string; detail?: 'auto' | 'low' | 'high' };
+}
+
+export type ContentBlock = TextBlock | ImageUrlBlock;
+
 export interface Message {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string;
+  content: string | ContentBlock[];
 }
 
 export interface TokenUsage {

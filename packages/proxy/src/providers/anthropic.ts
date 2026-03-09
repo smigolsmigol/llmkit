@@ -4,9 +4,14 @@ import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } 
 const BASE_URL = 'https://api.anthropic.com/v1';
 const API_VERSION = '2023-06-01';
 
+type AnthropicContent = string | Array<
+  | { type: 'text'; text: string }
+  | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } | { type: 'url'; url: string } }
+>;
+
 interface AnthropicMessage {
   role: 'user' | 'assistant';
-  content: string;
+  content: AnthropicContent;
 }
 
 interface AnthropicResponse {
@@ -149,15 +154,36 @@ export class AnthropicAdapter implements ProviderAdapter {
   }
 }
 
-function splitSystem(messages: Array<{ role: string; content: string }>) {
+function parseDataUri(url: string): { mimeType: string; data: string } | null {
+  const match = url.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1]!, data: match[2]! };
+}
+
+function toAnthropicContent(content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>): AnthropicContent {
+  if (typeof content === 'string') return content;
+
+  return content.map((block) => {
+    if (block.type === 'text') return { type: 'text' as const, text: block.text! };
+
+    const url = block.image_url!.url;
+    const parsed = parseDataUri(url);
+    if (parsed) {
+      return { type: 'image' as const, source: { type: 'base64' as const, media_type: parsed.mimeType, data: parsed.data } };
+    }
+    return { type: 'image' as const, source: { type: 'url' as const, url } };
+  });
+}
+
+function splitSystem(messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>) {
   let system: string | undefined;
   const filtered: AnthropicMessage[] = [];
 
   for (const msg of messages) {
     if (msg.role === 'system') {
-      system = msg.content;
+      system = msg.content as string;
     } else {
-      filtered.push({ role: msg.role as 'user' | 'assistant', content: msg.content });
+      filtered.push({ role: msg.role as 'user' | 'assistant', content: toAnthropicContent(msg.content) });
     }
   }
 

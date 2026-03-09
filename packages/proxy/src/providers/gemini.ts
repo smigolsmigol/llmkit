@@ -3,9 +3,11 @@ import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } 
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
 
+type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+
 interface GeminiContent {
   role: 'user' | 'model';
-  parts: Array<{ text: string }>;
+  parts: GeminiPart[];
 }
 
 interface GeminiUsage {
@@ -16,7 +18,7 @@ interface GeminiUsage {
 }
 
 interface GeminiCandidate {
-  content: { role: string; parts: Array<{ text: string }> };
+  content: { role: string; parts: Array<{ text?: string }> };
   finishReason?: string;
   index: number;
 }
@@ -148,19 +150,38 @@ export class GeminiAdapter implements ProviderAdapter {
   }
 }
 
-function toGeminiFormat(messages: Array<{ role: string; content: string }>) {
+function parseDataUri(url: string): { mimeType: string; data: string } | null {
+  const match = url.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1]!, data: match[2]! };
+}
+
+function toGeminiParts(content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>): GeminiPart[] {
+  if (typeof content === 'string') return [{ text: content }];
+
+  return content.map((block) => {
+    if (block.type === 'text') return { text: block.text! };
+
+    const url = block.image_url!.url;
+    const parsed = parseDataUri(url);
+    if (!parsed) throw new Error('gemini requires base64 data URIs for images, not URLs');
+    return { inlineData: { mimeType: parsed.mimeType, data: parsed.data } };
+  });
+}
+
+function toGeminiFormat(messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>) {
   let systemInstruction: { parts: Array<{ text: string }> } | undefined;
   const contents: GeminiContent[] = [];
 
   for (const msg of messages) {
     if (msg.role === 'system') {
-      systemInstruction = { parts: [{ text: msg.content }] };
+      systemInstruction = { parts: [{ text: msg.content as string }] };
       continue;
     }
 
     contents.push({
       role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
+      parts: toGeminiParts(msg.content),
     });
   }
 

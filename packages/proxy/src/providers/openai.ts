@@ -3,7 +3,7 @@ import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } 
 
 interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant';
-  content: string;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string; detail?: string } }>;
 }
 
 interface OpenAIResponse {
@@ -43,7 +43,7 @@ export class OpenAIAdapter implements ProviderAdapter {
   async chat(req: ProviderRequest): Promise<ProviderResponse> {
     const messages: OpenAIMessage[] = req.messages.map((m) => ({
       role: m.role as OpenAIMessage['role'],
-      content: m.content,
+      content: m.content as OpenAIMessage['content'],
     }));
 
     const body: Record<string, unknown> = {
@@ -74,7 +74,7 @@ export class OpenAIAdapter implements ProviderAdapter {
   async *chatStream(req: ProviderRequest): AsyncGenerator<StreamEvent> {
     const messages: OpenAIMessage[] = req.messages.map((m) => ({
       role: m.role as OpenAIMessage['role'],
-      content: m.content,
+      content: m.content as OpenAIMessage['content'],
     }));
 
     const body: Record<string, unknown> = {
