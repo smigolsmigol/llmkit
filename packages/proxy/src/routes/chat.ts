@@ -331,8 +331,29 @@ function validateBody(body: Record<string, unknown>): void {
     if (typeof m.role !== 'string' || !VALID_ROLES.has(m.role)) {
       throw new ValidationError(`message role must be one of: ${[...VALID_ROLES].join(', ')}`);
     }
-    if (typeof m.content !== 'string') {
-      throw new ValidationError('message content must be a string');
+    if (typeof m.content === 'string') continue;
+    if (!Array.isArray(m.content)) {
+      throw new ValidationError('message content must be a string or array of content blocks');
+    }
+    if (m.role === 'system') {
+      throw new ValidationError('system messages must have string content');
+    }
+    for (const block of m.content as Array<Record<string, unknown>>) {
+      if (!block || typeof block !== 'object') {
+        throw new ValidationError('each content block must be an object');
+      }
+      if (block.type === 'text') {
+        if (typeof block.text !== 'string') {
+          throw new ValidationError('text block must have a text string');
+        }
+      } else if (block.type === 'image_url') {
+        const img = block.image_url as Record<string, unknown> | undefined;
+        if (!img || typeof img.url !== 'string') {
+          throw new ValidationError('image_url block must have a url string');
+        }
+      } else {
+        throw new ValidationError(`unknown content block type: ${String(block.type)}`);
+      }
     }
   }
 

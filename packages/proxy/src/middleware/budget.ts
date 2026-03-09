@@ -116,6 +116,24 @@ export async function sendAlert(alert: { webhookUrl: string; body: Record<string
 
 // pure functions for cost estimation (exported for testing)
 
+const IMAGE_CHAR_ESTIMATE = 12_800; // ~3200 tokens * 4 chars/token, rough estimate for vision
+
+function countInputChars(messages: Array<{ content: string | Array<{ type: string; text?: string }> }> | undefined): number {
+  if (!messages) return 0;
+  let chars = 0;
+  for (const m of messages) {
+    if (typeof m.content === 'string') {
+      chars += m.content.length;
+    } else if (Array.isArray(m.content)) {
+      for (const block of m.content) {
+        if (block.type === 'text' && block.text) chars += block.text.length;
+        else if (block.type === 'image_url') chars += IMAGE_CHAR_ESTIMATE;
+      }
+    }
+  }
+  return chars;
+}
+
 export async function estimateCost(body: Record<string, unknown>, provider: ProviderName): Promise<number> {
   const model = body.model as string;
   if (!model) return 0;
@@ -123,10 +141,7 @@ export async function estimateCost(body: Record<string, unknown>, provider: Prov
   const pricing = await resolvePricing(provider, model);
   if (!pricing) return 0;
 
-  const messages = body.messages as Array<{ content: string }> | undefined;
-  const inputChars = messages
-    ? messages.reduce((sum, m) => sum + (m.content?.length || 0), 0)
-    : 0;
+  const inputChars = countInputChars(body.messages as Array<{ content: string | Array<{ type: string; text?: string }> }> | undefined);
   const inputTokens = Math.ceil(inputChars / 4);
   const maxOutput = (body.max_tokens as number) || (body.maxTokens as number) || 1024;
 
@@ -148,10 +163,7 @@ export async function affordableMaxTokens(
   const pricing = await resolvePricing(provider, model);
   if (!pricing || pricing.outputPerMillion === 0) return undefined;
 
-  const messages = body.messages as Array<{ content: string }> | undefined;
-  const inputChars = messages
-    ? messages.reduce((sum, m) => sum + (m.content?.length || 0), 0)
-    : 0;
+  const inputChars = countInputChars(body.messages as Array<{ content: string | Array<{ type: string; text?: string }> }> | undefined);
   const inputTokens = Math.ceil(inputChars / 4);
   const inputCostCents = ((inputTokens / 1_000_000) * pricing.inputPerMillion) * 100;
 
