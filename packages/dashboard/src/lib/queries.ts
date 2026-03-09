@@ -631,6 +631,185 @@ export async function getAdminTopModels(days = 0): Promise<ModelBreakdown[]> {
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
+// ---- Admin: trend deltas ----
+
+export interface AdminStatsTrend {
+  current: AdminStats;
+  previous: AdminStats;
+  deltas: {
+    spend: number | null;
+    requests: number | null;
+    errorRate: number | null;
+    avgLatency: number | null;
+  };
+}
+
+function computeStats(rows: AdminRequest[]): Omit<AdminStats, 'totalAccounts' | 'activeKeysToday' | 'activeKeysWeek' | 'activeKeysMonth'> {
+  let errors = 0;
+  let totalLatency = 0;
+  let totalInput = 0;
+  let totalOutput = 0;
+  const latencies: number[] = [];
+
+  for (const r of rows) {
+    if (r.error_code) errors++;
+    totalLatency += r.latency_ms;
+    latencies.push(r.latency_ms);
+    totalInput += r.input_tokens;
+    totalOutput += r.output_tokens;
+  }
+
+  latencies.sort((a, b) => a - b);
+  const p95Idx = Math.floor(latencies.length * 0.95);
+
+  return {
+    totalRequests: rows.length,
+    totalSpendCents: rows.reduce((s, r) => s + Number(r.cost_cents), 0),
+    errorRate: rows.length > 0 ? (errors / rows.length) * 100 : 0,
+    avgLatencyMs: rows.length > 0 ? Math.round(totalLatency / rows.length) : 0,
+    p95LatencyMs: latencies.length > 0 ? (latencies[p95Idx] ?? 0) : 0,
+    totalInputTokens: totalInput,
+    totalOutputTokens: totalOutput,
+    avgTokensPerReq: rows.length > 0 ? Math.round((totalInput + totalOutput) / rows.length) : 0,
+  };
+}
+
+function pctDelta(current: number, previous: number): number | null {
+  if (previous === 0) return current > 0 ? 100 : null;
+  return +((((current - previous) / previous) * 100).toFixed(1));
+}
+
+export async function getAdminStatsTrend(days: number): Promise<AdminStatsTrend> {
+  const allRows = await getAllRequests();
+  const now = Date.now();
+  const periodMs = days > 0 ? days * 86400000 : 0;
+
+  let currentRows: AdminRequest[];
+  let previousRows: AdminRequest[];
+
+  if (periodMs > 0) {
+    const currentCutoff = new Date(now - periodMs);
+    const previousCutoff = new Date(now - periodMs * 2);
+    currentRows = allRows.filter((r) => new Date(r.created_at) >= currentCutoff);
+    previousRows = allRows.filter((r) => {
+      const d = new Date(r.created_at);
+      return d >= previousCutoff && d < currentCutoff;
+    });
+  } else {
+    currentRows = allRows;
+    previousRows = [];
+  }
+
+  const db = createServerClient();
+  const { count: totalAccounts } = await db
+    .from('accounts')
+    .select('*', { count: 'exact', head: true });
+
+  const keysToday = new Set<string>();
+  const keysWeek = new Set<string>();
+  const keysMonth = new Set<string>();
+  const dayAgo = now - 86400000;
+  const weekAgo = now - 7 * 86400000;
+  const monthAgo = now - 30 * 86400000;
+
+  for (const r of currentRows) {
+    const ts = new Date(r.created_at).getTime();
+    if (ts >= dayAgo) keysToday.add(r.api_key_id);
+    if (ts >= weekAgo) keysWeek.add(r.api_key_id);
+    if (ts >= monthAgo) keysMonth.add(r.api_key_id);
+  }
+
+  const curr = computeStats(currentRows);
+  const prev = computeStats(previousRows);
+
+  const current: AdminStats = {
+    ...curr,
+    totalAccounts: totalAccounts || 0,
+    activeKeysToday: keysToday.size,
+    activeKeysWeek: keysWeek.size,
+    activeKeysMonth: keysMonth.size,
+  };
+
+  const previous: AdminStats = {
+    ...prev,
+    totalAccounts: 0,
+    activeKeysToday: 0,
+    activeKeysWeek: 0,
+    activeKeysMonth: 0,
+  };
+
+  return {
+    current,
+    previous,
+    deltas: {
+      spend: pctDelta(curr.totalSpendCents, prev.totalSpendCents),
+      requests: pctDelta(curr.totalRequests, prev.totalRequests),
+      errorRate: pctDelta(curr.errorRate, prev.errorRate),
+      avgLatency: pctDelta(curr.avgLatencyMs, prev.avgLatencyMs),
+    },
+  };
+}
+
+// ---- Admin: provider health ----
+
+export interface ProviderHealth {
+  provider: string;
+  requests: number;
+  successRate: number;
+  avgLatencyMs: number;
+  p95LatencyMs: number;
+  spendCents: number;
+}
+
+export async function getAdminProviderHealth(days = 0): Promise<ProviderHealth[]> {
+  const rows = filterByDays(await getAllRequests(), days);
+
+  const providers = new Map<string, { total: number; errors: number; spendCents: number; latencies: number[] }>();
+
+  for (const r of rows) {
+    const p = providers.get(r.provider) || { total: 0, errors: 0, spendCents: 0, latencies: [] };
+    p.total++;
+    if (r.error_code) p.errors++;
+    p.spendCents += Number(r.cost_cents);
+    p.latencies.push(r.latency_ms);
+    providers.set(r.provider, p);
+  }
+
+  return Array.from(providers.entries())
+    .map(([provider, p]) => {
+      p.latencies.sort((a, b) => a - b);
+      const p95Idx = Math.floor(p.latencies.length * 0.95);
+      const avgLatency = p.total > 0 ? Math.round(p.latencies.reduce((s, l) => s + l, 0) / p.total) : 0;
+      return {
+        provider,
+        requests: p.total,
+        successRate: p.total > 0 ? +((((p.total - p.errors) / p.total) * 100).toFixed(1)) : 100,
+        avgLatencyMs: avgLatency,
+        p95LatencyMs: p.latencies.length > 0 ? (p.latencies[p95Idx] ?? 0) : 0,
+        spendCents: p.spendCents,
+      };
+    })
+    .sort((a, b) => b.requests - a.requests);
+}
+
+// ---- Admin: provider spend breakdown (for ProviderChart) ----
+
+export async function getAdminProviderSpend(days = 0): Promise<Array<{ provider: string; cost: number; count: number }>> {
+  const rows = filterByDays(await getAllRequests(), days);
+
+  const providers = new Map<string, { cost: number; count: number }>();
+  for (const r of rows) {
+    const p = providers.get(r.provider) || { cost: 0, count: 0 };
+    p.cost += Number(r.cost_cents) / 100;
+    p.count++;
+    providers.set(r.provider, p);
+  }
+
+  return Array.from(providers.entries())
+    .map(([provider, p]) => ({ provider, ...p }))
+    .sort((a, b) => b.cost - a.cost);
+}
+
 // ---- Provider keys + usage ----
 
 export interface ProviderKeyRow {
