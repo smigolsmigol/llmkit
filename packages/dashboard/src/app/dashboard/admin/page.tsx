@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
 import {
   getAllAccounts,
   getAdminStatsTrend,
@@ -18,6 +19,17 @@ import { ProviderChart } from '@/components/charts/provider-chart';
 import { TimeRangeSelector } from '@/components/time-range-selector';
 import { formatCents } from '@/lib/format';
 import { AccountTable } from './account-table';
+
+function timeAgo(date: string): string {
+  const ms = Date.now() - new Date(date).getTime();
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
 export default async function AdminPage({
   searchParams,
@@ -81,12 +93,14 @@ export default async function AdminPage({
           value={String(stats.activeKeysToday)}
           sublabel={`${stats.activeKeysWeek} this week, ${stats.activeKeysMonth} this month`}
         />
-        <StatCard
-          label="Error Rate"
-          value={`${stats.errorRate.toFixed(1)}%`}
-          sublabel={stats.errorRate > 5 ? 'above threshold' : 'healthy'}
-          delta={trend.deltas.errorRate}
-        />
+        <Link href="/dashboard/admin/requests?status=error">
+          <StatCard
+            label="Error Rate"
+            value={`${stats.errorRate.toFixed(1)}%`}
+            sublabel={stats.errorRate > 5 ? 'above threshold' : 'healthy'}
+            delta={trend.deltas.errorRate}
+          />
+        </Link>
         <StatCard
           label="Avg Latency"
           value={`${stats.avgLatencyMs}ms`}
@@ -112,6 +126,7 @@ export default async function AdminPage({
                   <th className="pb-1">Provider</th>
                   <th className="pb-1 text-right">Reqs</th>
                   <th className="pb-1 text-right">Success</th>
+                  <th className="pb-1 text-right">Last Error</th>
                   <th className="pb-1 text-right">Avg ms</th>
                   <th className="pb-1 text-right">p95 ms</th>
                   <th className="pb-1 text-right">Spend</th>
@@ -120,10 +135,23 @@ export default async function AdminPage({
               <tbody>
                 {providerHealth.map((p) => (
                   <tr key={p.provider} className="border-t border-[#1a1a1a]">
-                    <td className="py-1 text-xs font-medium">{p.provider}</td>
+                    <td className="py-1 text-xs font-medium">
+                      <Link href={`/dashboard/admin/requests?provider=${p.provider}`} className="text-primary hover:underline">
+                        {p.provider}
+                      </Link>
+                    </td>
                     <td className="py-1 text-right text-xs">{p.requests}</td>
                     <td className={`py-1 text-right text-xs font-mono ${p.successRate < 95 ? 'text-red-400' : 'text-emerald-400'}`}>
-                      {p.successRate}%
+                      {p.successRate < 100 ? (
+                        <Link href={`/dashboard/admin/requests?provider=${p.provider}&status=error`} className="hover:underline">
+                          {p.successRate}%
+                        </Link>
+                      ) : (
+                        <>{p.successRate}%</>
+                      )}
+                    </td>
+                    <td className="py-1 text-right text-xs text-muted-foreground">
+                      {p.lastErrorAt ? timeAgo(p.lastErrorAt) : '-'}
                     </td>
                     <td className="py-1 text-right text-xs text-muted-foreground">{p.avgLatencyMs.toLocaleString()}</td>
                     <td className="py-1 text-right text-xs text-muted-foreground">{p.p95LatencyMs.toLocaleString()}</td>
@@ -192,7 +220,11 @@ export default async function AdminPage({
                 <tbody>
                   {topModels.slice(0, 10).map((m) => (
                     <tr key={m.model} className="border-t border-[#1a1a1a]">
-                      <td className="py-1 font-mono text-xs">{m.model}</td>
+                      <td className="py-1 font-mono text-xs">
+                        <Link href={`/dashboard/admin/requests?model=${encodeURIComponent(m.model)}`} className="text-primary hover:underline">
+                          {m.model}
+                        </Link>
+                      </td>
                       <td className="py-1 text-xs text-muted-foreground">{m.provider}</td>
                       <td className="py-1 text-right text-xs">{m.requests}</td>
                       <td className="py-1 text-right font-mono text-xs">{formatCents(m.spendCents)}</td>
@@ -228,12 +260,22 @@ export default async function AdminPage({
                   {userBreakdown.map((u) => (
                     <tr key={u.userId} className="border-t border-[#1a1a1a]">
                       <td className="py-1 font-mono text-xs" title={u.userId}>
-                        {u.note || u.userId.slice(0, 12) + '...'}
+                        <Link href={`/dashboard/admin/requests?user=${u.userId}`} className="text-primary hover:underline">
+                          {u.note || u.userId.slice(0, 12) + '...'}
+                        </Link>
                       </td>
                       <td className="py-1 text-xs text-muted-foreground">{u.plan}</td>
                       <td className="py-1 text-right text-xs">{u.requests}</td>
                       <td className="py-1 text-right font-mono text-xs">{formatCents(u.spendCents)}</td>
-                      <td className="py-1 text-right text-xs text-red-400">{u.errors || ''}</td>
+                      <td className="py-1 text-right text-xs">
+                        {u.errors > 0 ? (
+                          <Link href={`/dashboard/admin/requests?user=${u.userId}&status=error`} className="text-red-400 hover:underline">
+                            {u.errors}
+                          </Link>
+                        ) : (
+                          ''
+                        )}
+                      </td>
                       <td className="py-1 text-right text-xs">{u.avgLatencyMs}</td>
                     </tr>
                   ))}
