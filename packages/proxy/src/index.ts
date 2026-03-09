@@ -8,7 +8,7 @@ import { auth } from './middleware/auth';
 import { budgetCheck, releaseReservation } from './middleware/budget';
 import { costLogger } from './middleware/logger';
 import { rateLimit } from './middleware/ratelimit';
-import { formatErrorStreak, formatNewUser, notifyTelegram } from './notify';
+import { formatErrorStreak, formatNewUser, formatRequestLog, notifyTelegram } from './notify';
 import { analyticsRouter } from './routes/analytics';
 import { providerRouter } from './routes/chat';
 import { keysRouter } from './routes/keys';
@@ -17,8 +17,21 @@ import { mcpRouter } from './routes/mcp';
 export { BudgetDO } from './do/budget-do';
 export { RateLimitDO } from './do/ratelimit-do';
 
-// per-isolate tracking for new-user notifications (resets on cold start)
+// per-isolate cache (warm-start dedup only, DB is source of truth)
 const notifiedUsers = new Set<string>();
+
+async function hasExistingRequests(supabaseUrl: string, supabaseKey: string, apiKeyId: string): Promise<boolean> {
+  try {
+    const res = await fetch(
+      `${supabaseUrl}/rest/v1/requests?select=id&api_key_id=eq.${encodeURIComponent(apiKeyId)}&limit=1`,
+      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
+    );
+    const data = await res.json() as unknown[];
+    return data.length > 0;
+  } catch {
+    return false;
+  }
+}
 
 function resolveErrorContext(c: { get: (k: string) => string | undefined; req: { json(): Promise<Record<string, unknown>>; header(n: string): string | undefined } }) {
   const provider = c.get('requestProvider') || c.req.header('x-llmkit-provider') || 'unknown';
@@ -39,21 +52,30 @@ function sendErrorNotifications(
   ctx: ExecutionContext,
   env: Env['Bindings'],
   userId: string,
+  apiKeyId: string,
   apiKey: string,
   code: string,
   model: string,
   provider: string,
 ) {
-  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) return;
-  const { TELEGRAM_BOT_TOKEN: token, TELEGRAM_CHAT_ID: chat } = env;
+  if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID || !env.SUPABASE_URL || !env.SUPABASE_KEY) return;
+  const { TELEGRAM_BOT_TOKEN: token, TELEGRAM_CHAT_ID: chat, SUPABASE_URL: dbUrl, SUPABASE_KEY: dbKey } = env;
 
   if (!notifiedUsers.has(userId)) {
     notifiedUsers.add(userId);
-    ctx.waitUntil(notifyTelegram(token, chat, formatNewUser(userId, apiKey)));
+    ctx.waitUntil(
+      hasExistingRequests(dbUrl, dbKey, apiKeyId).then((exists) => {
+        if (!exists) return notifyTelegram(token, chat, formatNewUser(userId, apiKey));
+      }),
+    );
   }
 
   if (code !== 'RATE_LIMIT' && code !== 'AUTH_ERROR') {
     ctx.waitUntil(notifyTelegram(token, chat, formatErrorStreak(userId, apiKey, code, model, provider, 1)));
+  }
+
+  if (env.TELEGRAM_VERBOSE) {
+    ctx.waitUntil(notifyTelegram(token, chat, formatRequestLog(userId, provider, model, 0, 0, 0, 0, code)));
   }
 }
 
@@ -94,7 +116,7 @@ app.onError(async (err, c) => {
       }),
     );
 
-    sendErrorNotifications(c.executionCtx, c.env, userId, c.get('apiKey') || '???', code, ctx.model, ctx.provider);
+    sendErrorNotifications(c.executionCtx, c.env, userId, apiKeyId, c.get('apiKey') || '???', code, ctx.model, ctx.provider);
   }
 
   const budgetId = c.get('budgetId');
