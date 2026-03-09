@@ -105,7 +105,7 @@ export default async function AdminPage({
           <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Provider Health</h2>
           </div>
-          <div className="grid grid-cols-{providerHealth.length} gap-1.5">
+          <div>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-muted-foreground">

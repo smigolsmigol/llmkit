@@ -153,6 +153,7 @@ export interface RequestFilters {
   provider?: string;
   model?: string;
   status?: string;
+  sessionId?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
@@ -180,6 +181,7 @@ export async function getRequestsPaginated(
 
   if (filters.provider) query = query.eq('provider', filters.provider);
   if (filters.model) query = query.eq('model', filters.model);
+  if (filters.sessionId) query = query.eq('session_id', filters.sessionId);
   if (filters.status === 'error') query = query.not('error_code', 'is', null);
   if (filters.status === 'ok') query = query.is('error_code', null);
 
@@ -1012,6 +1014,121 @@ export async function getApiKeys(userId: string): Promise<ApiKeyRow[]> {
     .order('created_at', { ascending: false });
 
   return (data as ApiKeyRow[]) || [];
+}
+
+// ---- User: trend deltas ----
+
+export interface UserStatsTrend {
+  deltas: {
+    spend: number | null;
+    requests: number | null;
+    avgCost: number | null;
+    avgLatency: number | null;
+  };
+}
+
+export async function getUserStatsTrend(userId: string, days: number): Promise<UserStatsTrend> {
+  if (days <= 0) return { deltas: { spend: null, requests: null, avgCost: null, avgLatency: null } };
+
+  const allRequests = await getRecentRequests(userId, 10000);
+  const now = Date.now();
+  const periodMs = days * 86400000;
+  const currentCutoff = new Date(now - periodMs);
+  const previousCutoff = new Date(now - periodMs * 2);
+
+  let curSpend = 0, curLatency = 0, curCount = 0;
+  let prevSpend = 0, prevLatency = 0, prevCount = 0;
+
+  for (const r of allRequests) {
+    const ts = new Date(r.created_at);
+    const cost = Number(r.cost_cents);
+    if (ts >= currentCutoff) {
+      curSpend += cost;
+      curLatency += r.latency_ms;
+      curCount++;
+    } else if (ts >= previousCutoff) {
+      prevSpend += cost;
+      prevLatency += r.latency_ms;
+      prevCount++;
+    }
+  }
+
+  const curAvgCost = curCount > 0 ? curSpend / curCount : 0;
+  const prevAvgCost = prevCount > 0 ? prevSpend / prevCount : 0;
+  const curAvgLatency = curCount > 0 ? curLatency / curCount : 0;
+  const prevAvgLatency = prevCount > 0 ? prevLatency / prevCount : 0;
+
+  return {
+    deltas: {
+      spend: pctDelta(curSpend, prevSpend),
+      requests: pctDelta(curCount, prevCount),
+      avgCost: pctDelta(curAvgCost, prevAvgCost),
+      avgLatency: pctDelta(curAvgLatency, prevAvgLatency),
+    },
+  };
+}
+
+// ---- User: budget usage (computed from requests table) ----
+
+export interface BudgetUsageSummary {
+  budgetId: string;
+  name: string;
+  limitCents: number;
+  usedCents: number;
+  period: string;
+  resetAt: string | null;
+}
+
+function periodToMs(period: string): number {
+  if (period === 'daily') return 86400000;
+  if (period === 'weekly') return 7 * 86400000;
+  if (period === 'monthly') return 30 * 86400000;
+  return 0;
+}
+
+export async function getBudgetUsage(userId: string): Promise<BudgetUsageSummary[]> {
+  const [budgets, keys, requests] = await Promise.all([
+    getBudgets(userId),
+    getApiKeys(userId),
+    getRecentRequests(userId, 10000),
+  ]);
+
+  if (!budgets.length) return [];
+
+  const keyToBudget = new Map<string, string>();
+  for (const k of keys) {
+    if (k.budget_id) keyToBudget.set(k.id, k.budget_id);
+  }
+
+  // compute period start for each budget
+  const budgetPeriodStart = new Map<string, Date>();
+  for (const b of budgets) {
+    const ms = periodToMs(b.period);
+    if (ms > 0 && b.reset_at) {
+      budgetPeriodStart.set(b.id, new Date(new Date(b.reset_at).getTime() - ms));
+    } else {
+      budgetPeriodStart.set(b.id, new Date(0));
+    }
+  }
+
+  const usage = new Map<string, number>();
+  for (const r of requests) {
+    const bid = keyToBudget.get(r.api_key_id);
+    if (!bid) continue;
+    const start = budgetPeriodStart.get(bid);
+    if (start && new Date(r.created_at) >= start) {
+      usage.set(bid, (usage.get(bid) || 0) + Number(r.cost_cents));
+    }
+  }
+
+  return budgets.map((b) => ({
+    budgetId: b.id,
+    name: b.name,
+    limitCents: b.limit_cents,
+    usedCents: usage.get(b.id) || 0,
+    period: b.period,
+    resetAt: b.reset_at,
+  }));
 }
 
 export async function getSessions(userId: string, limit = 50, days = 30) {

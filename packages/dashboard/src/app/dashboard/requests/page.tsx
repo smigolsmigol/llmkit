@@ -23,6 +23,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
     provider: params.provider,
     model: params.model,
     status: params.status,
+    sessionId: params.session_id,
     sortBy: params.sort || 'created_at',
     sortOrder: (params.order as 'asc' | 'desc') || 'desc',
   };

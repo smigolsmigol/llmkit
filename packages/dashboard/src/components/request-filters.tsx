@@ -30,9 +30,23 @@ export function RequestFilters({ providers, models }: RequestFiltersProps) {
   const activeProvider = searchParams.get('provider') || '';
   const activeModel = searchParams.get('model') || '';
   const activeStatus = searchParams.get('status') || '';
+  const activeSession = searchParams.get('session_id') || '';
 
   return (
     <div className="flex items-center gap-3">
+      {activeSession && (
+        <span className="flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs">
+          <span className="text-muted-foreground">Session:</span>
+          <span className="max-w-[120px] truncate font-mono">{activeSession}</span>
+          <button
+            onClick={() => updateParam('session_id', '')}
+            className="ml-0.5 text-muted-foreground hover:text-foreground"
+          >
+            x
+          </button>
+        </span>
+      )}
+
       <select
         value={activeProvider}
         onChange={(e) => updateParam('provider', e.target.value)}
@@ -65,7 +79,7 @@ export function RequestFilters({ providers, models }: RequestFiltersProps) {
         <option value="error">Error</option>
       </select>
 
-      {(activeProvider || activeModel || activeStatus) && (
+      {(activeProvider || activeModel || activeStatus || activeSession) && (
         <button
           onClick={() => router.push(pathname)}
           className="text-xs text-muted-foreground transition-colors hover:text-foreground"
