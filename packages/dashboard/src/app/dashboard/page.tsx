@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
-import { getTotalSpend, getSpendByProvider, getRequestTimeseries, getRecentRequests, getModelBreakdown, getRequestSummary, getSessions } from '@/lib/queries';
+import Link from 'next/link';
+import { getTotalSpend, getSpendByProvider, getRequestTimeseries, getRecentRequests, getModelBreakdown, getRequestSummary, getSessions, getUserStatsTrend, getBudgetUsage } from '@/lib/queries';
 import { StatCard } from '@/components/stat-card';
 import { CostChart } from '@/components/charts/cost-chart';
 import { ProviderChart } from '@/components/charts/provider-chart';
@@ -20,7 +21,7 @@ export default async function OverviewPage({
   const params = await searchParams;
   const days = params.days !== undefined ? Number(params.days) : 30;
 
-  const [spend, providers, timeseries, recent, models, summary, sessions] = await Promise.all([
+  const [spend, providers, timeseries, recent, models, summary, sessions, trend, budgetUsage] = await Promise.all([
     getTotalSpend(userId),
     getSpendByProvider(userId, days),
     getRequestTimeseries(userId, days || 365),
@@ -28,6 +29,8 @@ export default async function OverviewPage({
     getModelBreakdown(userId, days),
     getRequestSummary(userId, days),
     getSessions(userId, 10, days),
+    getUserStatsTrend(userId, days),
+    getBudgetUsage(userId),
   ]);
 
   const providerData = providers
@@ -60,20 +63,56 @@ export default async function OverviewPage({
 
       <div className="grid grid-cols-4 gap-1.5">
         <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <p className="text-xs text-muted-foreground">Total Spend (30d)</p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-muted-foreground">Total Spend ({days}d)</p>
+            {trend.deltas.spend != null && (
+              <span className={`text-[10px] font-medium ${trend.deltas.spend > 0 ? 'text-emerald-400' : trend.deltas.spend < 0 ? 'text-red-400' : 'text-muted-foreground'}`}>
+                {trend.deltas.spend > 0 ? '\u2191' : trend.deltas.spend < 0 ? '\u2193' : ''}{Math.abs(trend.deltas.spend)}%
+              </span>
+            )}
+          </div>
           <p className="mt-0.5 font-mono text-2xl font-bold text-primary">
             {formatCents(spend.month)}
           </p>
         </div>
         <StatCard label="Today" value={formatCents(spend.today)} />
         <StatCard label="This Week" value={formatCents(spend.week)} />
-        <StatCard label="Total Requests" value={totalRequests.toLocaleString()} />
+        <StatCard label="Total Requests" value={totalRequests.toLocaleString()} delta={trend.deltas.requests} />
       </div>
+
+      {budgetUsage.length > 0 && (
+        <div className="grid grid-cols-2 gap-1.5">
+          {budgetUsage.map((b) => {
+            const pct = b.limitCents > 0 ? Math.min(100, (b.usedCents / b.limitCents) * 100) : 0;
+            const warn = pct >= 80;
+            return (
+              <div key={b.budgetId} className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">{b.name}</p>
+                  <span className={`text-[10px] font-medium ${warn ? 'text-amber-400' : 'text-muted-foreground'}`}>
+                    {b.period}
+                  </span>
+                </div>
+                <p className="mt-0.5 font-mono text-lg font-semibold">
+                  {formatCents(b.usedCents)} <span className="text-sm text-muted-foreground">/ {formatCents(b.limitCents)}</span>
+                </p>
+                <div className="mt-1.5 h-1.5 rounded-full bg-[#1a1a1a]">
+                  <div
+                    className={`h-full rounded-full transition-all ${warn ? 'bg-amber-400' : 'bg-primary'}`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="grid grid-cols-4 gap-1.5">
         <StatCard
           label="Avg Cost / Request"
           value={formatCents(summary.avgCostCents)}
+          delta={trend.deltas.avgCost}
         />
         <StatCard
           label="Avg Latency"
@@ -81,6 +120,7 @@ export default async function OverviewPage({
           sublabel={summary.totalRequests > 0
             ? `~${Math.round((summary.totalInputTokens + summary.totalOutputTokens) / summary.totalRequests).toLocaleString()} tokens/req`
             : undefined}
+          delta={trend.deltas.avgLatency}
         />
         <StatCard
           label="Tokens Processed"
@@ -184,8 +224,16 @@ export default async function OverviewPage({
               </thead>
               <tbody>
                 {sessions.slice(0, 8).map((s) => (
-                  <tr key={s.sessionId} className="border-t border-[#1a1a1a]">
-                    <td className="max-w-[180px] truncate py-1 font-mono text-xs">{s.sessionId}</td>
+                  <tr key={s.sessionId} className="border-t border-[#1a1a1a] transition-colors hover:bg-secondary/50">
+                    <td className="max-w-[180px] truncate py-1 font-mono text-xs">
+                      {s.sessionId === 'no-session' ? (
+                        <span className="text-muted-foreground">{s.sessionId}</span>
+                      ) : (
+                        <Link href={`/dashboard/requests?session_id=${encodeURIComponent(s.sessionId)}`} className="text-primary hover:underline">
+                          {s.sessionId}
+                        </Link>
+                      )}
+                    </td>
                     <td className="py-1 text-right text-muted-foreground">{s.requestCount}</td>
                     <td className="py-1 text-right font-mono">{formatCents(s.totalCostCents)}</td>
                     <td className="py-1 text-right text-xs text-muted-foreground">{s.providers.join(', ')}</td>
