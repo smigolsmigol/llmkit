@@ -35,6 +35,21 @@ export function formatFirstSuccess(userId: string, provider: string, model: stri
   return `✅ <b>First successful request!</b>\n\nUser: <code>${esc(userId)}</code>\nProvider: ${esc(provider)}\nModel: ${esc(model)}\nCost: $${costDollars.toFixed(4)}`;
 }
 
+export function formatRequestLog(
+  userId: string,
+  provider: string,
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  costDollars: number,
+  latencyMs: number,
+  errorCode: string | null,
+): string {
+  const status = errorCode ? `${esc(errorCode)}` : `$${costDollars.toFixed(4)}`;
+  const icon = errorCode ? '\u26a0\ufe0f' : '\u2705';
+  return `${icon} <code>${esc(userId.slice(-8))}</code> ${esc(provider)}/${esc(model)}\n${inputTokens + outputTokens} tok | ${latencyMs}ms | ${status}`;
+}
+
 function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
