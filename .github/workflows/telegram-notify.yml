@@ -1,0 +1,35 @@
+name: Telegram Notifications
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: new issue
+        if: github.event_name == 'issues'
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="📋 <b>New issue</b> #${{ github.event.issue.number }}%0A%0A${{ github.event.issue.title }}%0Aby ${{ github.event.issue.user.login }}%0A%0A<a href='${{ github.event.issue.html_url }}'>View</a>"
+
+      - name: pr opened
+        if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="🔀 <b>PR opened</b> #${{ github.event.pull_request.number }}%0A%0A${{ github.event.pull_request.title }}%0Aby ${{ github.event.pull_request.user.login }}%0A%0A<a href='${{ github.event.pull_request.html_url }}'>View</a>"
+
+      - name: pr merged
+        if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="✅ <b>PR merged</b> #${{ github.event.pull_request.number }}%0A%0A${{ github.event.pull_request.title }}%0Aby ${{ github.event.pull_request.user.login }}"
