@@ -1,0 +1,83 @@
+name: Daily Digest
+
+on:
+  schedule:
+    - cron: '0 7 * * *' # 7am UTC = 8am CET
+  workflow_dispatch: # manual trigger for testing
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: gather stats
+        id: stats
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="smigolsmigol/llmkit"
+
+          # repo stats
+          REPO_DATA=$(curl -s -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/$REPO")
+          STARS=$(echo "$REPO_DATA" | jq '.stargazers_count')
+          FORKS=$(echo "$REPO_DATA" | jq '.forks_count')
+          WATCHERS=$(echo "$REPO_DATA" | jq '.subscribers_count')
+
+          # open issues and PRs
+          OPEN_ISSUES=$(echo "$REPO_DATA" | jq '.open_issues_count')
+          OPEN_PRS=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO/pulls?state=open&per_page=1" \
+            -I 2>/dev/null | grep -i 'x-total-count' | tr -d '\r' | awk '{print $2}')
+          OPEN_PRS=${OPEN_PRS:-0}
+
+          # yesterday's new stars (events API, last 24h)
+          YESTERDAY=$(date -u -d '1 day ago' +%Y-%m-%dT%H:%M:%SZ)
+          NEW_STARS=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO/stargazers?per_page=100" \
+            -H "Accept: application/vnd.github.star+json" | \
+            jq --arg since "$YESTERDAY" '[.[] | select(.starred_at > $since)] | length')
+          NEW_STARS=${NEW_STARS:-0}
+
+          # npm downloads (last 24h, sum all packages)
+          DL_SHARED=$(curl -s "https://api.npmjs.org/downloads/point/last-day/@f3d1/llmkit-shared" | jq '.downloads // 0')
+          DL_SDK=$(curl -s "https://api.npmjs.org/downloads/point/last-day/@f3d1/llmkit-sdk" | jq '.downloads // 0')
+          DL_CLI=$(curl -s "https://api.npmjs.org/downloads/point/last-day/@f3d1/llmkit-cli" | jq '.downloads // 0')
+          DL_AI=$(curl -s "https://api.npmjs.org/downloads/point/last-day/@f3d1/llmkit-ai-sdk-provider" | jq '.downloads // 0')
+          DL_MCP=$(curl -s "https://api.npmjs.org/downloads/point/last-day/@f3d1/llmkit-mcp-server" | jq '.downloads // 0')
+          TOTAL_DL=$((DL_SHARED + DL_SDK + DL_CLI + DL_AI + DL_MCP))
+
+          # recent commits (last 24h)
+          COMMITS=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/$REPO/commits?since=$YESTERDAY&per_page=100" | jq 'length')
+
+          echo "stars=$STARS" >> "$GITHUB_OUTPUT"
+          echo "new_stars=$NEW_STARS" >> "$GITHUB_OUTPUT"
+          echo "forks=$FORKS" >> "$GITHUB_OUTPUT"
+          echo "watchers=$WATCHERS" >> "$GITHUB_OUTPUT"
+          echo "open_issues=$OPEN_ISSUES" >> "$GITHUB_OUTPUT"
+          echo "open_prs=$OPEN_PRS" >> "$GITHUB_OUTPUT"
+          echo "npm_downloads=$TOTAL_DL" >> "$GITHUB_OUTPUT"
+          echo "commits=$COMMITS" >> "$GITHUB_OUTPUT"
+
+      - name: send digest
+        run: |
+          DATE=$(date -u +%Y-%m-%d)
+          TEXT=$(cat <<MSGEOF
+          <b>Daily Digest</b> $DATE
+
+          Stars: ${{ steps.stats.outputs.stars }} (+${{ steps.stats.outputs.new_stars }})
+          Forks: ${{ steps.stats.outputs.forks }}
+          Watchers: ${{ steps.stats.outputs.watchers }}
+          Open issues: ${{ steps.stats.outputs.open_issues }}
+          Open PRs: ${{ steps.stats.outputs.open_prs }}
+          npm downloads (24h): ${{ steps.stats.outputs.npm_downloads }}
+          Commits (24h): ${{ steps.stats.outputs.commits }}
+          MSGEOF
+          )
+
+          # replace newlines for url encoding
+          TEXT=$(echo "$TEXT" | sed ':a;N;$!ba;s/\n/%0A/g')
+
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="$TEXT"

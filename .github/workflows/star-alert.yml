@@ -1,0 +1,22 @@
+name: Star Alert
+
+on:
+  watch:
+    types: [started]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: get star count
+        id: stars
+        run: |
+          COUNT=$(curl -s https://api.github.com/repos/smigolsmigol/llmkit | jq '.stargazers_count')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+
+      - name: notify
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="⭐ <b>${{ github.actor }}</b> starred llmkit%0A%0ATotal: ${{ steps.stars.outputs.count }} stars"
