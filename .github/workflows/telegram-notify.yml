@@ -2,7 +2,9 @@ name: Telegram Notifications
 
 on:
   issues:
-    types: [opened]
+    types: [opened, assigned]
+  issue_comment:
+    types: [created]
   pull_request:
     types: [opened, closed]
 
@@ -11,25 +13,58 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: new issue
-        if: github.event_name == 'issues'
+        if: github.event_name == 'issues' && github.event.action == 'opened'
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
+          TITLE=$(echo "$ISSUE_TITLE" | sed 's/[<>&]//g')
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
-            -d text="📋 <b>New issue</b> #${{ github.event.issue.number }}%0A%0A${{ github.event.issue.title }}%0Aby ${{ github.event.issue.user.login }}%0A%0A<a href='${{ github.event.issue.html_url }}'>View</a>"
+            -d text="📋 <b>New issue</b> #${{ github.event.issue.number }}%0A%0A${TITLE}%0Aby ${{ github.event.issue.user.login }}%0A%0A<a href='${{ github.event.issue.html_url }}'>View</a>"
+
+      - name: issue assigned
+        if: github.event_name == 'issues' && github.event.action == 'assigned'
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          TITLE=$(echo "$ISSUE_TITLE" | sed 's/[<>&]//g')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="👤 <b>Issue assigned</b> #${{ github.event.issue.number }}%0A%0A${TITLE}%0AAssigned to: ${{ github.event.assignee.login }}%0A%0A<a href='${{ github.event.issue.html_url }}'>View</a>"
+
+      - name: issue comment
+        if: github.event_name == 'issue_comment'
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+        run: |
+          BODY=$(echo "$COMMENT_BODY" | head -c 200 | sed 's/[<>&]//g')
+          TITLE=$(echo "$ISSUE_TITLE" | sed 's/[<>&]//g')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="💬 <b>Comment</b> on #${{ github.event.issue.number }}%0A%0A${TITLE}%0Aby ${{ github.event.comment.user.login }}%0A%0A${BODY}%0A%0A<a href='${{ github.event.comment.html_url }}'>View</a>"
 
       - name: pr opened
         if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
+          TITLE=$(echo "$PR_TITLE" | sed 's/[<>&]//g')
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
-            -d text="🔀 <b>PR opened</b> #${{ github.event.pull_request.number }}%0A%0A${{ github.event.pull_request.title }}%0Aby ${{ github.event.pull_request.user.login }}%0A%0A<a href='${{ github.event.pull_request.html_url }}'>View</a>"
+            -d text="🔀 <b>PR opened</b> #${{ github.event.pull_request.number }}%0A%0A${TITLE}%0Aby ${{ github.event.pull_request.user.login }}%0A%0A<a href='${{ github.event.pull_request.html_url }}'>View</a>"
 
       - name: pr merged
         if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
+          TITLE=$(echo "$PR_TITLE" | sed 's/[<>&]//g')
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
-            -d text="✅ <b>PR merged</b> #${{ github.event.pull_request.number }}%0A%0A${{ github.event.pull_request.title }}%0Aby ${{ github.event.pull_request.user.login }}"
+            -d text="✅ <b>PR merged</b> #${{ github.event.pull_request.number }}%0A%0A${TITLE}%0Aby ${{ github.event.pull_request.user.login }}"
