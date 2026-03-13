@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: 'LLMKit Dashboard',
-  description: 'Monitor your AI API costs and manage budgets',
+  description: 'AI API gateway with cost tracking and budget enforcement. Python, TypeScript, and any language via CLI.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
