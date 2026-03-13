@@ -3,7 +3,7 @@
 # Run: bash scripts/sync-bot-context.sh
 # Auto-runs via Claude Code hook on session end
 
-SERVER="root@REDACTED_IP"
+SERVER="${LLMKIT_BOT_HOST:?set LLMKIT_BOT_HOST (e.g. root@your-server-ip)}"
 REMOTE="REDACTED_PATH/repo"
 MEMORY_LOCAL="$HOME/.claude/projects/REDACTED_PATH/memory"
 

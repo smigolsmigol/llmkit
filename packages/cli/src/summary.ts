@@ -14,6 +14,30 @@ interface ModelStats {
   cost: number;
 }
 
+const tty = process.stderr.isTTY ?? false;
+const esc = (code: string, s: string) => tty ? `\x1b[${code}m${s}\x1b[0m` : s;
+const dim = (s: string) => esc('2', s);
+const bold = (s: string) => esc('1', s);
+const cyan = (s: string) => esc('36', s);
+const magenta = (s: string) => esc('35', s);
+
+function logo(): string {
+  const m = magenta;
+  return [
+    `    ${m('██╗     ██╗     ███╗   ███╗██╗  ██╗██╗████████╗')}`,
+    `    ${m('██║     ██║     ████╗ ████║██║ ██╔╝██║╚══██╔══╝')}`,
+    `    ${m('██║     ██║     ██╔████╔██║█████╔╝ ██║   ██║')}`,
+    `    ${m('██║     ██║     ██║╚██╔╝██║██╔═██╗ ██║   ██║')}`,
+    `    ${m('███████╗███████╗██║ ╚═╝ ██║██║  ██╗██║   ██║')}`,
+    `    ${m('╚══════╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝')}`,
+  ].join('\n');
+}
+
+function bar(ratio: number, width = 16): string {
+  const filled = Math.round(ratio * width);
+  return cyan('\u2588'.repeat(filled)) + dim('\u2591'.repeat(width - filled));
+}
+
 export function printSummary(records: RequestRecord[], json: boolean, elapsedMs: number): void {
   if (records.length === 0) {
     if (json) {
@@ -53,30 +77,31 @@ export function printSummary(records: RequestRecord[], json: boolean, elapsedMs:
   }
 
   const elapsed = (elapsedMs / 1000).toFixed(1);
+  const sorted = [...byModel.entries()].sort((a, b) => b[1].cost - a[1].cost);
+  const maxCost = sorted[0]?.[1].cost ?? 1;
+  const maxName = Math.max(...sorted.map(([m]) => m.length));
+
   const lines = [
     '',
-    'LLMKit Cost Summary',
-    '---',
-    `Total: $${totalCost.toFixed(4)} (${records.length} request${records.length === 1 ? '' : 's'}, ${elapsed}s)`,
+    logo(),
+    '',
+    `    ${bold(`$${totalCost.toFixed(4)}`)} ${dim('total')}  ${records.length} request${records.length === 1 ? '' : 's'}  ${dim(elapsed + 's')}`,
     '',
   ];
 
-  if (byModel.size > 1) {
-    lines.push('By model:');
-    const sorted = [...byModel.entries()].sort((a, b) => b[1].cost - a[1].cost);
-    const maxName = Math.max(...sorted.map(([m]) => m.length));
-    for (const [model, stats] of sorted) {
-      const name = model.padEnd(maxName + 2);
-      const reqs = `${stats.requests} req${stats.requests === 1 ? '' : 's'}`.padEnd(8);
-      lines.push(`  ${name}${reqs} $${stats.cost.toFixed(4)}`);
-    }
-    lines.push('');
+  for (const [model, stats] of sorted) {
+    const name = model.padEnd(maxName + 2);
+    const reqs = `${stats.requests} req${stats.requests === 1 ? '' : 's'}`.padEnd(8);
+    const cost = `$${stats.cost.toFixed(4)}`.padStart(8);
+    const ratio = maxCost > 0 ? stats.cost / maxCost : 0;
+    lines.push(`    ${dim(name)}${reqs} ${cost}  ${bar(ratio)}`);
   }
 
+  lines.push('');
   process.stderr.write(lines.join('\n'));
 }
 
 export function printVerbose(rec: RequestRecord): void {
-  const cost = rec.costUsd > 0 ? `$${rec.costUsd.toFixed(4)}` : 'free';
-  process.stderr.write(`  [llmkit] ${rec.provider}/${rec.model} ${cost} (${rec.latencyMs}ms)\n`);
+  const cost = rec.costUsd > 0 ? cyan(`$${rec.costUsd.toFixed(4)}`) : dim('free');
+  process.stderr.write(`  ${dim('[llmkit]')} ${rec.provider}/${rec.model} ${cost} ${dim(`(${rec.latencyMs}ms)`)}\n`);
 }

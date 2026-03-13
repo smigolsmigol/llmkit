@@ -43,16 +43,23 @@ PATTERNS=(
   'eyJ[a-zA-Z0-9_-]{50,}\.'       # JWTs (base64 header.payload.sig)
   'PRIVATE KEY-----'              # PEM private keys
   'password\s*[:=]\s*["\x27][^"\x27]{8,}' # hardcoded passwords
+  '[a-z]+@[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' # user@ip (SSH targets, infra recon)
+  'sbp_[a-zA-Z0-9]{20,}'          # Supabase service keys
+  'eyJhbGciOi[a-zA-Z0-9_-]{20,}'  # Supabase/JWT anon/service keys
 )
 
-for pattern in "${PATTERNS[@]}"; do
-  MATCHES=$(git diff --cached -G"$pattern" --name-only -- ':!.github/hooks/*' 2>/dev/null || true)
-  if [ -n "$MATCHES" ]; then
-    echo "BLOCKED: secret pattern ($pattern) found in:"
-    echo "$MATCHES" | sed 's/^/  /'
-    BLOCKED=1
-  fi
-done
+# scan staged file contents (not the diff, so removing secrets won't trigger)
+while IFS= read -r file; do
+  [[ "$file" == .github/hooks/* ]] && continue
+  CONTENT=$(git show ":$file" 2>/dev/null || true)
+  [ -z "$CONTENT" ] && continue
+  for pattern in "${PATTERNS[@]}"; do
+    if echo "$CONTENT" | grep -qE "$pattern"; then
+      echo "BLOCKED: secret pattern ($pattern) found in: $file"
+      BLOCKED=1
+    fi
+  done
+done <<< "$STAGED"
 
 if [ "$BLOCKED" -ne 0 ]; then
   echo ""
