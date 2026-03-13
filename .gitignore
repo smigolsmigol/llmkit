@@ -46,6 +46,9 @@ out/
 # test
 coverage/
 
+# audit reports (local, contain timestamps and env details)
+audits/
+
 # logs
 *.log
 npm-debug.log*

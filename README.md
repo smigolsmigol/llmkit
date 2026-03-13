@@ -290,6 +290,48 @@ Budget enforcement is additionally tested with live concurrency against the depl
 
 See [SECURITY.md](SECURITY.md) for the security audit methodology.
 
+## Security audit
+
+Built-in penetration-style audit that probes the full stack on every release. Auth bypass, injection vectors, cost drift, information leakage, sensitive path exposure, TLS fingerprinting.
+
+```bash
+python scripts/audit.py
+```
+
+```
+  [ AUTH ]
+   PASS   missing auth -> reject           403
+   PASS   sql in key                       403, no leak
+   PASS   null bytes                       400, no leak
+   PASS   oversized key                    403, no leak
+   PASS   key echo in error                key not reflected
+
+  [ INJECTION ]
+   PASS   sqli in session                  rejected (400)
+   PASS   xss in session                   rejected (400)
+   PASS   path traversal session           rejected (400)
+   PASS   crlf header injection            blocked
+   PASS   model: ../../etc/passwd          rejected (403)
+   PASS   malformed json                   403, clean error
+   PASS   huge body                        403, clean error
+
+  [ COST ACCURACY ]
+   PASS   openai/sync                      drift $0.00000000
+   PASS   openai/stream                    cost captured
+   PASS   anthropic/sync                   drift $0.00000000
+
+  [ EXPOSURE ]
+   PASS   blocked /.env                    403
+   PASS   blocked /.git/config             403
+   PASS   blocked /wrangler.toml           403
+   PASS   error body sanitized             no stack traces
+
+  VERDICT: ALL CLEAR
+  38 passed, 0 findings, $0.00001 cost per run
+```
+
+Runs 48 probes across 7 categories (recon, auth, injection, cost accuracy, exposure, rate limits, budget enforcement). Reports save to `audits/` as JSON with `--diff` to track regressions across releases. CI-compatible via `--json` output and non-zero exit on critical/high findings.
+
 ## Self-host
 
 ```bash
