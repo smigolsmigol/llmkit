@@ -32,6 +32,9 @@ export async function updateAccount(
     })
     .eq('user_id', targetUserId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('admin updateAccount failed:', error.message);
+    throw new Error('Failed to update account');
+  }
   revalidatePath('/dashboard/admin');
 }

@@ -24,7 +24,10 @@ export async function createBudget(
     alert_webhook_url: alertWebhookUrl || null,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('createBudget failed:', error.message);
+    throw new Error('Failed to create budget');
+  }
   revalidatePath('/dashboard/settings');
 }
 
@@ -45,6 +48,9 @@ export async function deleteBudget(budgetId: string) {
 
   const { error } = await db.from('budgets').delete().eq('id', budgetId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('deleteBudget failed:', error.message);
+    throw new Error('Failed to delete budget');
+  }
   revalidatePath('/dashboard/settings');
 }
