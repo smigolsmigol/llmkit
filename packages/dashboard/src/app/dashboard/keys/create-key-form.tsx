@@ -63,12 +63,25 @@ export function CreateKeyForm() {
   }
 
   if (newKey) {
+    const trackedSnippet = `pip install llmkit-sdk
+
+from llmkit import tracked
+from openai import OpenAI
+
+client = OpenAI(http_client=tracked(api_key="${newKey}"))
+
+res = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "hello"}],
+)
+print(res.choices[0].message.content)`;
+
     const pythonSnippet = `from openai import OpenAI
 
 client = OpenAI(
     base_url="${PROXY_URL}",
     api_key="${newKey}",
-    default_headers={"x-llmkit-provider-key": "sk-your-openai-key"},
+    default_headers={"x-llmkit-provider-key": "sk-your-provider-key"},
 )
 
 res = client.chat.completions.create(
@@ -108,13 +121,14 @@ python your_app.py`;
           <div className="mt-5 border-t border-border pt-4">
             <h3 className="text-sm font-semibold">Quick start</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Replace <code className="rounded bg-secondary px-1">sk-your-openai-key</code> with your actual provider key.
+              Replace <code className="rounded bg-secondary px-1">sk-your-provider-key</code> with your actual provider key.
             </p>
 
             <div className="mt-3 space-y-3">
+              <SnippetBlock label="Python SDK (recommended)" code={trackedSnippet} onCopy={copyText} />
               <SnippetBlock label="CLI (any language, zero code changes)" code={cliSnippet} onCopy={copyText} />
               <SnippetBlock label="Env vars (Python/Node)" code={envSnippet} onCopy={copyText} />
-              <SnippetBlock label="Python (explicit)" code={pythonSnippet} onCopy={copyText} />
+              <SnippetBlock label="Python (direct proxy)" code={pythonSnippet} onCopy={copyText} />
             </div>
           </div>
 
