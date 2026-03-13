@@ -19,7 +19,17 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  check:
+  semgrep:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: security audit + secrets scan
+        run: semgrep scan --config p/security-audit --config p/secrets --error
+
+  check-ts:
     needs: secrets-scan
     runs-on: ubuntu-latest
     steps:
@@ -70,8 +80,45 @@ jobs:
           node packages/cli/test/parser-test.mjs
           node packages/sdk/test/tracker-test.mjs
 
+  check-python:
+    needs: secrets-scan
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/python-sdk
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: install
+        run: |
+          pip install -e ".[dev]" 2>/dev/null || pip install -e .
+          pip install pytest ruff mypy bandit pip-audit
+
+      - name: ruff check
+        run: ruff check src/ tests/
+
+      - name: ruff format
+        run: ruff format --check src/ tests/
+
+      - name: mypy
+        run: mypy src/llmkit/
+
+      - name: bandit
+        run: bandit -r src/
+
+      - name: pip-audit
+        run: pip-audit
+
+      - name: pytest
+        run: python -m pytest tests/ -v
+
   deploy:
-    needs: [secrets-scan, check]
+    needs: [secrets-scan, semgrep, check-ts, check-python]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -105,7 +152,7 @@ jobs:
             -d text="🚀 <b>Deployed to CF Workers</b>%0A%0A<code>${{ github.event.head_commit.message }}</code>%0Aby ${{ github.actor }}"
 
   notify-failure:
-    needs: [secrets-scan, check, deploy]
+    needs: [secrets-scan, semgrep, check-ts, check-python, deploy]
     if: failure()
     runs-on: ubuntu-latest
     steps:

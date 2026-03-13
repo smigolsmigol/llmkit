@@ -26,7 +26,10 @@ export async function createApiKey(name: string) {
     key_hash: hash,
   });
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('createApiKey failed:', error.message);
+    throw new Error('Failed to create API key');
+  }
 
   revalidatePath('/dashboard/keys');
   return { key: fullKey, prefix };
@@ -51,7 +54,10 @@ export async function revokeApiKey(keyId: string) {
     .update({ revoked_at: new Date().toISOString() })
     .eq('id', keyId);
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('revokeApiKey failed:', error.message);
+    throw new Error('Failed to revoke API key');
+  }
 
   revalidatePath('/dashboard/keys');
 }
