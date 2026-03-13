@@ -27,6 +27,7 @@ import os
 import socket
 import ssl
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -105,6 +106,9 @@ class Finding:
     meta: dict = field(default_factory=dict)
 
 
+_SPIN_FRAMES = "\u280b\u2819\u2839\u2838\u283c\u2834\u2826\u2827\u2807\u280f"
+
+
 class Audit:
     def __init__(self, verbose: bool = False, json_out: bool = False) -> None:
         self.findings: list[Finding] = []
@@ -112,28 +116,64 @@ class Audit:
         self.json_out = json_out
         self._section = ""
         self._t0 = time.perf_counter()
+        self._probe_num = 0
+        self._spin_stop = False
+        self._spin_thread: threading.Thread | None = None
+        self._section_t0 = 0.0
 
     def section(self, name: str) -> None:
+        if self._section and not self.json_out:
+            dt = time.perf_counter() - self._section_t0
+            print(f"  {_dim(f'{dt:.1f}s')}")
         self._section = name
+        self._section_t0 = time.perf_counter()
         if not self.json_out:
             print(f"\n  {_bold(_white(f'[ {name.upper()} ]'))}")
 
+    def spin(self, label: str) -> None:
+        self._stop_spin()
+        if self.json_out or not _tty():
+            return
+        self._spin_stop = False
+        self._spin_thread = threading.Thread(target=self._spin_loop, args=(label,), daemon=True)
+        self._spin_thread.start()
+
+    def _spin_loop(self, label: str) -> None:
+        i = 0
+        while not self._spin_stop:
+            frame = _SPIN_FRAMES[i % len(_SPIN_FRAMES)]
+            sys.stdout.write(f"\r  {_cyan(frame)} {_dim(label)}\033[K")
+            sys.stdout.flush()
+            time.sleep(0.08)
+            i += 1
+
+    def _stop_spin(self) -> None:
+        if self._spin_thread and self._spin_thread.is_alive():
+            self._spin_stop = True
+            self._spin_thread.join(timeout=0.3)
+            sys.stdout.write("\r\033[K")
+            sys.stdout.flush()
+            self._spin_thread = None
+
     def _add(self, name: str, sev: str, detail: str = "", skipped: bool = False, **kw) -> Finding:
+        self._stop_spin()
+        self._probe_num += 1
         f = Finding(self._section, name, sev, detail, skipped=skipped, **kw)
         self.findings.append(f)
         if not self.json_out:
+            n = _dim(f"[{self._probe_num:>2}]")
             tag = _SEV_COLOR.get(sev, lambda t: t)(sev)
-            parts = [f"  {tag}  {name:<32}"]
+            parts = [f"  {n} {tag}  {name:<32}"]
             if detail:
                 parts.append(f" {_dim(detail)}")
             if f.cost_usd > 0:
                 parts.append(f"  {_dim('$')}{f.cost_usd:.6f}")
             if f.latency_ms > 0:
-                parts.append(f"  {f.latency_ms:.0f}ms")
+                parts.append(f"  {_dim(f'{f.latency_ms:.0f}ms')}")
             print("".join(parts))
             if self.verbose and f.meta:
                 for k, v in f.meta.items():
-                    print(f"           {_dim(k)}: {v}")
+                    print(f"              {_dim(k)}: {v}")
         return f
 
     def passed(self, name: str, detail: str = "", **kw) -> Finding:
@@ -219,6 +259,7 @@ def probe_recon(a: Audit) -> None:
     a.section("recon")
 
     # TLS fingerprint
+    a.spin("fingerprinting TLS...")
     try:
         host = PROXY.replace("https://", "").split("/")[0]
         ctx = ssl.create_default_context()
@@ -240,6 +281,7 @@ def probe_recon(a: Audit) -> None:
         a.info("infrastructure", f"cloudflare (ray: {cf_ray[:12]}...)")
 
     # enumerate endpoints
+    a.spin("enumerating endpoints...")
     for path in ["/health", "/v1/chat/completions", "/v1/models", "/.env", "/admin", "/../etc/passwd"]:
         status, _, _, ms = _http("GET", f"{PROXY}{path}")
         a.info(f"GET {path}", f"{status}", latency_ms=ms)
@@ -249,6 +291,7 @@ def probe_recon(a: Audit) -> None:
 
 def probe_auth(a: Audit) -> None:
     a.section("auth")
+    a.spin("testing auth bypass vectors...")
 
     # no auth header
     status, _, body, ms = _post_chat({}, {"model": "gpt-4o", "messages": []})
@@ -294,6 +337,7 @@ def probe_auth(a: Audit) -> None:
 
 def probe_injection(a: Audit) -> None:
     a.section("injection")
+    a.spin("injecting payloads...")
 
     llmkit_key = os.environ.get("LLMKIT_API_KEY", "")
     auth = {"Authorization": f"Bearer {llmkit_key}"} if llmkit_key else {"Authorization": "Bearer probe_key"}
@@ -383,6 +427,7 @@ def probe_cost(a: Audit) -> None:
         for label, fn in [("openai/sync", _cost_openai_sync), ("openai/stream", _cost_openai_stream),
                           ("openai/async", _cost_openai_async)]:
             try:
+                a.spin(f"probing {label}...")
                 fn(a)
             except Exception as exc:
                 a.med(label, f"probe failed: {exc}")
@@ -393,6 +438,7 @@ def probe_cost(a: Audit) -> None:
         for label, fn in [("anthropic/sync", _cost_anthropic_sync), ("anthropic/stream", _cost_anthropic_stream),
                           ("anthropic/async", _cost_anthropic_async)]:
             try:
+                a.spin(f"probing {label}...")
                 fn(a)
             except Exception as exc:
                 a.med(label, f"probe failed: {exc}")
@@ -671,7 +717,19 @@ def print_banner() -> None:
     print(f"  {_dim('date')}:    {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
+def _bar(n: int, total: int, width: int = 20, color=_cyan) -> str:
+    if total == 0:
+        return ""
+    filled = round(n / total * width)
+    return color("\u2588" * filled) + _dim("\u2591" * (width - filled))
+
+
 def print_report(a: Audit) -> None:
+    # flush last section timing
+    if a._section and not a.json_out:
+        dt = time.perf_counter() - a._section_t0
+        print(f"  {_dim(f'{dt:.1f}s')}")
+
     sev = a.by_severity()
     n_pass = sev.get(Sev.PASS, 0)
     n_crit = sev.get(Sev.CRIT, 0)
@@ -687,18 +745,24 @@ def print_report(a: Audit) -> None:
     print(f"  {_bold('RESULTS')}")
     print()
 
-    # severity breakdown
-    parts = []
-    if n_crit: parts.append(_red(f"{n_crit} critical"))
-    if n_high: parts.append(_red(f"{n_high} high"))
-    if n_med: parts.append(_yellow(f"{n_med} medium"))
-    if n_low: parts.append(_cyan(f"{n_low} low"))
-    parts.append(_green(f"{n_pass} passed"))
-    if n_info: parts.append(_dim(f"{n_info} info"))
+    # severity bar chart
+    if total_ran > 0:
+        bars = [
+            ("CRIT", n_crit, _red),
+            ("HIGH", n_high, _red),
+            ("MED ", n_med, _yellow),
+            ("LOW ", n_low, _cyan),
+            ("PASS", n_pass, _green),
+        ]
+        for label, count, color in bars:
+            if count > 0:
+                print(f"  {color(label)}  {_bar(count, total_ran, 24, color)}  {count}")
+        print()
 
-    print(f"  {_bold('Findings')}:  {', '.join(parts)}")
+    # stats
     if skipped:
         print(f"  {_bold('Skipped')}:   {skipped} (missing env vars)")
+    print(f"  {_bold('Probes')}:    {total_ran} ran, {n_pass} passed")
     print(f"  {_bold('Cost')}:      ${a.total_cost:.6f}")
     print(f"  {_bold('Duration')}:  {a.elapsed():.1f}s")
 

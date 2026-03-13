@@ -12,6 +12,7 @@ export interface RequestRecord {
 interface ModelStats {
   requests: number;
   cost: number;
+  provider: string;
 }
 
 const tty = process.stderr.isTTY ?? false;
@@ -24,18 +25,29 @@ const magenta = (s: string) => esc('35', s);
 function logo(): string {
   const m = magenta;
   return [
-    `    ${m('██╗     ██╗     ███╗   ███╗██╗  ██╗██╗████████╗')}`,
-    `    ${m('██║     ██║     ████╗ ████║██║ ██╔╝██║╚══██╔══╝')}`,
-    `    ${m('██║     ██║     ██╔████╔██║█████╔╝ ██║   ██║')}`,
-    `    ${m('██║     ██║     ██║╚██╔╝██║██╔═██╗ ██║   ██║')}`,
-    `    ${m('███████╗███████╗██║ ╚═╝ ██║██║  ██╗██║   ██║')}`,
-    `    ${m('╚══════╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝')}`,
+    `    ${m('\u2588\u2588\u2557     \u2588\u2588\u2557     \u2588\u2588\u2588\u2557   \u2588\u2588\u2588\u2557\u2588\u2588\u2557  \u2588\u2588\u2557\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557')}`,
+    `    ${m('\u2588\u2588\u2551     \u2588\u2588\u2551     \u2588\u2588\u2588\u2588\u2557 \u2588\u2588\u2588\u2588\u2551\u2588\u2588\u2551 \u2588\u2588\u2554\u255d\u2588\u2588\u2551\u255a\u2550\u2550\u2588\u2588\u2554\u2550\u2550\u255d')}`,
+    `    ${m('\u2588\u2588\u2551     \u2588\u2588\u2551     \u2588\u2588\u2554\u2588\u2588\u2588\u2588\u2554\u2588\u2588\u2551\u2588\u2588\u2588\u2588\u2588\u2554\u255d \u2588\u2588\u2551   \u2588\u2588\u2551')}`,
+    `    ${m('\u2588\u2588\u2551     \u2588\u2588\u2551     \u2588\u2588\u2551\u255a\u2588\u2588\u2554\u255d\u2588\u2588\u2551\u2588\u2588\u2554\u2550\u2588\u2588\u2557 \u2588\u2588\u2551   \u2588\u2588\u2551')}`,
+    `    ${m('\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2557\u2588\u2588\u2551 \u255a\u2550\u255d \u2588\u2588\u2551\u2588\u2588\u2551  \u2588\u2588\u2557\u2588\u2588\u2551   \u2588\u2588\u2551')}`,
+    `    ${m('\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d\u255a\u2550\u2550\u2550\u2550\u2550\u2550\u255d\u255a\u2550\u255d     \u255a\u2550\u255d\u255a\u2550\u255d  \u255a\u2550\u255d\u255a\u2550\u255d   \u255a\u2550\u255d')}`,
   ].join('\n');
 }
 
-function bar(ratio: number, width = 16): string {
+function providerColor(provider: string): (s: string) => string {
+  return provider === 'anthropic' ? magenta : cyan;
+}
+
+function bar(ratio: number, width = 20, color: (s: string) => string = cyan): string {
   const filled = Math.round(ratio * width);
-  return cyan('\u2588'.repeat(filled)) + dim('\u2591'.repeat(width - filled));
+  if (filled === 0) return dim('\u2591'.repeat(width));
+  const body = Math.max(0, filled - 2);
+  const tail = filled - body;
+  let result = color('\u2588'.repeat(body));
+  if (tail >= 1) result += color('\u2593');
+  if (tail >= 2) result += color('\u2592');
+  result += dim('\u2591'.repeat(width - filled));
+  return result;
 }
 
 export function printSummary(records: RequestRecord[], json: boolean, elapsedMs: number): void {
@@ -58,12 +70,12 @@ export function printSummary(records: RequestRecord[], json: boolean, elapsedMs:
       existing.requests++;
       existing.cost += rec.costUsd;
     } else {
-      byModel.set(rec.model, { requests: 1, cost: rec.costUsd });
+      byModel.set(rec.model, { requests: 1, cost: rec.costUsd, provider: rec.provider });
     }
   }
 
   if (json) {
-    const modelObj: Record<string, ModelStats> = {};
+    const modelObj: Record<string, { requests: number; cost: number }> = {};
     for (const [model, stats] of byModel) {
       modelObj[model] = { requests: stats.requests, cost: +stats.cost.toFixed(6) };
     }
@@ -85,7 +97,7 @@ export function printSummary(records: RequestRecord[], json: boolean, elapsedMs:
     '',
     logo(),
     '',
-    `    ${bold(`$${totalCost.toFixed(4)}`)} ${dim('total')}  ${records.length} request${records.length === 1 ? '' : 's'}  ${dim(elapsed + 's')}`,
+    `    ${bold(`$${totalCost.toFixed(4)}`)} ${dim('total')}  ${records.length} request${records.length === 1 ? '' : 's'}  ${dim(elapsed + 's')}  ${dim(`~$${(totalCost / (elapsedMs / 3600000)).toFixed(2)}/hr`)}`,
     '',
   ];
 
@@ -94,14 +106,21 @@ export function printSummary(records: RequestRecord[], json: boolean, elapsedMs:
     const reqs = `${stats.requests} req${stats.requests === 1 ? '' : 's'}`.padEnd(8);
     const cost = `$${stats.cost.toFixed(4)}`.padStart(8);
     const ratio = maxCost > 0 ? stats.cost / maxCost : 0;
-    lines.push(`    ${dim(name)}${reqs} ${cost}  ${bar(ratio)}`);
+    const color = providerColor(stats.provider);
+    lines.push(`    ${dim(name)}${reqs} ${cost}  ${bar(ratio, 20, color)}`);
   }
 
   lines.push('');
   process.stderr.write(lines.join('\n'));
 }
 
+let _runningCost = 0;
+let _reqCount = 0;
+
 export function printVerbose(rec: RequestRecord): void {
-  const cost = rec.costUsd > 0 ? cyan(`$${rec.costUsd.toFixed(4)}`) : dim('free');
-  process.stderr.write(`  ${dim('[llmkit]')} ${rec.provider}/${rec.model} ${cost} ${dim(`(${rec.latencyMs}ms)`)}\n`);
+  _runningCost += rec.costUsd;
+  _reqCount++;
+  const cost = rec.costUsd > 0 ? providerColor(rec.provider)(`$${rec.costUsd.toFixed(4)}`) : dim('free');
+  const running = dim(`[$${_runningCost.toFixed(4)} / ${_reqCount} req${_reqCount === 1 ? '' : 's'}]`);
+  process.stderr.write(`  ${dim('[llmkit]')} ${rec.provider}/${rec.model} ${cost} ${dim(`(${rec.latencyMs}ms)`)} ${running}\n`);
 }

@@ -3,6 +3,34 @@ import { spawn } from 'node:child_process';
 import { startProxy } from './proxy.js';
 import { printSummary } from './summary.js';
 
+const tty = process.stderr.isTTY ?? false;
+const esc = (code: string, s: string) => tty ? `\x1b[${code}m${s}\x1b[0m` : s;
+const dim = (s: string) => esc('2', s);
+const magenta = (s: string) => esc('35', s);
+const bold = (s: string) => esc('1', s);
+
+const BRAND = 'llmkit';
+const SPIN = '\u280b\u2819\u2839\u2838\u283c\u2834\u2826\u2827\u2807\u280f';
+
+function startSpinner(text: string): () => void {
+  if (!tty) {
+    process.stderr.write(`  ${BRAND} ${text}\n`);
+    return () => {};
+  }
+  let i = 0;
+  const timer = setInterval(() => {
+    const frame = SPIN[i % SPIN.length]!;
+    const lit = i % BRAND.length;
+    const name = [...BRAND].map((c, j) => j === lit ? bold(magenta(c.toUpperCase())) : dim(c)).join('');
+    process.stderr.write(`\r  ${magenta(frame)} ${name} ${dim(text)}\x1b[K`);
+    i++;
+  }, 80);
+  return () => {
+    clearInterval(timer);
+    process.stderr.write(`\r\x1b[K`);
+  };
+}
+
 interface CliOpts {
   port: number;
   verbose: boolean;
@@ -46,7 +74,12 @@ function parseArgs(): CliOpts {
 
 async function main(): Promise<void> {
   const opts = parseArgs();
+  const stop = startSpinner('intercepting...');
   const proxy = await startProxy({ port: opts.port, verbose: opts.verbose });
+  stop();
+  if (!opts.json) {
+    process.stderr.write(`  ${dim(`[${BRAND}]`)} proxy on :${proxy.port}\n`);
+  }
   const startTime = Date.now();
 
   const env = {
