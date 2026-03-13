@@ -126,7 +126,7 @@ importers:
         specifier: workspace:*
         version: link:../shared
       hono:
-        specifier: ^4.12.7
+        specifier: '>=4.12.4'
         version: 4.12.7
     devDependencies:
       '@cloudflare/workers-types':
