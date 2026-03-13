@@ -194,10 +194,12 @@ class Audit:
 
 def _http(method: str, url: str, headers: dict | None = None,
           body: bytes | None = None, timeout: int = 15) -> tuple[int, dict, bytes, float]:
+    if not url.startswith("https://"):
+        raise ValueError(f"audit only supports https:// URLs, got: {url[:30]}")
     req = urllib.request.Request(url, data=body, headers=headers or {}, method=method)
     t0 = time.perf_counter()
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:  # nosemgrep: dynamic-urllib-use-detected
             return resp.status, dict(resp.headers), resp.read(), (time.perf_counter() - t0) * 1000
     except urllib.error.HTTPError as e:
         return e.code, dict(e.headers), e.read(), (time.perf_counter() - t0) * 1000
