@@ -16,11 +16,25 @@ Every push runs through CI. Before releases, we also run:
 
 Current status: 0 findings.
 
+## Stack audit
+
+`python scripts/audit.py` runs 48 automated security probes against the live stack:
+
+- **Recon**: TLS fingerprinting, server header leakage, endpoint enumeration
+- **Auth**: missing/invalid/malformed key handling, SQL injection in auth headers, key echo detection
+- **Injection**: SQLi, XSS, path traversal, CRLF, and null bytes in session IDs; template injection and command injection in model names; malformed JSON, nested bombs, oversized payloads
+- **Cost accuracy**: tracked() validated against live OpenAI and Anthropic APIs, cost drift measured to 8 decimal places
+- **Exposure**: dashboard security headers, error body scanning for stack traces, sensitive path probes (/.env, /.git/config, /wrangler.toml, /.dev.vars)
+- **Rate limits**: header presence and correctness
+- **Budget**: enforcement header validation
+
+Reports save to `audits/` as timestamped JSON. Use `--diff` to compare runs and catch regressions. CI-compatible via `--json` and non-zero exit on critical/high findings.
+
 ## Encryption
 
 Provider API keys stored in Supabase are encrypted with AES-256-GCM. Each ciphertext gets a unique random IV. Authenticated additional data (AAD) binds each encrypted key to its context, preventing ciphertext from being moved between records. The encryption key lives in Cloudflare Workers secrets, never in source or client-side code.
 
-10 crypto tests cover: roundtrip correctness, wrong-context rejection, tampered ciphertext detection, tampered IV detection, and IV uniqueness.
+11 crypto tests cover: roundtrip correctness, wrong-context rejection, tampered ciphertext detection, tampered IV detection, and IV uniqueness.
 
 ## Budget enforcement
 
