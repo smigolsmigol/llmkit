@@ -51,11 +51,11 @@ PATTERNS=(
 # 3. Private info patterns (internal ops, team names, local paths)
 PRIVATE_PATTERNS=(
   '[Ww]eed.?[Ll]ando'             # local directory name
-  'REDACTED'                         # team member handle
+  'spundu'                         # team member handle
   'llmkit-internal'                # private repo name
-  '178\.104\.44\.145'              # remote server IP
-  'REDACTED_PATH'                # bot server remote path
-  'REDACTED'                        # Claude project path ID
+  '178\.104\.44\.145'              # Hetzner server IP
+  '/opt/llmkit-bot'                # bot server remote path
+  'C--f3d1'                        # Claude project path ID
 )
 
 # scan staged file contents (not the diff, so removing secrets won't trigger)
