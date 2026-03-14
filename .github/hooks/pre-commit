@@ -51,11 +51,11 @@ PATTERNS=(
 # 3. Private info patterns (internal ops, team names, local paths)
 PRIVATE_PATTERNS=(
   '[Ww]eed.?[Ll]ando'             # local directory name
-  'REDACTED'                         # team member handle
+  'REDACTED_HANDLE'                         # team member handle
   'REDACTED_REPO'                # private repo name
-  'REDACTED_IP'              # remote server IP
+  'REDACTED_IP'              # Hetzner server IP
   'REDACTED_PATH'                # bot server remote path
-  'REDACTED'                        # Claude project path ID
+  'REDACTED_ID'                        # Claude project path ID
 )
 
 # scan staged file contents (not the diff, so removing secrets won't trigger)
