@@ -47,7 +47,7 @@ response = client.chat.completions.create(
 # costs tracked automatically through the proxy
 ```
 
-`tracked()` returns a standard `httpx.Client` that routes through the LLMKit proxy. Works with any SDK that accepts `http_client` - OpenAI, Anthropic, Mistral, Cohere, and more.
+`tracked()` returns a standard `httpx.Client` that routes through the LLMKit proxy. Works with any SDK that accepts `http_client`: OpenAI, Anthropic, Mistral, Cohere.
 
 Or point your existing client directly at the proxy:
 
