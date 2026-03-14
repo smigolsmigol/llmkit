@@ -2,27 +2,20 @@
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignoreDependencies": [],
   "exclude": ["types", "exports"],
-  "ignore": ["examples/**"],
+  "ignore": ["examples/**", "scripts/**"],
   "workspaces": {
     "packages/proxy": {
       "ignore": ["test/**"],
       "ignoreDependencies": ["cloudflare"]
     },
-    "packages/sdk": {
-      "ignore": ["test/**"]
-    },
-    "packages/cli": {
-      "ignore": ["test/**"]
-    },
-    "packages/mcp-server": {
-      "ignoreDependencies": ["@f3d1/llmkit-shared"]
-    },
+    "packages/sdk": {},
+    "packages/cli": {},
+    "packages/mcp-server": {},
     "packages/dashboard": {
-      "ignoreDependencies": ["@f3d1/llmkit-shared", "class-variance-authority"],
+      "ignoreDependencies": ["class-variance-authority"],
       "ignore": [
         "src/components/skeletons.tsx",
         "src/components/ui/card.tsx",
-        "src/app/dashboard/keys/create-key-form.tsx",
         "src/app/dashboard/settings/create-budget-form.tsx"
       ]
     }
