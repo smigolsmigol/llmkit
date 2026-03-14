@@ -63,3 +63,4 @@ docs/
 # claude working files (local only, NEVER commit)
 .claude/
 .mcp.json
+scripts/sync-bot-context.sh
