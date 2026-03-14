@@ -14,6 +14,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: block private info leaks
+        run: |
+          PATTERNS="${{ secrets.PRIVATE_PATTERNS }}"
+          [ -z "$PATTERNS" ] && echo "PRIVATE_PATTERNS secret not set, skipping" && exit 0
+          FOUND=0
+          for pat in $(echo "$PATTERNS" | tr ',' ' '); do
+            if git grep -rli "$pat" -- ':!.github/workflows/' 2>/dev/null; then
+              echo "::error::Private pattern '$pat' found in tracked files"
+              FOUND=1
+            fi
+          done
+          [ "$FOUND" -ne 0 ] && exit 1 || exit 0
+
       - name: gitleaks
         uses: gitleaks/gitleaks-action@v2
         env:

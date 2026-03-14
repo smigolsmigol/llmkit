@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/logo.png" width="120" alt="LLMKit" />
+  <img src=".github/logo-animated-embedded.svg" width="120" alt="LLMKit" />
 </p>
 
 <h1 align="center">LLMKit</h1>
@@ -13,6 +13,10 @@
 [![PyPI](https://img.shields.io/pypi/v/llmkit-sdk?label=PyPI&color=blue)](https://pypi.org/project/llmkit-sdk/)
 [![npm](https://img.shields.io/npm/v/%40f3d1/llmkit-sdk?label=npm&color=blue)](https://www.npmjs.com/package/@f3d1/llmkit-sdk)
 [![MCP](https://img.shields.io/badge/MCP-Registry-blue)](https://registry.modelcontextprotocol.io/servers/io.github.smigolsmigol/llmkit)
+
+<p align="center">
+  <img src=".github/demo.gif" width="680" alt="LLMKit CLI demo" />
+</p>
 
 ---
 
@@ -205,6 +209,10 @@ const { text } = await generateText({
 ```
 
 ## Why LLMKit
+
+<p align="center">
+  <img src=".github/dashboard-preview.gif" width="680" alt="LLMKit Dashboard" />
+</p>
 
 **Budget enforcement that works.** Cost estimation runs before every request. If it would blow the budget, it gets rejected before hitting the provider. Per-key or per-session scope. Not the advisory "soft limits" that agents blow past.
 
