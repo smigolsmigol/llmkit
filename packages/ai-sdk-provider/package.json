@@ -4,7 +4,6 @@
   "license": "MIT",
   "description": "Vercel AI SDK v6 custom provider for LLMKit proxy",
   "type": "module",
-  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
