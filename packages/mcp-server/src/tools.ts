@@ -4,6 +4,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { getBudgets, getCosts, getKeys, getSessions, getUsage, loadConfig } from './client.js';
+import { getSessionCost, getAgentCosts } from './claude-code.js';
 
 const TOOLS = [
   {
@@ -70,6 +71,16 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: 'llmkit_cc_session_cost',
+    description: 'Estimated cost of the current Claude Code session. Reads local token usage data and applies API pricing. Works for both Max subscribers (shows equivalent API cost) and API key users.',
+    inputSchema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'llmkit_cc_agent_costs',
+    description: 'Cost attribution for subagents and agent teams in the current Claude Code session. Shows which agents (Explore, Plan, general-purpose) consumed the most tokens and their estimated costs.',
+    inputSchema: { type: 'object' as const, properties: {} },
+  },
 ];
 
 export function registerTools(server: Server): void {
@@ -86,6 +97,8 @@ export function registerTools(server: Server): void {
         case 'llmkit_budget_status': return await handleBudgetStatus(args);
         case 'llmkit_health': return await handleHealth();
         case 'llmkit_session_summary': return await handleSessionSummary(args);
+        case 'llmkit_cc_session_cost': return await handleCCSessionCost();
+        case 'llmkit_cc_agent_costs': return await handleCCAgentCosts();
         default:
           return { content: [{ type: 'text', text: `Unknown tool: ${name}` }], isError: true };
       }
@@ -189,5 +202,79 @@ async function handleSessionSummary(args: Record<string, unknown> | undefined) {
     const durStr = duration < 60000 ? `${Math.round(duration / 1000)}s` : `${Math.round(duration / 60000)}m`;
     lines.push(`${s.sessionId}: ${s.requests} reqs, $${(s.costCents / 100).toFixed(2)}, ${durStr}, ${s.providers.join('+')} / ${s.models.join(', ')}`);
   }
+  return text(lines.join('\n'));
+}
+
+async function handleCCSessionCost() {
+  const session = await getSessionCost();
+  if (!session) {
+    return text('Could not find Claude Code session data. Make sure this is running inside a Claude Code project.');
+  }
+
+  const lines = [
+    'Claude Code Session Cost (estimated at API rates)',
+    '─────────────────────────',
+    `Session: ${session.sessionId.slice(0, 12)}...`,
+    `Messages: ${session.messages}`,
+    `Estimated cost: $${session.totalCost.toFixed(4)}`,
+    '',
+    `Tokens: ${session.totalInput.toLocaleString()} in, ${session.totalOutput.toLocaleString()} out`,
+    `Cache: ${session.totalCacheRead.toLocaleString()} read, ${session.totalCacheWrite.toLocaleString()} write`,
+    '',
+  ];
+
+  for (const [model, data] of Object.entries(session.models)) {
+    lines.push(`${model}: $${data.cost.toFixed(4)} (${data.input.toLocaleString()} in, ${data.output.toLocaleString()} out)`);
+  }
+
+  lines.push('', 'Note: cost shown is up to the previous message. Max subscribers pay a flat rate, this shows equivalent API pricing.');
+  return text(lines.join('\n'));
+}
+
+async function handleCCAgentCosts() {
+  const result = await getAgentCosts();
+  if (!result) {
+    return text('Could not find Claude Code session data. Make sure this is running inside a Claude Code project.');
+  }
+
+  const { session, agents, mainConversationCost } = result;
+  const agentTotal = agents.reduce((s, a) => s + a.totalCost, 0);
+
+  const lines = [
+    'Claude Code Agent Cost Attribution',
+    '─────────────────────────',
+    `Session: ${session.sessionId.slice(0, 12)}...`,
+    `Total session cost: $${session.totalCost.toFixed(4)}`,
+    '',
+    `Main conversation: $${mainConversationCost.toFixed(4)}`,
+    `Subagents total: $${agentTotal.toFixed(4)} (${agents.length} agents)`,
+    '',
+  ];
+
+  if (agents.length === 0) {
+    lines.push('No subagents in this session.');
+  } else {
+    // group by agent type
+    const byType = new Map<string, { count: number; cost: number; tokens: number }>();
+    for (const a of agents) {
+      const existing = byType.get(a.agentType) ?? { count: 0, cost: 0, tokens: 0 };
+      existing.count++;
+      existing.cost += a.totalCost;
+      existing.tokens += a.totalInput + a.totalOutput;
+      byType.set(a.agentType, existing);
+    }
+
+    lines.push('By agent type:');
+    for (const [type, data] of byType) {
+      lines.push(`  ${type}: ${data.count} agents, $${data.cost.toFixed(4)}, ${data.tokens.toLocaleString()} tokens`);
+    }
+
+    lines.push('', 'Top 5 most expensive agents:');
+    for (const a of agents.slice(0, 5)) {
+      lines.push(`  ${a.agentType} (${a.agentId}): $${a.totalCost.toFixed(4)}, ${a.messages} msgs, ${a.models.join('+')}`);
+    }
+  }
+
+  lines.push('', 'Note: estimated at API rates. Max subscribers pay a flat rate.');
   return text(lines.join('\n'));
 }
