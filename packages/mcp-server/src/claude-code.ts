@@ -1,8 +1,8 @@
 import { createReadStream } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
-import { createInterface } from 'node:readline';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline';
 
 // per-million token rates (USD). only models used by Claude Code.
 const PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {
@@ -165,12 +165,14 @@ async function parseSessionJsonl(filePath: string): Promise<SessionCost> {
     if (!result.models[usage.model]) {
       result.models[usage.model] = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0 };
     }
-    const m = result.models[usage.model]!;
-    m.input += usage.input;
-    m.output += usage.output;
-    m.cacheRead += usage.cacheRead;
-    m.cacheWrite += usage.cacheWrite;
-    m.cost += cost;
+    const m = result.models[usage.model];
+    if (m) {
+      m.input += usage.input;
+      m.output += usage.output;
+      m.cacheRead += usage.cacheRead;
+      m.cacheWrite += usage.cacheWrite;
+      m.cost += cost;
+    }
 
     result.totalInput += usage.input;
     result.totalOutput += usage.output;
@@ -182,6 +184,40 @@ async function parseSessionJsonl(filePath: string): Promise<SessionCost> {
   return result;
 }
 
+async function parseOneAgent(subagentDir: string, filename: string): Promise<AgentCost | null> {
+  const agentId = filename.replace('.jsonl', '');
+  let agentType = 'unknown';
+
+  try {
+    const meta = await readFile(join(subagentDir, `${agentId}.meta.json`), 'utf-8');
+    agentType = JSON.parse(meta).agentType ?? 'unknown';
+  } catch { /* no meta file */ }
+
+  let messages = 0;
+  let totalCost = 0;
+  let totalInput = 0;
+  let totalOutput = 0;
+  const modelsUsed = new Set<string>();
+
+  const stream = createReadStream(join(subagentDir, filename), { encoding: 'utf-8' });
+  const rl = createInterface({ input: stream, crlfDelay: Infinity });
+
+  for await (const line of rl) {
+    if (!line.includes('"assistant"') || !line.includes('"usage"')) continue;
+    const usage = extractUsage(line);
+    if (!usage) continue;
+
+    messages++;
+    totalCost += costForTokens(usage.model, usage);
+    totalInput += usage.input;
+    totalOutput += usage.output;
+    modelsUsed.add(usage.model);
+  }
+
+  if (messages === 0) return null;
+  return { agentId: agentId.slice(0, 12), agentType, messages, totalCost, totalInput, totalOutput, models: [...modelsUsed] };
+}
+
 async function parseSubagents(projectDir: string, sessionId: string): Promise<AgentCost[]> {
   const subagentDir = join(projectDir, sessionId, 'subagents');
   const agents: AgentCost[] = [];
@@ -191,53 +227,11 @@ async function parseSubagents(projectDir: string, sessionId: string): Promise<Ag
     const jsonls = files.filter(f => f.endsWith('.jsonl'));
 
     for (const f of jsonls) {
-      const agentId = f.replace('.jsonl', '');
-      let agentType = 'unknown';
-
-      // read meta file for agent type
-      try {
-        const meta = await readFile(join(subagentDir, `${agentId}.meta.json`), 'utf-8');
-        const parsed = JSON.parse(meta);
-        agentType = parsed.agentType ?? 'unknown';
-      } catch { /* no meta file */ }
-
-      const filePath = join(subagentDir, f);
-      let messages = 0;
-      let totalCost = 0;
-      let totalInput = 0;
-      let totalOutput = 0;
-      const modelsUsed = new Set<string>();
-
-      const stream = createReadStream(filePath, { encoding: 'utf-8' });
-      const rl = createInterface({ input: stream, crlfDelay: Infinity });
-
-      for await (const line of rl) {
-        if (!line.includes('"assistant"') || !line.includes('"usage"')) continue;
-        const usage = extractUsage(line);
-        if (!usage) continue;
-
-        messages++;
-        totalCost += costForTokens(usage.model, usage);
-        totalInput += usage.input;
-        totalOutput += usage.output;
-        modelsUsed.add(usage.model);
-      }
-
-      if (messages > 0) {
-        agents.push({
-          agentId: agentId.slice(0, 12),
-          agentType,
-          messages,
-          totalCost,
-          totalInput,
-          totalOutput,
-          models: [...modelsUsed],
-        });
-      }
+      const agent = await parseOneAgent(subagentDir, f);
+      if (agent) agents.push(agent);
     }
   } catch { /* no subagents directory */ }
 
-  // sort by cost descending
   agents.sort((a, b) => b.totalCost - a.totalCost);
   return agents;
 }
