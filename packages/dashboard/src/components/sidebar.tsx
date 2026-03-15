@@ -1,6 +1,5 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, List, Key, Plug, Settings, Shield } from 'lucide-react';
@@ -23,7 +22,7 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
   return (
     <aside className="fixed left-0 top-0 flex h-full w-56 flex-col border-r border-border bg-background px-3 py-6">
       <Link href="/dashboard" className="mb-8 flex items-center gap-2 px-3">
-        <Image src="/logo.png" alt="LLMKit" width={76} height={76} className="rounded" />
+        <img src="/logo-animated.svg" alt="LLMKit" width={48} height={48} />
         <span className="font-mono text-xl font-semibold tracking-tight text-primary">LLMKit</span>
       </Link>
 
