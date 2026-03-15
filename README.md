@@ -362,6 +362,10 @@ npx wrangler secret put ENCRYPTION_KEY
 npx wrangler deploy
 ```
 
+## Built with Claude Code
+
+This entire project was built using [Claude Code](https://claude.ai/claude-code). 140 of 148 commits are co-authored with Claude across 25 days of development.
+
 ## License
 
 MIT

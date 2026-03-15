@@ -1,0 +1,24 @@
+{
+  "manifest_version": "0.2",
+  "name": "@f3d1/llmkit-mcp-server",
+  "version": "0.1.0",
+  "description": "MCP server for LLMKit - cost queries, session summaries, budget monitoring via Claude Code and Cursor",
+  "author": {
+    "name": "F3d1",
+    "url": "https://github.com/smigolsmigol"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "./dist/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": [
+        "${__dirname}/./dist/index.js"
+      ],
+      "env": {
+        "LLMKIT_API_KEY": ""
+      }
+    }
+  },
+  "license": "MIT"
+}
