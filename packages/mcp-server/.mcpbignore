@@ -1,0 +1,8 @@
+.mcpregistry_*
+src/
+*.ts
+!*.d.ts
+tsconfig.json
+Dockerfile
+glama.json
+*.tape
