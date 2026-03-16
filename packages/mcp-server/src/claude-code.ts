@@ -48,13 +48,17 @@ function claudeDir(): string {
   return join(homedir(), '.claude');
 }
 
-function costForTokens(model: string, usage: TokenUsage): number {
-  // strip date suffixes for matching (e.g. claude-opus-4-6-20260101 -> claude-opus-4-6)
+function resolvePricing(model: string) {
   let pricing = PRICING[model];
   if (!pricing) {
     const base = model.replace(/-\d{8}$/, '');
     pricing = PRICING[base];
   }
+  return pricing ?? null;
+}
+
+function costForTokens(model: string, usage: TokenUsage): number {
+  const pricing = resolvePricing(model);
   if (!pricing) return 0;
 
   return (
@@ -261,4 +265,179 @@ export async function getAgentCosts(): Promise<{ session: SessionCost; agents: A
   const mainConversationCost = session.totalCost - agentTotalCost;
 
   return { session, agents, mainConversationCost };
+}
+
+export interface CacheSavingsResult {
+  totalSaved: number;
+  overallReadToWrite: number;
+  models: Record<string, { cacheRead: number; cacheWrite: number; savedUsd: number; readToWriteRatio: number }>;
+}
+
+export async function getCacheSavings(): Promise<CacheSavingsResult | null> {
+  const projectDir = await findProjectDir();
+  if (!projectDir) return null;
+
+  const sessionFile = await findCurrentSessionFile(projectDir);
+  if (!sessionFile) return null;
+
+  const session = await parseSessionJsonl(sessionFile);
+  const models: CacheSavingsResult['models'] = {};
+  let totalSaved = 0;
+  let totalRead = 0;
+  let totalWrite = 0;
+
+  for (const [model, data] of Object.entries(session.models)) {
+    const pricing = resolvePricing(model);
+    if (!pricing) continue;
+
+    const fullCost = (data.cacheRead / 1_000_000) * pricing.input;
+    const actualCost = (data.cacheRead / 1_000_000) * pricing.cacheRead;
+    const saved = fullCost - actualCost;
+    const ratio = data.cacheWrite > 0 ? data.cacheRead / data.cacheWrite : 0;
+
+    models[model] = { cacheRead: data.cacheRead, cacheWrite: data.cacheWrite, savedUsd: saved, readToWriteRatio: ratio };
+    totalSaved += saved;
+    totalRead += data.cacheRead;
+    totalWrite += data.cacheWrite;
+  }
+
+  return { totalSaved, overallReadToWrite: totalWrite > 0 ? totalRead / totalWrite : 0, models };
+}
+
+export interface CostForecastResult {
+  projectedMonthly: number;
+  dailyAverage: number;
+  daysAnalyzed: number;
+  trend: 'increasing' | 'decreasing' | 'stable';
+  savingsVsApi: number;
+  topModels: Array<{ model: string; monthlyCost: number }>;
+  dataFreshness: string;
+}
+
+interface ForecastAccumulator {
+  modelTotals: Map<string, number>;
+  totalCost: number;
+  earliestDate: string;
+  latestDate: string;
+}
+
+function accumulateSession(acc: ForecastAccumulator, session: SessionCost, mtimeMs: number): void {
+  for (const [model, data] of Object.entries(session.models)) {
+    acc.modelTotals.set(model, (acc.modelTotals.get(model) ?? 0) + data.cost);
+  }
+  acc.totalCost += session.totalCost;
+  const dateStr = new Date(mtimeMs).toISOString().slice(0, 10);
+  if (!acc.earliestDate || dateStr < acc.earliestDate) acc.earliestDate = dateStr;
+  if (!acc.latestDate || dateStr > acc.latestDate) acc.latestDate = dateStr;
+}
+
+async function collectRecentSessionCosts(projectsDir: string, dirs: string[]): Promise<ForecastAccumulator> {
+  const acc: ForecastAccumulator = { modelTotals: new Map(), totalCost: 0, earliestDate: '', latestDate: '' };
+  const thirtyDaysAgo = Date.now() - 30 * 86400000;
+
+  for (const dir of dirs) {
+    const sessionFile = await findCurrentSessionFile(join(projectsDir, dir));
+    if (!sessionFile) continue;
+
+    const s = await stat(sessionFile).catch(() => null);
+    if (!s || s.mtimeMs < thirtyDaysAgo) continue;
+
+    const session = await parseSessionJsonl(sessionFile);
+    if (session.messages === 0) continue;
+
+    accumulateSession(acc, session, s.mtimeMs);
+  }
+
+  return acc;
+}
+
+export async function getCostForecast(): Promise<CostForecastResult | null> {
+  const projectsDir = join(claudeDir(), 'projects');
+  let dirs: string[];
+  try { dirs = await readdir(projectsDir); } catch { return null; }
+
+  const acc = await collectRecentSessionCosts(projectsDir, dirs);
+  if (acc.totalCost === 0) return null;
+
+  const daySpan = acc.earliestDate && acc.latestDate
+    ? Math.max(1, Math.ceil((new Date(acc.latestDate).getTime() - new Date(acc.earliestDate).getTime()) / 86400000) + 1)
+    : 1;
+
+  const dailyAverage = acc.totalCost / daySpan;
+  const projectedMonthly = dailyAverage * 30;
+
+  const topModels = [...acc.modelTotals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([model, cost]) => ({ model, monthlyCost: (cost / daySpan) * 30 }));
+
+  return {
+    projectedMonthly,
+    dailyAverage,
+    daysAnalyzed: daySpan,
+    trend: 'stable',
+    savingsVsApi: Math.max(0, projectedMonthly - 200),
+    topModels,
+    dataFreshness: acc.latestDate ? `most recent data from ${acc.latestDate}` : 'no recent data',
+  };
+}
+
+export interface ProjectCostResult {
+  project: string;
+  sessionCount: number;
+  latestSession: { id: string; cost: number; messages: number; topModel: string; date: string };
+}
+
+function decodeProjectName(encoded: string): string {
+  const match = encoded.match(/^[A-Z]--[^-]+-(.+)$/);
+  return match?.[1] ?? encoded;
+}
+
+export async function getProjectCosts(): Promise<ProjectCostResult[]> {
+  const projectsDir = join(claudeDir(), 'projects');
+  let dirs: string[];
+  try { dirs = await readdir(projectsDir); } catch { return []; }
+
+  const parseProject = async (dir: string): Promise<ProjectCostResult | null> => {
+    const projectDir = join(projectsDir, dir);
+    let files: string[];
+    try { files = await readdir(projectDir); } catch { return null; }
+
+    const jsonls = files.filter(f => f.endsWith('.jsonl'));
+    if (jsonls.length === 0) return null;
+
+    const sessionFile = await findCurrentSessionFile(projectDir);
+    if (!sessionFile) return null;
+
+    const session = await Promise.race([
+      parseSessionJsonl(sessionFile),
+      new Promise<null>((resolve) => { setTimeout(() => { resolve(null); }, 15000); }),
+    ]);
+
+    if (!session || session.messages === 0) return null;
+
+    const s = await stat(sessionFile).catch(() => null);
+    const topModel = Object.entries(session.models).sort(([, a], [, b]) => b.cost - a.cost)[0];
+
+    return {
+      project: decodeProjectName(dir),
+      sessionCount: jsonls.length,
+      latestSession: {
+        id: session.sessionId.slice(0, 12),
+        cost: session.totalCost,
+        messages: session.messages,
+        topModel: topModel?.[0] ?? 'unknown',
+        date: s ? new Date(s.mtimeMs).toISOString().slice(0, 10) : 'unknown',
+      },
+    };
+  };
+
+  const settled = await Promise.allSettled(dirs.map(parseProject));
+  const results: ProjectCostResult[] = [];
+  for (const r of settled) {
+    if (r.status === 'fulfilled' && r.value) results.push(r.value);
+  }
+
+  results.sort((a, b) => b.latestSession.cost - a.latestSession.cost);
+  return results;
 }

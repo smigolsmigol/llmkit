@@ -7,23 +7,34 @@ interface Config {
 }
 
 let cachedConfig: Config | null = null;
+let configChecked = false;
 
-export function loadConfig(): Config {
-  if (cachedConfig) return cachedConfig;
+export function loadConfig(): Config | null {
+  if (configChecked) return cachedConfig;
+  configChecked = true;
 
   const apiKey = process.env.LLMKIT_API_KEY;
   const proxyUrl = process.env.LLMKIT_PROXY_URL || 'https://llmkit-proxy.smigolsmigol.workers.dev';
 
-  if (!apiKey) {
-    throw new Error('Missing LLMKIT_API_KEY. Create one at https://dashboard-two-zeta-54.vercel.app');
-  }
+  if (!apiKey) return null;
 
   cachedConfig = { proxyUrl, apiKey };
   return cachedConfig;
 }
 
+function requireConfig(): Config {
+  const config = loadConfig();
+  if (!config) {
+    throw new Error(
+      'This tool requires LLMKIT_API_KEY. The llmkit_cc_* tools work without a key.\n' +
+      'Create one at https://dashboard-two-zeta-54.vercel.app',
+    );
+  }
+  return config;
+}
+
 async function api<T>(path: string): Promise<T> {
-  const { proxyUrl, apiKey } = loadConfig();
+  const { proxyUrl, apiKey } = requireConfig();
 
   const res = await fetch(`${proxyUrl}/v1${path}`, {
     headers: { Authorization: `Bearer ${apiKey}` },

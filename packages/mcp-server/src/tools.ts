@@ -3,7 +3,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { getAgentCosts, getSessionCost } from './claude-code.js';
+import { getAgentCosts, getCacheSavings, getCostForecast, getProjectCosts, getSessionCost } from './claude-code.js';
 import { getBudgets, getCosts, getKeys, getSessions, getUsage, loadConfig } from './client.js';
 
 const TOOLS = [
@@ -81,6 +81,21 @@ const TOOLS = [
     description: 'Cost attribution for subagents and agent teams in the current Claude Code session. Shows which agents (Explore, Plan, general-purpose) consumed the most tokens and their estimated costs.',
     inputSchema: { type: 'object' as const, properties: {} },
   },
+  {
+    name: 'llmkit_cc_cache_savings',
+    description: 'How much prompt caching saved in the current Claude Code session. Shows per-model savings vs full-price input tokens and cache efficiency ratio.',
+    inputSchema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'llmkit_cc_cost_forecast',
+    description: 'Monthly cost projection for Claude Code usage based on recent session data. Compares projected API-rate cost to Max subscription price ($200/mo).',
+    inputSchema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'llmkit_cc_project_costs',
+    description: 'Cost breakdown across all Claude Code projects. Ranks projects by estimated spend from most recent session in each project directory.',
+    inputSchema: { type: 'object' as const, properties: {} },
+  },
 ];
 
 export function registerTools(server: Server): void {
@@ -99,6 +114,9 @@ export function registerTools(server: Server): void {
         case 'llmkit_session_summary': return await handleSessionSummary(args);
         case 'llmkit_cc_session_cost': return await handleCCSessionCost();
         case 'llmkit_cc_agent_costs': return await handleCCAgentCosts();
+        case 'llmkit_cc_cache_savings': return await handleCCCacheSavings();
+        case 'llmkit_cc_cost_forecast': return await handleCCCostForecast();
+        case 'llmkit_cc_project_costs': return await handleCCProjectCosts();
         default:
           return { content: [{ type: 'text', text: `Unknown tool: ${name}` }], isError: true };
       }
@@ -177,6 +195,9 @@ async function handleBudgetStatus(args: Record<string, unknown> | undefined) {
 
 async function handleHealth() {
   const config = loadConfig();
+  if (!config) {
+    return text('This tool requires LLMKIT_API_KEY. The llmkit_cc_* tools work without a key.\nCreate one at https://dashboard-two-zeta-54.vercel.app');
+  }
   try {
     const res = await fetch(`${config.proxyUrl}/health`, { signal: AbortSignal.timeout(5000) });
     const body = await res.text();
@@ -276,5 +297,78 @@ async function handleCCAgentCosts() {
   }
 
   lines.push('', 'Note: estimated at API rates. Max subscribers pay a flat rate.');
+  return text(lines.join('\n'));
+}
+
+async function handleCCCacheSavings() {
+  const result = await getCacheSavings();
+  if (!result) {
+    return text('Could not find Claude Code session data. Make sure this is running inside a Claude Code project.');
+  }
+
+  const lines = [
+    'Claude Code Cache Savings (current session)',
+    '─────────────────────────',
+    `Total saved: $${result.totalSaved.toFixed(4)} (cache reads at discount vs full input rate)`,
+    `Cache efficiency: ${result.overallReadToWrite.toFixed(1)}x reads per write`,
+    '',
+  ];
+
+  for (const [model, data] of Object.entries(result.models)) {
+    lines.push(`${model}: saved $${data.savedUsd.toFixed(4)}, ratio ${data.readToWriteRatio.toFixed(1)}x (${(data.cacheRead / 1000).toFixed(0)}k reads, ${(data.cacheWrite / 1000).toFixed(0)}k writes)`);
+  }
+
+  lines.push('', 'Note: estimated at API rates. Max subscribers pay a flat rate.');
+  return text(lines.join('\n'));
+}
+
+async function handleCCCostForecast() {
+  const result = await getCostForecast();
+  if (!result) {
+    return text('Could not compute forecast. No recent Claude Code session data found.');
+  }
+
+  const lines = [
+    'Claude Code Cost Forecast',
+    '─────────────────────────',
+    `Monthly projection: $${result.projectedMonthly.toFixed(2)} (at API rates)`,
+    `Daily average: $${result.dailyAverage.toFixed(2)} (based on ${result.daysAnalyzed} days)`,
+    `Trend: ${result.trend}`,
+    '',
+    `Max subscription ($200/mo) saves: $${result.savingsVsApi.toFixed(2)}/mo`,
+    '',
+  ];
+
+  if (result.topModels.length > 0) {
+    lines.push('Top models by projected monthly cost:');
+    for (const m of result.topModels) {
+      lines.push(`  ${m.model}: $${m.monthlyCost.toFixed(2)}/mo`);
+    }
+    lines.push('');
+  }
+
+  lines.push(`Data freshness: ${result.dataFreshness}`);
+  return text(lines.join('\n'));
+}
+
+async function handleCCProjectCosts() {
+  const projects = await getProjectCosts();
+  if (projects.length === 0) {
+    return text('No Claude Code projects found with session data.');
+  }
+
+  const lines = [
+    'Claude Code Project Costs',
+    '─────────────────────────',
+    `${projects.length} projects found`,
+    '',
+  ];
+
+  for (const p of projects) {
+    const s = p.latestSession;
+    lines.push(`${p.project}: $${s.cost.toFixed(4)} (${s.messages} msgs, ${s.topModel}, ${s.date})`);
+  }
+
+  lines.push('', 'Note: costs from most recent session per project, estimated at API rates.');
   return text(lines.join('\n'));
 }
