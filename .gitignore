@@ -28,6 +28,12 @@ credentials.json
 .DS_Store
 Thumbs.db
 
+# python cache
+__pycache__/
+
+# mcp publisher artifacts
+*.mcpb
+
 # ide
 .vscode/
 .idea/
