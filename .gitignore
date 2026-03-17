@@ -73,3 +73,5 @@ scripts/sync-bot-context.sh
 
 # hook config (contains private infra details)
 .github/hooks/private-patterns.txt
+
+.vercel
