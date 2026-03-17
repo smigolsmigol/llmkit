@@ -1,0 +1,87 @@
+name: Health Check
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: check stack health
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          FAILURES=""
+
+          check_http() {
+            local name="$1" url="$2" reject_code="$3"
+            local status
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url")
+            if [ "$status" -eq 000 ]; then
+              FAILURES="${FAILURES}${name}: connection timeout (no response)%0A"
+            elif [ -n "$reject_code" ] && [ "$status" -eq "$reject_code" ]; then
+              FAILURES="${FAILURES}${name}: got $status, expected anything but $reject_code%0A"
+            elif [ -z "$reject_code" ] && [ "$status" -ne 200 ]; then
+              FAILURES="${FAILURES}${name}: got $status, expected 200%0A"
+            fi
+          }
+
+          check_npm() {
+            local pkg="$1"
+            local ver
+            ver=$(npm view "$pkg" version 2>&1)
+            if [ $? -ne 0 ] || [ -z "$ver" ]; then
+              FAILURES="${FAILURES}npm $pkg: not found on registry%0A"
+            fi
+          }
+
+          check_pypi() {
+            local pkg="$1"
+            local status
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://pypi.org/pypi/$pkg/json")
+            if [ "$status" -ne 200 ]; then
+              FAILURES="${FAILURES}PyPI $pkg: got $status, expected 200%0A"
+            fi
+          }
+
+          # 1. proxy health
+          check_http "Proxy /health" "https://llmkit-proxy.smigolsmigol.workers.dev/health"
+
+          # 2. dashboard reachable
+          check_http "Dashboard" "https://dashboard-two-zeta-54.vercel.app" 404
+
+          # 3. npm packages
+          check_npm "@f3d1/llmkit-sdk"
+          check_npm "@f3d1/llmkit-cli"
+          check_npm "@f3d1/llmkit-mcp-server"
+          check_npm "@f3d1/llmkit-ai-sdk-provider"
+          check_npm "@f3d1/llmkit-shared"
+
+          # 4. PyPI package
+          check_pypi "llmkit-sdk"
+
+          # 5. SDK default URL (same as proxy, but validates the actual domain resolves)
+          check_http "SDK default URL" "https://llmkit-proxy.smigolsmigol.workers.dev/health"
+
+          # send result
+          DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+
+          if [ -z "$FAILURES" ]; then
+            TEXT="<b>Health Check</b> $DATE%0A%0AAll systems operational."
+          else
+            TEXT="<b>Health Check FAILED</b> $DATE%0A%0A${FAILURES}"
+            echo "::error::Health check failures detected"
+          fi
+
+          curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+            -d chat_id="${TG_CHAT}" \
+            -d parse_mode="HTML" \
+            -d text="$TEXT"
+
+          # fail the workflow if anything broke
+          if [ -n "$FAILURES" ]; then
+            exit 1
+          fi
