@@ -60,11 +60,9 @@ jobs:
       - name: audit dependencies
         run: pnpm audit --audit-level=high
 
-      # typecheck all packages (turbo handles dependency order)
       - name: typecheck
         run: pnpm typecheck
 
-      # lint + dead code + publish validation
       - name: biome
         run: npx biome check packages/proxy/src packages/sdk/src packages/cli/src packages/shared/src packages/ai-sdk-provider/src packages/mcp-server/src
 
@@ -82,7 +80,6 @@ jobs:
           npx publint packages/ai-sdk-provider
           npx publint packages/mcp-server
 
-      # unit tests (no network, no secrets needed)
       - name: test
         run: |
           node packages/proxy/test/unit-test.mjs
@@ -146,7 +143,6 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # shared must build first (proxy imports from it)
       - name: build shared
         run: pnpm --filter @f3d1/llmkit-shared run build
 
@@ -162,7 +158,61 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
-            -d text="🚀 <b>Deployed to CF Workers</b>%0A%0A<code>${{ github.event.head_commit.message }}</code>%0Aby ${{ github.actor }}"
+            -d text="<b>Deployed to CF Workers</b>%0A%0A<code>${{ github.event.head_commit.message }}</code>%0Aby ${{ github.actor }}"
+
+  post-deploy-verify:
+    needs: deploy
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: wait for deploys to settle
+        run: sleep 30
+
+      - name: verify proxy health
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://llmkit-proxy.smigolsmigol.workers.dev/health")
+          if [ "$STATUS" -ne 200 ]; then
+            echo "::error::Proxy health check failed: got $STATUS"
+            exit 1
+          fi
+          echo "Proxy: OK ($STATUS)"
+
+      - name: verify dashboard reachable
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://dashboard-two-zeta-54.vercel.app")
+          if [ "$STATUS" -eq 404 ] || [ "$STATUS" -eq 500 ] || [ "$STATUS" -eq 000 ]; then
+            echo "::error::Dashboard check failed: got $STATUS"
+            exit 1
+          fi
+          echo "Dashboard: OK ($STATUS)"
+
+      - name: verify npm packages resolve
+        run: |
+          for pkg in "@f3d1/llmkit-sdk" "@f3d1/llmkit-cli" "@f3d1/llmkit-mcp-server" "@f3d1/llmkit-ai-sdk-provider" "@f3d1/llmkit-shared"; do
+            VER=$(npm view "$pkg" version 2>&1)
+            if [ $? -ne 0 ] || [ -z "$VER" ]; then
+              echo "::error::npm package $pkg not found on registry"
+              exit 1
+            fi
+            echo "$pkg: $VER"
+          done
+
+      - name: verify pypi package
+        run: |
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://pypi.org/pypi/llmkit-sdk/json")
+          if [ "$STATUS" -ne 200 ]; then
+            echo "::error::PyPI llmkit-sdk not found: got $STATUS"
+            exit 1
+          fi
+          echo "PyPI llmkit-sdk: OK"
+
+      - name: alert on failure
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d parse_mode="HTML" \
+            -d text="<b>Post-deploy verification FAILED</b>%0A%0ASomething is broken in production. Check the run:%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
 
   notify-failure:
     needs: [secrets-scan, semgrep, check-ts, check-python, deploy]
@@ -174,4 +224,4 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
-            -d text="❌ <b>CI failed</b>%0A%0A<code>${{ github.event.head_commit.message }}</code>%0Aby ${{ github.actor }}%0A%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+            -d text="<b>CI failed</b>%0A%0A<code>${{ github.event.head_commit.message }}</code>%0Aby ${{ github.actor }}%0A%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
