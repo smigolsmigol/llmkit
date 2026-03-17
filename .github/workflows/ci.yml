@@ -206,6 +206,41 @@ jobs:
           fi
           echo "PyPI llmkit-sdk: OK"
 
+      - uses: actions/checkout@v4
+
+      - name: verify pricing tables in sync
+        run: |
+          OPUS_SHARED=$(grep -A2 "'claude-opus-4-6'" packages/shared/src/providers.ts | grep -oP 'inputPerMillion:\s*\K[0-9.]+' || echo "missing")
+          OPUS_PYTHON=$(grep "claude-opus-4-6" packages/python-sdk/src/llmkit/_pricing.py | grep -oP '\(\K[0-9.]+' || echo "missing")
+          OPUS_MCP=$(grep -A1 "'claude-opus-4-6'" packages/mcp-server/src/claude-code.ts | grep -oP 'input:\s*\K[0-9.]+' || echo "missing")
+          echo "Opus 4-6 input pricing: shared=$OPUS_SHARED python=$OPUS_PYTHON mcp=$OPUS_MCP"
+          if [ "$OPUS_SHARED" != "$OPUS_PYTHON" ] || [ "$OPUS_SHARED" != "$OPUS_MCP" ]; then
+            echo "::error::Pricing tables out of sync for claude-opus-4-6"
+            exit 1
+          fi
+          echo "Pricing tables: IN SYNC"
+
+      - name: verify no phantom URLs in SDK
+        run: |
+          if grep -r "api\.llmkit\.dev" packages/sdk/src/ packages/ai-sdk-provider/src/ 2>/dev/null; then
+            echo "::error::Phantom URL api.llmkit.dev found in SDK source"
+            exit 1
+          fi
+          echo "SDK URLs: OK"
+
+      - name: verify no private info in repo
+        run: |
+          PATTERNS="${{ secrets.PRIVATE_PATTERNS }}"
+          if [ -n "$PATTERNS" ]; then
+            for pat in $(echo "$PATTERNS" | tr ',' ' '); do
+              if git grep -rli "$pat" -- ':!.github/workflows/' ':!.github/hooks/' ':!.claude/' 2>/dev/null; then
+                echo "::error::Private pattern found in repo"
+                exit 1
+              fi
+            done
+          fi
+          echo "Private info: CLEAN"
+
       - name: alert on failure
         if: failure()
         run: |
