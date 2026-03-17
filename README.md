@@ -15,7 +15,9 @@
 [![MCP](https://img.shields.io/badge/MCP-Registry-blue)](https://registry.modelcontextprotocol.io/servers/io.github.smigolsmigol/llmkit)
 
 <p align="center">
-  <img src=".github/demo.gif" width="680" alt="LLMKit CLI demo" />
+  <video src="https://github.com/smigolsmigol/llmkit/raw/main/.github/demo.mp4" width="680" autoplay loop muted playsinline>
+    LLMKit CLI demo
+  </video>
 </p>
 
 ---
@@ -211,7 +213,9 @@ const { text } = await generateText({
 ## Why LLMKit
 
 <p align="center">
-  <img src=".github/dashboard-preview.gif" width="680" alt="LLMKit Dashboard" />
+  <video src="https://github.com/smigolsmigol/llmkit/raw/main/.github/dashboard-preview.mp4" width="680" autoplay loop muted playsinline>
+    LLMKit Dashboard
+  </video>
 </p>
 
 **Budget enforcement that works.** Cost estimation runs before every request. If it would blow the budget, it gets rejected before hitting the provider. Per-key or per-session scope. Not the advisory "soft limits" that agents blow past.
