@@ -22,9 +22,37 @@
 
 ---
 
-Open-source API gateway that sits between your app and AI providers. Every request gets logged with token counts and dollar costs. Budget limits actually reject requests when exceeded, unlike the "soft limits" other tools ship.
+Open-source API gateway that sits between your app and AI providers. Every request gets logged with token counts and dollar costs. Budget limits reject requests when exceeded, not after.
 
-Works with any language. TypeScript and Python SDKs, a CLI wrapper for everything else, and an MCP server for Claude Code and Cursor.
+## Why LLMKit
+
+<p align="center">
+  <video src="https://github.com/user-attachments/assets/d07dac81-8f18-4920-ae77-62872822d078" width="680" autoplay loop muted playsinline>
+    LLMKit Dashboard
+  </video>
+</p>
+
+Most cost tracking tools give you "soft limits" that agents blow past in the first hour. LLMKit runs cost estimation before every request. If it would exceed the budget, the request gets rejected before reaching the provider. Per-key or per-session scope.
+
+Tag requests with a session ID to track costs per agent, per conversation, per user. The dashboard and MCP server surface this data in real time.
+
+11 providers through one interface: Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Fallback chains with one header (`x-llmkit-fallback: anthropic,openai,gemini`).
+
+Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 40+ models priced. Open source, MIT licensed.
+
+## How it works
+
+```mermaid
+flowchart TD
+    A["Your app"] --> B["LLMKit Proxy"]
+    B --> C["AI Provider"]
+    C --> B
+    B --> D["Supabase"]
+    D --> E["Dashboard"]
+    D --> F["MCP Server"]
+```
+
+Auth, budget check, route to provider (with fallback), log tokens and costs, update budget, fire alerts at 80%.
 
 ## Get started
 
@@ -32,71 +60,9 @@ Works with any language. TypeScript and Python SDKs, a CLI wrapper for everythin
 2. **Create an API key** in the Keys tab
 3. **Use it**: pick any method below
 
-## Python
-
-```bash
-pip install llmkit-sdk
-```
-
-Add cost tracking to any OpenAI-compatible SDK with one line. No code changes, no migration, no subclassing.
-
-```python
-from llmkit import tracked
-from openai import OpenAI
-
-client = OpenAI(http_client=tracked(api_key="llmk_..."))
-
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "hello"}],
-)
-# costs tracked automatically through the proxy
-```
-
-`tracked()` returns a standard `httpx.Client` that routes through the LLMKit proxy. Works with any SDK that accepts `http_client`: OpenAI, Anthropic, Mistral, Cohere.
-
-Or point your existing client directly at the proxy:
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    base_url="https://llmkit-proxy.smigolsmigol.workers.dev/v1",
-    api_key="llmk_...",
-    default_headers={"x-llmkit-provider-key": "sk-your-openai-key"},
-)
-
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "hello"}],
-)
-```
-
-Cost data comes back in response headers (`x-llmkit-cost`, `x-llmkit-provider`, `x-llmkit-model`). Access them via the raw response:
-
-```python
-raw = client.chat.completions.with_raw_response.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "hello"}],
-)
-print(raw.headers.get("x-llmkit-cost"))      # "0.0031"
-print(raw.headers.get("x-llmkit-provider"))   # "openai"
-
-response = raw.parse()  # get the ChatCompletion as usual
-print(response.choices[0].message.content)
-```
-
-Or skip code changes entirely with env vars (requires provider keys stored in the [dashboard](https://dashboard-two-zeta-54.vercel.app) Provider Keys tab):
-
-```bash
-export OPENAI_BASE_URL=https://llmkit-proxy.smigolsmigol.workers.dev/v1
-export OPENAI_API_KEY=llmk_...  # your LLMKit key
-python my_agent.py
-```
-
 ## CLI
 
-The CLI intercepts OpenAI and Anthropic API calls, forwards them transparently, and prints a cost summary when your process exits. No code changes.
+Wrap any command. The CLI intercepts OpenAI and Anthropic API calls, forwards them through the proxy, and prints a cost summary when the process exits. No code changes.
 
 ```bash
 npx @f3d1/llmkit-cli -- python my_agent.py
@@ -112,19 +78,32 @@ By model:
   gpt-4o                    2 reqs  $0.0059
 ```
 
-Works with Python, Ruby, Go, Rust, anything that calls the OpenAI or Anthropic API. The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` on the child process and runs a local transparent proxy. Your code doesn't know it's there.
+Works with Python, Ruby, Go, Rust, anything that calls the OpenAI or Anthropic API. Use `-v` for per-request costs as they happen, `--json` for machine-readable output.
+
+## Python
 
 ```bash
-# see per-request costs as they happen
-npx @f3d1/llmkit-cli -v -- python multi_agent.py
-#  [llmkit] openai/gpt-4o $0.0031 (420ms)
-#  [llmkit] anthropic/claude-sonnet-4-20250514 $0.0156 (1200ms)
-
-# machine-readable output
-npx @f3d1/llmkit-cli --json -- node my_agent.js
+pip install llmkit-sdk
 ```
 
-## TypeScript SDK
+Add cost tracking to any OpenAI-compatible SDK with one line:
+
+```python
+from llmkit import tracked
+from openai import OpenAI
+
+client = OpenAI(http_client=tracked(api_key="llmk_..."))
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "hello"}],
+)
+# costs tracked automatically through the proxy
+```
+
+`tracked()` returns a standard `httpx.Client` that routes through the LLMKit proxy. Works with any SDK that accepts `http_client`: OpenAI, Anthropic, Mistral, Cohere. Also supports `base_url` direct pointing and env var configuration. See the [SDK docs](https://pypi.org/project/llmkit-sdk/) for all options.
+
+## TypeScript
 
 ```bash
 npm install @f3d1/llmkit-sdk
@@ -134,7 +113,6 @@ npm install @f3d1/llmkit-sdk
 import { LLMKit } from '@f3d1/llmkit-sdk'
 
 const kit = new LLMKit({ apiKey: process.env.LLMKIT_KEY })
-
 const agent = kit.session()
 
 const res = await agent.chat({
@@ -145,116 +123,9 @@ const res = await agent.chat({
 
 console.log(res.content)
 console.log(res.cost)   // { inputCost: 0.003, outputCost: 0.015, totalCost: 0.018, currency: 'USD' }
-console.log(res.usage)  // { inputTokens: 1200, outputTokens: 340, totalTokens: 1540 }
 ```
 
-Streaming:
-
-```typescript
-const stream = await agent.chatStream({
-  model: 'gpt-4o',
-  messages: [{ role: 'user', content: 'explain quantum computing' }],
-})
-
-for await (const chunk of stream) {
-  process.stdout.write(chunk)
-}
-
-// usage and cost available after stream ends
-console.log(stream.cost)
-```
-
-### CostTracker (no proxy needed)
-
-Track costs locally without running the proxy. Pass any OpenAI or Anthropic SDK response and get costs calculated from the built-in pricing table.
-
-```typescript
-import { CostTracker } from '@f3d1/llmkit-sdk'
-import Anthropic from '@anthropic-ai/sdk'
-
-const tracker = new CostTracker({ log: true })
-const anthropic = new Anthropic()
-
-const msg = await anthropic.messages.create({
-  model: 'claude-sonnet-4-20250514',
-  max_tokens: 1024,
-  messages: [{ role: 'user', content: 'hello' }],
-})
-
-tracker.trackResponse('anthropic', msg)
-// [llmkit] anthropic/claude-sonnet-4-20250514: $0.0234 (800 in, 120 out)
-
-console.log(tracker.totalDollars)  // "0.0234"
-console.log(tracker.byModel())     // breakdown by model
-console.log(tracker.bySession())   // breakdown by session
-```
-
-## Vercel AI SDK
-
-```bash
-npm install @f3d1/llmkit-ai-sdk-provider ai
-```
-
-```typescript
-import { generateText } from 'ai'
-import { createLLMKit } from '@f3d1/llmkit-ai-sdk-provider'
-
-const llmkit = createLLMKit({
-  apiKey: process.env.LLMKIT_KEY,
-  provider: 'anthropic',
-})
-
-const { text } = await generateText({
-  model: llmkit.chat('claude-sonnet-4-20250514'),
-  prompt: 'hello',
-})
-```
-
-## Why LLMKit
-
-<p align="center">
-  <video src="https://github.com/user-attachments/assets/d07dac81-8f18-4920-ae77-62872822d078" width="680" autoplay loop muted playsinline>
-    LLMKit Dashboard
-  </video>
-</p>
-
-**Budget enforcement that works.** Cost estimation runs before every request. If it would blow the budget, it gets rejected before hitting the provider. Per-key or per-session scope. Not the advisory "soft limits" that agents blow past.
-
-**Per-agent cost tracking.** Tag requests with a session ID to track costs per agent, per conversation, per user. The dashboard and MCP server surface this data.
-
-**11 providers, one interface.** Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Fallback chains via header (`x-llmkit-fallback: anthropic,openai,gemini`).
-
-**Edge-deployed proxy.** Runs on Cloudflare Workers. Requests route through the nearest datacenter.
-
-**Cache-aware pricing.** Prompt caching savings from Anthropic, DeepSeek, and Fireworks are tracked correctly. 40+ models priced.
-
-**Open source.** Proxy, SDK, CLI, and MCP server are all MIT. Self-host or use the managed service.
-
-## How it works
-
-```mermaid
-flowchart TD
-    A["Your app (TypeScript, Python, Go, anything)"] --> B["LLMKit Proxy (Cloudflare Workers)"]
-    B --> |"auth -> budget check -> routing"| C["AI Provider (Anthropic, OpenAI, Gemini, ...)"]
-    C --> |"cost logging -> budget update"| B
-    B --> D["Supabase (Postgres)"]
-    D --> E["Dashboard"]
-    D --> F["MCP Server"]
-```
-
-The middleware chain runs on every request: authenticate the API key, check the budget, route to the provider (with fallback), log the response with token counts and costs, update the budget, and fire alert webhooks at 80% threshold.
-
-## Packages
-
-| Package | Description |
-|---------|-------------|
-| [llmkit-sdk](https://pypi.org/project/llmkit-sdk/) (PyPI) | Python SDK - `tracked()` transport, cost estimation, streaming, sessions |
-| [@f3d1/llmkit-sdk](packages/sdk) (npm) | TypeScript client + CostTracker + streaming |
-| [@f3d1/llmkit-cli](packages/cli) | `npx @f3d1/llmkit-cli -- <cmd>` - zero-code cost tracking for any language |
-| [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy - auth, budgets, routing, logging |
-| [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
-| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 6 tools for Claude Code / Cursor |
-| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
+Streaming, CostTracker (local cost tracking without the proxy), and Vercel AI SDK provider also available. See the [package README](packages/sdk) for details.
 
 ## MCP Server
 
@@ -262,7 +133,7 @@ The middleware chain runs on every request: authenticate the API key, check the 
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
 </a>
 
-Query your AI costs from Claude Code or Cursor.
+Query AI costs from Claude Code or Cursor. The Claude Code tools work without an API key.
 
 ```json
 {
@@ -278,71 +149,23 @@ Query your AI costs from Claude Code or Cursor.
 }
 ```
 
-Uses the same API key you create in the [dashboard](https://dashboard-two-zeta-54.vercel.app).
+11 tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`, `llmkit_cc_session_cost`, `llmkit_cc_agent_costs`, `llmkit_cc_cache_savings`, `llmkit_cc_cost_forecast`, `llmkit_cc_project_costs`.
 
-Tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`.
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| [llmkit-sdk](https://pypi.org/project/llmkit-sdk/) (PyPI) | Python SDK: `tracked()` transport, cost estimation, streaming, sessions |
+| [@f3d1/llmkit-sdk](packages/sdk) (npm) | TypeScript client, CostTracker, streaming |
+| [@f3d1/llmkit-cli](packages/cli) | `npx @f3d1/llmkit-cli -- <cmd>`: zero-code cost tracking for any language |
+| [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy: auth, budgets, routing, logging |
+| [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
+| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 11 tools for Claude Code and Cursor |
+| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
 
 ## Testing
 
-178 tests across the monorepo, run on every push via GitHub Actions.
-
-| Suite | What it covers |
-|-------|----------------|
-| Unit (30) | Provider adapters, cost calculation, fallback routing, error handling |
-| Crypto (11) | AES-GCM encrypt/decrypt roundtrips, tampered ciphertext, AAD context |
-| Budget (19) | Cost estimation, period resets, max_tokens clamping, affordable output calculation |
-| Reservation (11) | Concurrent budget checks, reservation settle/release, session scope, lazy init |
-| Budget bypass (17) | Adversarial vectors: session hopping, period manipulation, replay attacks, stale reservations |
-| Break (21) | Error handling, malformed input, edge cases, status code validation |
-| CLI parser (16) | OpenAI/Anthropic response and stream parsing, edge cases |
-| SDK tracker (17) | CostTracker aggregation, listeners, multi-session, provider/model grouping |
-| Python SDK (64) | Client, cost estimation, streaming, sessions, tracked() transport, SSE parsing |
-
-Budget enforcement is additionally tested with live concurrency against the deployed proxy, not just mocks.
-
-See [SECURITY.md](SECURITY.md) for the security audit methodology.
-
-## Security audit
-
-Built-in penetration-style audit that probes the full stack on every release. Auth bypass, injection vectors, cost drift, information leakage, sensitive path exposure, TLS fingerprinting.
-
-```bash
-python scripts/audit.py
-```
-
-```
-  [ AUTH ]
-   PASS   missing auth -> reject           403
-   PASS   sql in key                       403, no leak
-   PASS   null bytes                       400, no leak
-   PASS   oversized key                    403, no leak
-   PASS   key echo in error                key not reflected
-
-  [ INJECTION ]
-   PASS   sqli in session                  rejected (400)
-   PASS   xss in session                   rejected (400)
-   PASS   path traversal session           rejected (400)
-   PASS   crlf header injection            blocked
-   PASS   model: ../../etc/passwd          rejected (403)
-   PASS   malformed json                   403, clean error
-   PASS   huge body                        403, clean error
-
-  [ COST ACCURACY ]
-   PASS   openai/sync                      drift $0.00000000
-   PASS   openai/stream                    cost captured
-   PASS   anthropic/sync                   drift $0.00000000
-
-  [ EXPOSURE ]
-   PASS   blocked /.env                    403
-   PASS   blocked /.git/config             403
-   PASS   blocked /wrangler.toml           403
-   PASS   error body sanitized             no stack traces
-
-  VERDICT: ALL CLEAR
-  38 passed, 0 findings, $0.00001 cost per run
-```
-
-Runs 48 probes across 7 categories (recon, auth, injection, cost accuracy, exposure, rate limits, budget enforcement). Reports save to `audits/` as JSON with `--diff` to track regressions across releases. CI-compatible via `--json` output and non-zero exit on critical/high findings.
+250+ tests across the monorepo covering budget enforcement, cost calculation, adversarial bypass vectors, crypto, CLI parsing, SDK tracking, and the full Python SDK. CI runs on every push. See [SECURITY.md](SECURITY.md) for the security audit methodology.
 
 ## Self-host
 
@@ -366,10 +189,10 @@ npx wrangler secret put ENCRYPTION_KEY
 npx wrangler deploy
 ```
 
-## Built with Claude Code
+## Contributing
 
-Built with [Claude Code](https://claude.ai/claude-code).
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
-MIT
+MIT. Built with [Claude Code](https://claude.ai/claude-code).
