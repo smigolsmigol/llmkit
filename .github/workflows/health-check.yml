@@ -50,8 +50,8 @@ jobs:
           # 1. proxy health
           check_http "Proxy /health" "https://llmkit-proxy.smigolsmigol.workers.dev/health"
 
-          # 2. dashboard reachable
-          check_http "Dashboard" "https://dashboard-two-zeta-54.vercel.app" 404
+          # 2. dashboard reachable (sign-in is the public route, dashboard returns 404 for unauthed)
+          check_http "Dashboard" "https://dashboard-two-zeta-54.vercel.app/sign-in"
 
           # 3. npm packages
           check_npm "@f3d1/llmkit-sdk"
