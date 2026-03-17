@@ -5,7 +5,7 @@
   "description": "AI cost tracking: 11 tools for spend queries, budgets, and Claude Code session costs",
   "repository": {
     "type": "git",
-    "url": "https://github.com/smigolsmigol/llmkit"
+    "url": "git+https://github.com/smigolsmigol/llmkit.git"
   },
   "type": "module",
   "bin": {

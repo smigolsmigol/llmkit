@@ -5,7 +5,7 @@
   "description": "Vercel AI SDK v6 custom provider for LLMKit proxy",
   "repository": {
     "type": "git",
-    "url": "https://github.com/smigolsmigol/llmkit"
+    "url": "git+https://github.com/smigolsmigol/llmkit.git"
   },
   "type": "module",
   "types": "./dist/index.d.ts",
