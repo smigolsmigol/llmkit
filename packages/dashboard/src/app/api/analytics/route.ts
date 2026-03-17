@@ -43,19 +43,23 @@ export async function GET() {
     const raw = await res.json();
 
     // normalize npm from {pkgName: {last_week, last_month}} to [{name, weekly, total}]
-    const npm = Object.entries(raw.npm || {}).map(([name, stats]: [string, any]) => ({
-      name,
-      weekly: stats.last_week ?? 0,
-      total: stats.last_month ?? 0,
-    }));
+    const npm = Object.entries(raw.npm || {})
+      .filter(([name]) => name !== 'collected_at')
+      .map(([name, stats]: [string, any]) => ({
+        name,
+        weekly: stats.last_week ?? 0,
+        total: stats.last_month ?? 0,
+      }));
 
     // normalize health from {service: {status, latency_ms, checked_at}} to [{service, status, latencyMs, lastCheck}]
-    const health = Object.entries(raw.health || {}).map(([service, stats]: [string, any]) => ({
-      service,
-      status: stats.status === 'up' ? 'up' : stats.status === 'degraded' ? 'degraded' : 'down',
-      latencyMs: stats.latency_ms ?? 0,
-      lastCheck: stats.checked_at ?? new Date().toISOString(),
-    }));
+    const health = Object.entries(raw.health || {})
+      .filter(([service]) => service !== 'collected_at')
+      .map(([service, stats]: [string, any]) => ({
+        service,
+        status: stats.status === 'up' ? 'up' : stats.status === 'degraded' ? 'degraded' : 'down',
+        latencyMs: stats.latency_ms ?? 0,
+        lastCheck: stats.checked_at ?? new Date().toISOString(),
+      }));
 
     // normalize github
     const gh = raw.github || {};
