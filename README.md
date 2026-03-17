@@ -15,7 +15,7 @@
 [![MCP](https://img.shields.io/badge/MCP-Registry-blue)](https://registry.modelcontextprotocol.io/servers/io.github.smigolsmigol/llmkit)
 
 <p align="center">
-  <video src="https://github.com/smigolsmigol/llmkit/releases/download/v0.2.0/demo.mp4" width="680" autoplay loop muted playsinline>
+  <video src="https://github.com/user-attachments/assets/8ec33732-f651-4e35-9a27-5263c8a87ba7" width="680" autoplay loop muted playsinline>
     LLMKit CLI demo
   </video>
 </p>
@@ -213,7 +213,7 @@ const { text } = await generateText({
 ## Why LLMKit
 
 <p align="center">
-  <video src="https://github.com/smigolsmigol/llmkit/releases/download/v0.2.0/dashboard-preview.mp4" width="680" autoplay loop muted playsinline>
+  <video src="https://github.com/user-attachments/assets/d07dac81-8f18-4920-ae77-62872822d078" width="680" autoplay loop muted playsinline>
     LLMKit Dashboard
   </video>
 </p>
