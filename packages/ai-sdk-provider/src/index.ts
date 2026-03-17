@@ -17,7 +17,7 @@ export interface LLMKitProviderConfig {
 }
 
 export function createLLMKit(config: LLMKitProviderConfig) {
-  const baseUrl = (config.baseUrl || 'https://api.llmkit.dev').replace(/\/$/, '');
+  const baseUrl = (config.baseUrl || 'https://llmkit-proxy.smigolsmigol.workers.dev').replace(/\/$/, '');
 
   function chat(modelId: string): LanguageModelV3 {
     return {

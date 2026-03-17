@@ -6,9 +6,9 @@ from __future__ import annotations
 _PRICING: dict[str, dict[str, tuple[float, float]]] = {
     # provider -> model -> (input_per_million, output_per_million)
     "anthropic": {
-        "claude-opus-4-6": (5.0, 25.0),
+        "claude-opus-4-6": (15.0, 75.0),
         "claude-sonnet-4-6": (3.0, 15.0),
-        "claude-opus-4-5": (5.0, 25.0),
+        "claude-opus-4-5": (15.0, 75.0),
         "claude-sonnet-4-5": (3.0, 15.0),
         "claude-haiku-4-5": (1.0, 5.0),
         "claude-sonnet-4-20250514": (3.0, 15.0),

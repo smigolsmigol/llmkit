@@ -2,7 +2,11 @@
   "name": "@f3d1/llmkit-sdk",
   "version": "0.0.2",
   "license": "MIT",
-  "description": "TypeScript SDK for LLMKit - cost tracking, provider routing, budget enforcement",
+  "description": "Client SDK for LLMKit - cost tracking, provider routing, budget enforcement",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smigolsmigol/llmkit"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

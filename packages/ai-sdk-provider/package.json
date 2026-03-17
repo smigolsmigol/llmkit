@@ -3,6 +3,10 @@
   "version": "0.0.2",
   "license": "MIT",
   "description": "Vercel AI SDK v6 custom provider for LLMKit proxy",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smigolsmigol/llmkit"
+  },
   "type": "module",
   "types": "./dist/index.d.ts",
   "exports": {

@@ -5,7 +5,7 @@ Python SDK for [LLMKit](https://github.com/smigolsmigol/llmkit), the AI API gate
 ## Install
 
 ```bash
-pip install llmkit
+pip install llmkit-sdk
 ```
 
 ## Quick start
