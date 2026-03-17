@@ -25,9 +25,9 @@ export function loadConfig(): Config | null {
 function requireConfig(): Config {
   const config = loadConfig();
   if (!config) {
+    const dashUrl = process.env.LLMKIT_DASHBOARD_URL || 'https://dashboard-two-zeta-54.vercel.app';
     throw new Error(
-      'This tool requires LLMKIT_API_KEY. The llmkit_cc_* tools work without a key.\n' +
-      'Create one at https://dashboard-two-zeta-54.vercel.app',
+      `LLMKIT_API_KEY required. The llmkit_cc_* tools work without a key.\nGet one at ${dashUrl}`,
     );
   }
   return config;

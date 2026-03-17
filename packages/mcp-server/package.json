@@ -2,7 +2,7 @@
   "name": "@f3d1/llmkit-mcp-server",
   "version": "0.3.0",
   "license": "MIT",
-  "description": "MCP server for LLMKit - cost queries, session summaries, budget monitoring via Claude Code and Cursor",
+  "description": "AI cost tracking: 11 tools for spend queries, budgets, and Claude Code session costs",
   "repository": {
     "type": "git",
     "url": "https://github.com/smigolsmigol/llmkit"

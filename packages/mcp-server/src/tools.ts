@@ -375,7 +375,7 @@ async function handleBudgetStatus(args: Record<string, unknown> | undefined) {
 async function handleHealth() {
   const config = loadConfig();
   if (!config) {
-    return fail('LLMKIT_API_KEY required. The llmkit_cc_* tools work without a key.\nGet one at https://dashboard-two-zeta-54.vercel.app');
+    return fail(`LLMKIT_API_KEY required. The llmkit_cc_* tools work without a key.\nGet one at ${DASHBOARD_URL}`);
   }
   const start = Date.now();
   try {

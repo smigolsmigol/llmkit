@@ -152,7 +152,6 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
 
   var pendingRequests = {};
   var nextId = 1;
-  var initialized = false;
 
   function sendRpc(method, params) {
     var id = nextId++;
@@ -160,10 +159,6 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
       pendingRequests[id] = { resolve: resolve, reject: reject };
       window.parent.postMessage({ jsonrpc: '2.0', id: id, method: method, params: params || {} }, '*');
     });
-  }
-
-  function sendNotification(method, params) {
-    window.parent.postMessage({ jsonrpc: '2.0', method: method, params: params || {} }, '*');
   }
 
   window.addEventListener('message', function(event) {
@@ -194,11 +189,9 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
     version: '1.0.0',
     capabilities: {}
   }).then(function(result) {
-    initialized = true;
     if (result && result.hostContext) applyHostContext(result.hostContext);
   }).catch(function() {
     // host may not support ui/initialize yet, still render
-    initialized = true;
   });
 
   function applyHostContext(ctx) {
@@ -223,7 +216,6 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
 
   function fmt(n) { return n.toLocaleString(); }
   function usd(n) { return '$' + n.toFixed(4); }
-  function usd2(n) { return '$' + n.toFixed(2); }
   function pct(n, total) { return total > 0 ? Math.min((n / total) * 100, 100) : 0; }
   function kTokens(n) { return (n / 1000).toFixed(0) + 'k'; }
 
