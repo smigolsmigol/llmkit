@@ -48,15 +48,17 @@ PATTERNS=(
   'eyJhbGciOi[a-zA-Z0-9_-]{20,}'  # Supabase/JWT anon/service keys
 )
 
-# 3. Private info patterns (internal ops, team names, local paths)
-PRIVATE_PATTERNS=(
-  '[Ww]eed.?[Ll]ando'             # local directory name
-  'REDACTED_HANDLE'                         # team member handle
-  'REDACTED_REPO'                # private repo name
-  'REDACTED_IP'              # Hetzner server IP
-  'REDACTED_PATH'                # bot server remote path
-  'REDACTED_ID'                        # Claude project path ID
-)
+# 3. Private info patterns loaded from local (gitignored) config.
+#    Create .github/hooks/private-patterns.txt with one regex per line.
+#    This keeps internal ops details out of the public repo.
+PRIVATE_PATTERNS=()
+PRIVATE_PATTERNS_FILE="$(git rev-parse --show-toplevel)/.github/hooks/private-patterns.txt"
+if [ -f "$PRIVATE_PATTERNS_FILE" ]; then
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" == \#* ]] && continue
+    PRIVATE_PATTERNS+=("$line")
+  done < "$PRIVATE_PATTERNS_FILE"
+fi
 
 # scan staged file contents (not the diff, so removing secrets won't trigger)
 while IFS= read -r file; do
