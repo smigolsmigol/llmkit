@@ -6,6 +6,9 @@ interface NpmPackage {
   name: string;
   weekly: number;
   total: number;
+  recent: number;
+  recentDay: string;
+  daily: Array<{ day: string; count: number }>;
 }
 
 interface PypiStats {
@@ -336,6 +339,7 @@ export function AnalyticsView() {
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
                 <th className="pb-1">Package</th>
+                <th className="pb-1 text-right">Recent</th>
                 <th className="pb-1 text-right">Weekly</th>
                 <th className="w-32 pb-1" />
                 <th className="pb-1 text-right">Total</th>
@@ -351,6 +355,9 @@ export function AnalyticsView() {
                 return (
                   <tr key={pkg.name} className="border-t border-[#1a1a1a]">
                     <td className="py-1.5 font-mono text-xs">{pkg.name}</td>
+                    <td className="py-1.5 text-right font-mono text-xs text-emerald-400">
+                      {pkg.recent > 0 ? formatNumber(pkg.recent) : '-'}
+                    </td>
                     <td className="py-1.5 text-right font-mono text-xs font-medium">
                       {formatNumber(pkg.weekly)}
                     </td>
@@ -373,6 +380,9 @@ export function AnalyticsView() {
                     PyPI
                   </span>{' '}
                   {data.pypi.name}
+                </td>
+                <td className="py-1.5 text-right font-mono text-xs text-muted-foreground">
+                  -
                 </td>
                 <td className="py-1.5 text-right font-mono text-xs font-medium">
                   {formatNumber(data.pypi.weekly)}
