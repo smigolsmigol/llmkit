@@ -73,9 +73,11 @@ function extractUsage(line: string): TokenUsage | null {
   try {
     const msg = JSON.parse(line);
     if (msg?.type !== 'assistant' || !msg?.message?.usage) return null;
+    const model = msg.message.model ?? '';
+    if (!model || model.startsWith('<')) return null;
     const u = msg.message.usage;
     return {
-      model: msg.message.model ?? 'unknown',
+      model,
       input: u.input_tokens ?? 0,
       output: u.output_tokens ?? 0,
       cacheRead: u.cache_read_input_tokens ?? 0,

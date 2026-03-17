@@ -1,14 +1,12 @@
 # @f3d1/llmkit-mcp-server
 
-Query your AI API costs from Claude Code or Cursor. See spend by model, session, or time range without leaving your editor.
+AI cost tracking for Claude Code, Claude Desktop, and Cursor. 11 tools for spend queries, budgets, session costs, and agent attribution across 11 LLM providers.
 
-Part of [LLMKit](https://github.com/smigolsmigol/llmkit), an open-source API gateway that tracks costs and enforces budgets across 11 LLM providers.
+Part of [LLMKit](https://github.com/smigolsmigol/llmkit), an open-source API gateway with cost tracking and budget enforcement.
 
-## Setup
+## Quick start
 
-1. Create a free account at [dashboard-two-zeta-54.vercel.app](https://dashboard-two-zeta-54.vercel.app)
-2. Create an API key in the Keys tab
-3. Add the server to your Claude Code or Cursor config:
+Add to your `.mcp.json` (Claude Code) or `.cursor/mcp.json` (Cursor):
 
 ```json
 {
@@ -17,67 +15,73 @@ Part of [LLMKit](https://github.com/smigolsmigol/llmkit), an open-source API gat
       "command": "npx",
       "args": ["@f3d1/llmkit-mcp-server"],
       "env": {
-        "LLMKIT_API_KEY": "llmk_your_key_here"
+        "LLMKIT_API_KEY": "lk_your_key_here"
       }
     }
   }
 }
 ```
 
-Paste into `.mcp.json` (project root) for Claude Code, or `.cursor/mcp.json` for Cursor.
+The Claude Code tools (`llmkit_cc_*`) work immediately with no API key. They read local session data from `~/.claude/`. For the proxy tools, create a free key at the [dashboard](https://dashboard-two-zeta-54.vercel.app).
 
 ## Tools
 
-### Proxy tools (require LLMKIT_API_KEY)
+### Proxy tools (need API key)
 
-**llmkit_usage_stats** : Total spend, request count, top models, cache hit rate for a time period (today/week/month).
+| Tool | Title | What it does |
+|------|-------|-------------|
+| `llmkit_usage_stats` | Usage Stats | Spend, requests, top models for a period |
+| `llmkit_cost_query` | Cost Breakdown | Costs grouped by provider, model, session, or day |
+| `llmkit_budget_status` | Budget Status | Budget limits and remaining balance |
+| `llmkit_session_summary` | Session Summary | Recent sessions with cost, duration, models |
+| `llmkit_list_keys` | API Keys | All keys with status and creation date |
+| `llmkit_health` | Health Check | Proxy ping with response time |
 
-**llmkit_cost_query** : Cost breakdown grouped by provider, model, session, or day. Supports filtering by provider or model.
+### Claude Code tools (no key needed)
 
-**llmkit_budget_status** : Current budget usage and remaining balance across all budgets or a specific one.
+| Tool | Title | What it does |
+|------|-------|-------------|
+| `llmkit_cc_session_cost` | Session Cost | Current session cost and token breakdown |
+| `llmkit_cc_agent_costs` | Agent Costs | Per-agent cost attribution for subagents |
+| `llmkit_cc_cache_savings` | Cache Savings | Prompt caching ROI and efficiency |
+| `llmkit_cc_cost_forecast` | Cost Forecast | Monthly projection vs Max subscription |
+| `llmkit_cc_project_costs` | Project Costs | Costs ranked by project directory |
 
-**llmkit_session_summary** : List recent agent sessions with request counts, costs, duration, and models used.
+All tools return both human-readable text and typed JSON (`structuredContent`) with full `outputSchema` definitions. Tool annotations declare all tools as read-only and idempotent.
 
-**llmkit_list_keys** : Show all API keys with status and creation date.
+## Interactive dashboard
 
-**llmkit_health** : Ping the LLMKit proxy to check if it's reachable.
-
-### Claude Code tools (no API key needed)
-
-**llmkit_cc_session_cost** : Current Claude Code session cost and token usage.
-
-**llmkit_cc_agent_costs** : Cost breakdown per agent/task in the current session.
-
-**llmkit_cc_cache_savings** : Prompt caching savings and hit rate for the session.
-
-**llmkit_cc_cost_forecast** : Projected cost for the session based on current usage rate.
-
-**llmkit_cc_project_costs** : Historical Claude Code costs for the current project.
+`llmkit_cc_session_cost` includes an MCP App that renders an interactive cost dashboard directly in the chat. Hosts that support MCP Apps (Claude, Claude Desktop, VS Code, Goose) display stat cards, token breakdowns, and cost-by-model bar charts inline.
 
 ## Environment variables
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `LLMKIT_API_KEY` | Yes | Your LLMKit API key |
-| `LLMKIT_PROXY_URL` | No | Proxy URL (defaults to `https://llmkit-proxy.smigolsmigol.workers.dev`) |
+| `LLMKIT_API_KEY` | No | LLMKit API key for proxy tools. Claude Code tools work without it. |
+| `LLMKIT_PROXY_URL` | No | Proxy URL (defaults to hosted service) |
+| `LLMKIT_DASHBOARD_URL` | No | Dashboard link shown in MCP App |
+
+## Environment detection
+
+The server detects the MCP client via `clientInfo` during initialization. Claude Desktop sees only the 6 proxy tools. Claude Code and Cursor see all 11 tools including the local `cc_*` tools.
 
 ## Example
 
-Ask Claude Code: "How much have I spent on AI this week?"
+Ask Claude: "How much is this session costing me?"
 
 ```
-LLMKit Usage (week)
----
-Requests: 47
-Total spend: $0.34
-Input tokens: 128,400
-Output tokens: 24,100
-Cache hit rate: 42.1%
+Claude Code Session Cost (API rates)
+─────────────────────────
+Session: 47cc0ca3-588...
+Messages: 172
+Estimated cost: $13.6463
 
-Top models:
-  gpt-4o-mini: 31 requests
-  claude-sonnet-4-20250514: 12 requests
-  deepseek-chat: 4 requests
+Tokens: 2,886 in, 56,790 out
+Cache: 16,485,655 read, 635,093 write
+
+claude-opus-4-6: $13.6463 (2,886 in, 56,790 out)
+
+Costs up to the previous message. Max subscribers pay a flat rate.
 ```
 
 ## License
