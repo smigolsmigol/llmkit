@@ -13,7 +13,7 @@ npm install @f3d1/llmkit-sdk
 ```ts
 import { LLMKit } from '@f3d1/llmkit-sdk';
 
-const llm = new LLMKit({ apiKey: 'lk_...' });
+const llm = new LLMKit({ apiKey: 'llmk_...' });
 
 const res = await llm.chat({
   model: 'claude-sonnet-4-6',

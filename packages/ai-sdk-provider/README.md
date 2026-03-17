@@ -14,7 +14,7 @@ npm install @f3d1/llmkit-ai-sdk-provider ai
 import { generateText } from 'ai';
 import { createLLMKit } from '@f3d1/llmkit-ai-sdk-provider';
 
-const llmkit = createLLMKit({ apiKey: 'lk_...' });
+const llmkit = createLLMKit({ apiKey: 'llmk_...' });
 
 const { text, providerMetadata } = await generateText({
   model: llmkit.chat('claude-sonnet-4-6'),
@@ -44,7 +44,7 @@ for await (const chunk of result.textStream) {
 
 ```ts
 createLLMKit({
-  apiKey: 'lk_...',
+  apiKey: 'llmk_...',
   sessionId: 'my-session',      // group requests into sessions
   provider: 'anthropic',         // force a specific provider
   baseUrl: 'http://localhost:8787', // custom proxy URL

@@ -165,7 +165,7 @@ Query AI costs from Claude Code or Cursor. The Claude Code tools work without an
 
 ## Testing
 
-250+ tests across the monorepo covering budget enforcement, cost calculation, adversarial bypass vectors, crypto, CLI parsing, SDK tracking, and the full Python SDK. CI runs on every push. See [SECURITY.md](SECURITY.md) for the security audit methodology.
+200+ tests across the monorepo covering budget enforcement, cost calculation, adversarial bypass vectors, crypto, CLI parsing, SDK tracking, and the full Python SDK. CI runs on every push. See [SECURITY.md](SECURITY.md) for the security audit methodology.
 
 ## Self-host
 

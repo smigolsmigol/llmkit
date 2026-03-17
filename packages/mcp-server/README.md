@@ -28,6 +28,8 @@ Paste into `.mcp.json` (project root) for Claude Code, or `.cursor/mcp.json` for
 
 ## Tools
 
+### Proxy tools (require LLMKIT_API_KEY)
+
 **llmkit_usage_stats** : Total spend, request count, top models, cache hit rate for a time period (today/week/month).
 
 **llmkit_cost_query** : Cost breakdown grouped by provider, model, session, or day. Supports filtering by provider or model.
@@ -39,6 +41,18 @@ Paste into `.mcp.json` (project root) for Claude Code, or `.cursor/mcp.json` for
 **llmkit_list_keys** : Show all API keys with status and creation date.
 
 **llmkit_health** : Ping the LLMKit proxy to check if it's reachable.
+
+### Claude Code tools (no API key needed)
+
+**llmkit_cc_session_cost** : Current Claude Code session cost and token usage.
+
+**llmkit_cc_agent_costs** : Cost breakdown per agent/task in the current session.
+
+**llmkit_cc_cache_savings** : Prompt caching savings and hit rate for the session.
+
+**llmkit_cc_cost_forecast** : Projected cost for the session based on current usage rate.
+
+**llmkit_cc_project_costs** : Historical Claude Code costs for the current project.
 
 ## Environment variables
 

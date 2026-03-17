@@ -43,7 +43,7 @@ Every PR must pass:
 - `biome check` (lint + format)
 - `knip` (no dead exports or unused deps)
 - `publint` (package.json correctness for published packages)
-- All test suites (114 tests across 6 files)
+- All test suites (200+ tests across 9 packages)
 
 Run everything at once: `pnpm check-all`
 
