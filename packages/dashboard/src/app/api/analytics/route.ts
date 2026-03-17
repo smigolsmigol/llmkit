@@ -40,8 +40,46 @@ export async function GET() {
       );
     }
 
-    const data = await res.json();
-    return NextResponse.json(data);
+    const raw = await res.json();
+
+    // normalize npm from {pkgName: {last_week, last_month}} to [{name, weekly, total}]
+    const npm = Object.entries(raw.npm || {}).map(([name, stats]: [string, any]) => ({
+      name,
+      weekly: stats.last_week ?? 0,
+      total: stats.last_month ?? 0,
+    }));
+
+    // normalize health from {service: {status, latency_ms, checked_at}} to [{service, status, latencyMs, lastCheck}]
+    const health = Object.entries(raw.health || {}).map(([service, stats]: [string, any]) => ({
+      service,
+      status: stats.status === 'up' ? 'up' : stats.status === 'degraded' ? 'degraded' : 'down',
+      latencyMs: stats.latency_ms ?? 0,
+      lastCheck: stats.checked_at ?? new Date().toISOString(),
+    }));
+
+    // normalize github
+    const gh = raw.github || {};
+    const github = {
+      stars: gh.stars ?? 0,
+      forks: gh.forks ?? 0,
+      openIssues: gh.open_issues ?? 0,
+      watchers: gh.watchers ?? 0,
+    };
+
+    // normalize pypi
+    const pypi = {
+      name: 'llmkit-sdk',
+      weekly: raw.pypi?.last_week ?? 0,
+      total: raw.pypi?.total_releases ?? 0,
+    };
+
+    return NextResponse.json({
+      npm,
+      pypi,
+      github,
+      health,
+      updatedAt: raw.collected_at ?? new Date().toISOString(),
+    });
   } catch {
     return NextResponse.json({ error: 'analytics unavailable' }, { status: 502 });
   }
