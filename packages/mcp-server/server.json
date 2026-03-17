@@ -1,25 +1,25 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.smigolsmigol/llmkit",
-  "description": "Track AI API costs across 11 LLM providers. Query spend by model, session, or time range.",
+  "description": "AI cost tracking: 11 tools for spend queries, budgets, and Claude Code session costs.",
   "repository": {
     "url": "https://github.com/smigolsmigol/llmkit",
     "source": "github"
   },
-  "version": "0.1.0",
+  "version": "0.2.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@f3d1/llmkit-mcp-server",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "LLMKIT_API_KEY",
-          "description": "Your LLMKit API key (create one at the dashboard)",
-          "isRequired": true,
+          "description": "LLMKit API key. Optional: Claude Code tools work without it.",
+          "isRequired": false,
           "format": "string",
           "isSecret": true
         },
