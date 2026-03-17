@@ -6,8 +6,8 @@ export async function startServer(): Promise<void> {
   // Server constructor takes: identity + capabilities
   // capabilities.tools = {} means "I expose tools" (no extra config needed)
   const server = new Server(
-    { name: 'llmkit', version: '0.2.0' },
-    { capabilities: { tools: {} } },
+    { name: 'llmkit', version: '0.3.0' },
+    { capabilities: { tools: {}, resources: {} } },
   );
 
   registerTools(server);
