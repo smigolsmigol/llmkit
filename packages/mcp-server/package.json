@@ -1,6 +1,6 @@
 {
   "name": "@f3d1/llmkit-mcp-server",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "MCP server for LLMKit - cost queries, session summaries, budget monitoring via Claude Code and Cursor",
   "type": "module",
