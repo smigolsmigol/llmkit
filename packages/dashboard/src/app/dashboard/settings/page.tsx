@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from '@clerk/nextjs/server';
 import { getBudgets, getAccount } from '@/lib/queries';
 import { BudgetManager } from '@/components/budget-manager';

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from '@clerk/nextjs/server';
 import { getProviderKeys, getProviderActivity } from '@/lib/queries';
 import { ProviderGrid } from './provider-grid';

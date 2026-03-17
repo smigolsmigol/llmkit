@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
 import { getRequestsPaginated, getDistinctProviders, getDistinctModels, getRequestSummary } from '@/lib/queries';

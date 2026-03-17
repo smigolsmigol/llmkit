@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { auth } from '@clerk/nextjs/server';
 import { getApiKeys } from '@/lib/queries';
 import { formatDate } from '@/lib/format';
