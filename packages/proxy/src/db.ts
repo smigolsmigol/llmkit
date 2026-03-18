@@ -44,6 +44,7 @@ export interface RequestInsert {
   latency_ms: number;
   status: string;
   error_code: string | null;
+  source: 'proxy' | 'claude-code';
 }
 
 function postgrest(
@@ -58,8 +59,10 @@ function postgrest(
     'Content-Type': 'application/json',
   };
 
-  if (init.method === 'POST') {
+  if (init.method === 'POST' && !path.startsWith('rpc/')) {
     headers.Prefer = 'return=minimal';
+  } else if (!init.method || init.method === 'GET') {
+    headers.Prefer = 'count=exact';
   }
 
   return fetch(`${url}/rest/v1/${path}`, {

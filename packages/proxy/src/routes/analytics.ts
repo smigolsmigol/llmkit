@@ -21,7 +21,7 @@ interface RequestRow {
 }
 
 async function getUserRequests(
-  url: string, key: string, userId: string, days: number,
+  url: string, key: string, userId: string, days: number, source = 'proxy',
 ): Promise<RequestRow[]> {
   const keysRes = await postgrest(url, key, `api_keys?user_id=eq.${encodeURIComponent(userId)}&select=id`);
   if (!keysRes.ok) return [];
@@ -29,10 +29,24 @@ async function getUserRequests(
   if (!keys.length) return [];
 
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
-  const filter = `api_key_id=in.(${keys.map(k => k.id).join(',')})&created_at=gte.${cutoff}&order=created_at.desc&limit=5000`;
-  const res = await postgrest(url, key, `requests?${filter}&select=*`);
-  if (!res.ok) return [];
-  return (await res.json()) as RequestRow[];
+  const keyFilter = `api_key_id=in.(${keys.map(k => k.id).join(',')})&created_at=gte.${cutoff}&source=eq.${source}&order=created_at.desc`;
+
+  // paginated fetch (Supabase caps at 1000 per page)
+  const all: RequestRow[] = [];
+  const batch: Promise<RequestRow[]>[] = [];
+  // fire 100 parallel page requests, collect what comes back
+  for (let off = 0; off < 100000; off += 1000) {
+    batch.push(
+      postgrest(url, key, `requests?${keyFilter}&select=*&offset=${off}&limit=1000`)
+        .then(r => r.ok ? r.json() as Promise<RequestRow[]> : Promise.resolve([] as RequestRow[]))
+        .catch(() => [] as RequestRow[])
+    );
+  }
+  const pages = await Promise.all(batch);
+  for (const page of pages) {
+    if (page.length > 0) all.push(...page);
+  }
+  return all;
 }
 
 export const analyticsRouter = new Hono<Env>();
@@ -45,30 +59,47 @@ analyticsRouter.get('/analytics/usage', async (c) => {
 
   const period = (c.req.query('period') || 'month') as string;
   const days = period === 'today' ? 1 : period === 'week' ? 7 : 30;
-  const requests = await getUserRequests(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, userId, days);
 
-  let totalCostCents = 0;
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  let totalCacheReadTokens = 0;
+  const dbUrl = c.env.SUPABASE_URL;
+  const dbKey = c.env.SUPABASE_KEY;
+
+  const keysRes = await postgrest(dbUrl, dbKey,
+    `api_keys?user_id=eq.${encodeURIComponent(userId)}&select=id`);
+  if (!keysRes.ok) return c.json({ error: 'failed to fetch keys' }, 500);
+  const keys = (await keysRes.json()) as { id: string }[];
+  if (!keys.length) return c.json({ period, requests: 0, totalCostCents: 0, totalInputTokens: 0, totalOutputTokens: 0, totalCacheReadTokens: 0, cacheHitRate: 0, topModels: [] });
+
+  // aggregate via SQL function for each key
+  const fetches = keys.map(k =>
+    fetch(`${dbUrl}/rest/v1/rpc/usage_aggregate`, {
+      method: 'POST',
+      headers: { 'apikey': dbKey, 'Authorization': `Bearer ${dbKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ p_key_id: k.id, p_days: days, p_source: 'proxy' }),
+    }).then(async r => {
+      if (!r.ok) return null;
+      try { return JSON.parse(await r.text()); } catch { return null; }
+    }).catch(() => null)
+  );
+  const results = (await Promise.all(fetches)).filter(Boolean) as {
+    requests: number; totalCostCents: number; totalInputTokens: number;
+    totalOutputTokens: number; totalCacheReadTokens: number;
+    topModels: { model: string; requests: number }[];
+  }[];
+
+  let totalCostCents = 0, totalInputTokens = 0, totalOutputTokens = 0, totalCacheReadTokens = 0, totalRequests = 0;
   const modelCounts = new Map<string, number>();
-
-  for (const req of requests) {
-    totalCostCents += Number(req.cost_cents);
-    totalInputTokens += req.input_tokens;
-    totalOutputTokens += req.output_tokens;
-    totalCacheReadTokens += req.cache_read_tokens;
-    modelCounts.set(req.model, (modelCounts.get(req.model) || 0) + 1);
+  for (const r of results) {
+    totalRequests += r.requests;
+    totalCostCents += Number(r.totalCostCents);
+    totalInputTokens += r.totalInputTokens;
+    totalOutputTokens += r.totalOutputTokens;
+    totalCacheReadTokens += r.totalCacheReadTokens;
+    for (const m of (r.topModels || [])) modelCounts.set(m.model, (modelCounts.get(m.model) || 0) + m.requests);
   }
-
-  const topModels = [...modelCounts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 5)
-    .map(([model, count]) => ({ model, requests: count }));
 
   return c.json({
     period,
-    requests: requests.length,
+    requests: totalRequests,
     totalCostCents,
     totalInputTokens,
     totalOutputTokens,
@@ -76,7 +107,7 @@ analyticsRouter.get('/analytics/usage', async (c) => {
     cacheHitRate: totalInputTokens > 0
       ? +((totalCacheReadTokens / (totalCacheReadTokens + totalInputTokens)) * 100).toFixed(1)
       : 0,
-    topModels,
+    topModels: [...modelCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([model, count]) => ({ model, requests: count })),
   });
 });
 

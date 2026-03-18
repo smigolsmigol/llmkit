@@ -113,6 +113,7 @@ app.onError(async (err, c) => {
         latency_ms: 0,
         status: 'error',
         error_code: code,
+        source: 'proxy',
       }),
     );
 

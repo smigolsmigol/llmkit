@@ -73,6 +73,7 @@ export async function getRecentRequests(userId: string, limit = 20): Promise<Req
     .from('requests')
     .select('*')
     .in('api_key_id', keyIds)
+    .eq('source', 'proxy')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -177,7 +178,8 @@ export async function getRequestsPaginated(
   let query = db
     .from('requests')
     .select('*', { count: 'exact' })
-    .in('api_key_id', keyIds);
+    .in('api_key_id', keyIds)
+    .eq('source', 'proxy');
 
   if (filters.provider) query = query.eq('provider', filters.provider);
   if (filters.model) query = query.eq('model', filters.model);
@@ -218,6 +220,7 @@ export async function getRequestById(userId: string, requestId: string): Promise
     .select('*')
     .eq('id', requestId)
     .in('api_key_id', keyIds)
+    .eq('source', 'proxy')
     .single();
 
   return (data as RequestRow) || null;

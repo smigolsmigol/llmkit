@@ -88,6 +88,7 @@ function persistAndNotify(p: TrackParams & { userId: string; apiKeyId: string })
     latency_ms: p.latencyMs,
     status: 'success',
     error_code: null,
+    source: 'proxy',
   };
   p.ctx.waitUntil(logRequest(url, key, row));
 
