@@ -79,11 +79,10 @@ export async function GET() {
       watchers: gh.watchers ?? 0,
     };
 
-    // normalize pypi (no download stats from collector yet, just metadata)
     const pypi = {
       name: 'llmkit-sdk',
       weekly: raw.pypi?.last_week ?? 0,
-      total: raw.pypi?.releases ?? 0,
+      total: raw.pypi?.last_month ?? 0,
     };
 
     const updatedAt = raw.npm?.collected_at ?? raw.health?.collected_at ?? new Date().toISOString();
