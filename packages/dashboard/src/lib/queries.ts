@@ -426,6 +426,7 @@ async function getAllRequests(): Promise<AdminRequest[]> {
   const { data } = await db
     .from('requests')
     .select('api_key_id, cost_cents, latency_ms, error_code, provider, model, input_tokens, output_tokens, created_at')
+    .eq('source', 'proxy')
     .order('created_at', { ascending: false })
     .limit(50000);
   return (data as AdminRequest[]) || [];
@@ -1212,7 +1213,8 @@ export async function getAdminRequestsPaginated(
 
   let query = db
     .from('requests')
-    .select('*', { count: 'exact' });
+    .select('*', { count: 'exact' })
+    .eq('source', 'proxy');
 
   if (keyIds) query = query.in('api_key_id', keyIds);
   if (filters.provider) query = query.eq('provider', filters.provider);
@@ -1264,6 +1266,7 @@ export async function getAdminDistinctProviders(): Promise<string[]> {
   const { data } = await db
     .from('requests')
     .select('provider')
+    .eq('source', 'proxy')
     .limit(10000);
 
   if (!data) return [];
@@ -1275,6 +1278,7 @@ export async function getAdminDistinctModels(): Promise<string[]> {
   const { data } = await db
     .from('requests')
     .select('model')
+    .eq('source', 'proxy')
     .limit(10000);
 
   if (!data) return [];
