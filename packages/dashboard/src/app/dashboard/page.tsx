@@ -54,11 +54,10 @@ export default async function OverviewPage({
 
       {totalRequests === 0 && (
         <div className="rounded-lg border border-primary/20 bg-card p-4">
-          <p className="font-medium">Get started</p>
+          <p className="font-medium">No proxy traffic yet</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create an API key in the Keys tab, then use the Python SDK, TypeScript SDK,
-            or CLI to route requests through LLMKit. You bring your own provider keys.
-            LLMKit tracks costs and enforces budgets. Free during beta, no limits.
+            Route requests through LLMKit to see cost and usage data here.
+            Create an API key in the <Link href="/dashboard/keys" className="text-primary hover:underline">Keys</Link> tab, then point your SDK or CLI at the proxy.
           </p>
         </div>
       )}
@@ -110,149 +109,158 @@ export default async function OverviewPage({
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-1.5">
-        <StatCard
-          label="Avg Cost / Request"
-          value={formatCents(summary.avgCostCents)}
-          delta={trend.deltas.avgCost}
-        />
-        <StatCard
-          label="Avg Latency"
-          value={`${summary.avgLatencyMs}ms`}
-          sublabel={summary.totalRequests > 0
-            ? `~${Math.round((summary.totalInputTokens + summary.totalOutputTokens) / summary.totalRequests).toLocaleString()} tokens/req`
-            : undefined}
-          delta={trend.deltas.avgLatency}
-        />
-        <StatCard
-          label="Tokens Processed"
-          value={summary.totalInputTokens + summary.totalOutputTokens > 0
-            ? `${((summary.totalInputTokens + summary.totalOutputTokens) / 1000).toFixed(1)}k`
-            : '0'}
-          sublabel={`${(summary.totalInputTokens / 1000).toFixed(1)}k in / ${(summary.totalOutputTokens / 1000).toFixed(1)}k out`}
-        />
-        <StatCard
-          label="Projected Monthly"
-          value={formatCents(summary.projectedMonthlyCents)}
-          sublabel="based on last 7 days"
-        />
-      </div>
+      {totalRequests > 0 && (
+        <div className="grid grid-cols-4 gap-1.5">
+          <StatCard
+            label="Avg Cost / Request"
+            value={formatCents(summary.avgCostCents)}
+            delta={trend.deltas.avgCost}
+          />
+          <StatCard
+            label="Avg Latency"
+            value={`${summary.avgLatencyMs}ms`}
+            sublabel={summary.totalRequests > 0
+              ? `~${Math.round((summary.totalInputTokens + summary.totalOutputTokens) / summary.totalRequests).toLocaleString()} tokens/req`
+              : undefined}
+            delta={trend.deltas.avgLatency}
+          />
+          <StatCard
+            label="Tokens Processed"
+            value={summary.totalInputTokens + summary.totalOutputTokens > 0
+              ? `${((summary.totalInputTokens + summary.totalOutputTokens) / 1000).toFixed(1)}k`
+              : '0'}
+            sublabel={`${(summary.totalInputTokens / 1000).toFixed(1)}k in / ${(summary.totalOutputTokens / 1000).toFixed(1)}k out`}
+          />
+          <StatCard
+            label="Projected Monthly"
+            value={formatCents(summary.projectedMonthlyCents)}
+            sublabel="based on last 7 days"
+          />
+        </div>
+      )}
 
-      <div className="grid grid-cols-2 gap-1.5">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Spend</h2>
-            <p className="text-[10px] text-muted-foreground">
-              <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#7c3aed]" /> Input</span>
-              <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a78bfa]" /> Output</span>
-            </p>
+      {totalRequests > 0 ? (
+        <>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+              <div className="mb-1 border-b border-[#1a1a1a] pb-1">
+                <h2 className="text-xs font-medium">Spend</h2>
+                <p className="text-[10px] text-muted-foreground">
+                  <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#7c3aed]" /> Input</span>
+                  <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a78bfa]" /> Output</span>
+                </p>
+              </div>
+              <CostChart data={timeseries} />
+            </div>
+            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+              <div className="mb-1 border-b border-[#1a1a1a] pb-1">
+                <h2 className="text-xs font-medium">Request Volume</h2>
+                <p className="text-[10px] text-muted-foreground">Requests per hour</p>
+              </div>
+              <RequestChart data={timeseries} />
+            </div>
+            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+              <div className="mb-1 border-b border-[#1a1a1a] pb-1">
+                <h2 className="text-xs font-medium">By Provider</h2>
+                <p className="text-[10px] text-muted-foreground">Spend distribution</p>
+              </div>
+              <ProviderChart data={providerData} />
+            </div>
+            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+              <div className="mb-1 border-b border-[#1a1a1a] pb-1">
+                <h2 className="text-xs font-medium">Token Usage</h2>
+                <p className="text-[10px] text-muted-foreground">
+                  <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3b82f6]" /> Input</span>
+                  <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#06b6d4]" /> Output</span>
+                </p>
+              </div>
+              <TokenChart data={timeseries} />
+            </div>
           </div>
-          <CostChart data={timeseries} />
-        </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Request Volume</h2>
-            <p className="text-[10px] text-muted-foreground">Requests per hour</p>
-          </div>
-          <RequestChart data={timeseries} />
-        </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">By Provider</h2>
-            <p className="text-[10px] text-muted-foreground">Spend distribution</p>
-          </div>
-          <ProviderChart data={providerData} />
-        </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Token Usage</h2>
-            <p className="text-[10px] text-muted-foreground">
-              <span className="mr-2"><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#3b82f6]" /> Input</span>
-              <span><span className="inline-block h-1.5 w-1.5 rounded-full bg-[#06b6d4]" /> Output</span>
-            </p>
-          </div>
-          <TokenChart data={timeseries} />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-2 gap-1.5">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Cost by Model</h2>
-          </div>
-          {models.length === 0 ? (
-            <p className="text-sm text-muted-foreground/60">No data yet</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="pb-1 font-medium">Model</th>
-                  <th className="pb-1 font-medium text-right">Reqs</th>
-                  <th className="pb-1 font-medium text-right">Spend</th>
-                  <th className="pb-1 font-medium text-right">Avg ms</th>
-                  <th className="pb-1 font-medium text-right">$/1k tok</th>
-                </tr>
-              </thead>
-              <tbody>
-                {models.slice(0, 8).map((m) => (
-                  <tr key={m.model} className="border-t border-[#1a1a1a]">
-                    <td className="py-1 font-mono text-xs">{m.model}</td>
-                    <td className="py-1 text-right text-muted-foreground">{m.requests}</td>
-                    <td className="py-1 text-right font-mono">{formatCents(m.spendCents)}</td>
-                    <td className="py-1 text-right text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
-                    <td className="py-1 text-right font-mono text-muted-foreground">{formatCents(m.costPer1kTokens)}</td>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+              <div className="mb-1 border-b border-[#1a1a1a] pb-1">
+                <h2 className="text-xs font-medium">Cost by Model</h2>
+              </div>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs text-muted-foreground">
+                    <th className="pb-1 font-medium">Model</th>
+                    <th className="pb-1 font-medium text-right">Reqs</th>
+                    <th className="pb-1 font-medium text-right">Spend</th>
+                    <th className="pb-1 font-medium text-right">Avg ms</th>
+                    <th className="pb-1 font-medium text-right">$/1k tok</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                </thead>
+                <tbody>
+                  {models.slice(0, 8).map((m) => (
+                    <tr key={m.model} className="border-t border-[#1a1a1a]">
+                      <td className="py-1 font-mono text-xs">{m.model}</td>
+                      <td className="py-1 text-right text-muted-foreground">{m.requests}</td>
+                      <td className="py-1 text-right font-mono">{formatCents(m.spendCents)}</td>
+                      <td className="py-1 text-right text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
+                      <td className="py-1 text-right font-mono text-muted-foreground">{formatCents(m.costPer1kTokens)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
+            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+              <div className="mb-1 border-b border-[#1a1a1a] pb-1">
+                <h2 className="text-xs font-medium">Recent Sessions</h2>
+              </div>
+              {sessions.length === 0 ? (
+                <p className="py-4 text-center text-sm text-muted-foreground/60">Pass x-llmkit-session-id header to group requests.</p>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-muted-foreground">
+                      <th className="pb-1 font-medium">Session</th>
+                      <th className="pb-1 font-medium text-right">Reqs</th>
+                      <th className="pb-1 font-medium text-right">Cost</th>
+                      <th className="pb-1 font-medium text-right">Providers</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.slice(0, 8).map((s) => (
+                      <tr key={s.sessionId} className="border-t border-[#1a1a1a] transition-colors hover:bg-secondary/50">
+                        <td className="max-w-[180px] truncate py-1 font-mono text-xs">
+                          {s.sessionId === 'no-session' ? (
+                            <span className="text-muted-foreground">{s.sessionId}</span>
+                          ) : (
+                            <Link href={`/dashboard/requests?session_id=${encodeURIComponent(s.sessionId)}`} className="text-primary hover:underline">
+                              {s.sessionId}
+                            </Link>
+                          )}
+                        </td>
+                        <td className="py-1 text-right text-muted-foreground">{s.requestCount}</td>
+                        <td className="py-1 text-right font-mono">{formatCents(s.totalCostCents)}</td>
+                        <td className="py-1 text-right text-xs text-muted-foreground">{s.providers.join(', ')}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="mb-1 border-b border-[#1a1a1a] pb-1">
+              <h2 className="text-xs font-medium">Recent Requests</h2>
+            </div>
+            <RequestFeed requests={recent} />
+          </div>
+        </>
+      ) : (
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
           <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Recent Sessions</h2>
+            <h2 className="text-xs font-medium">Recent Requests</h2>
           </div>
-          {sessions.length === 0 ? (
-            <p className="text-sm text-muted-foreground/60">No sessions yet. Pass x-llmkit-session-id header to group requests.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="pb-1 font-medium">Session</th>
-                  <th className="pb-1 font-medium text-right">Reqs</th>
-                  <th className="pb-1 font-medium text-right">Cost</th>
-                  <th className="pb-1 font-medium text-right">Providers</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.slice(0, 8).map((s) => (
-                  <tr key={s.sessionId} className="border-t border-[#1a1a1a] transition-colors hover:bg-secondary/50">
-                    <td className="max-w-[180px] truncate py-1 font-mono text-xs">
-                      {s.sessionId === 'no-session' ? (
-                        <span className="text-muted-foreground">{s.sessionId}</span>
-                      ) : (
-                        <Link href={`/dashboard/requests?session_id=${encodeURIComponent(s.sessionId)}`} className="text-primary hover:underline">
-                          {s.sessionId}
-                        </Link>
-                      )}
-                    </td>
-                    <td className="py-1 text-right text-muted-foreground">{s.requestCount}</td>
-                    <td className="py-1 text-right font-mono">{formatCents(s.totalCostCents)}</td>
-                    <td className="py-1 text-right text-xs text-muted-foreground">{s.providers.join(', ')}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+          <RequestFeed requests={recent} />
         </div>
-      </div>
-
-      <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-        <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-          <h2 className="text-xs font-medium">Recent Requests</h2>
-        </div>
-        <RequestFeed requests={recent} />
-      </div>
+      )}
     </div>
   );
 }
