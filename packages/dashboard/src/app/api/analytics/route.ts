@@ -59,14 +59,15 @@ export async function GET() {
         };
       });
 
-    // normalize health from {service: {status, latency_ms, checked_at}} to [{service, status, latencyMs, lastCheck}]
+    // normalize health from {service: {status, latency_ms}, collected_at} to [{service, status, latencyMs, lastCheck}]
+    const healthCollectedAt = raw.health?.collected_at ?? new Date().toISOString();
     const health = Object.entries(raw.health || {})
-      .filter(([service]) => service !== 'collected_at')
+      .filter(([key]) => key !== 'collected_at')
       .map(([service, stats]: [string, any]) => ({
         service,
         status: stats.status === 'up' ? 'up' : stats.status === 'degraded' ? 'degraded' : 'down',
         latencyMs: stats.latency_ms ?? 0,
-        lastCheck: stats.checked_at ?? new Date().toISOString(),
+        lastCheck: healthCollectedAt,
       }));
 
     // normalize github
@@ -78,19 +79,21 @@ export async function GET() {
       watchers: gh.watchers ?? 0,
     };
 
-    // normalize pypi
+    // normalize pypi (no download stats from collector yet, just metadata)
     const pypi = {
       name: 'llmkit-sdk',
       weekly: raw.pypi?.last_week ?? 0,
-      total: raw.pypi?.total_releases ?? 0,
+      total: raw.pypi?.releases ?? 0,
     };
+
+    const updatedAt = raw.npm?.collected_at ?? raw.health?.collected_at ?? new Date().toISOString();
 
     return NextResponse.json({
       npm,
       pypi,
       github,
       health,
-      updatedAt: raw.collected_at ?? new Date().toISOString(),
+      updatedAt,
     });
   } catch {
     return NextResponse.json({ error: 'analytics unavailable' }, { status: 502 });

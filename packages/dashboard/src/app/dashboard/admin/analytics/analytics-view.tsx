@@ -418,31 +418,6 @@ export function AnalyticsView() {
         </div>
       )}
 
-      {/* roadmap: planned metrics */}
-      <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-        <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-          <h2 className="text-xs font-medium">Planned Metrics</h2>
-          <p className="text-[10px] text-muted-foreground">v2 additions on the roadmap</p>
-        </div>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1 py-1 lg:grid-cols-3">
-          {[
-            { label: 'X/Twitter engagement', detail: 'followers, impressions, engagement rate' },
-            { label: 'Conversion funnel', detail: 'visitors -> signups -> keys -> first request' },
-            { label: 'MCP Registry installs', detail: 'install counts from registry.modelcontextprotocol.io' },
-            { label: 'Git clone trends', detail: 'clones and unique visitors over time' },
-            { label: 'Package version freshness', detail: 'latest vs published, staleness alerts' },
-            { label: 'Weekly download trends', detail: 'sparklines with week-over-week deltas' },
-          ].map((item) => (
-            <div key={item.label} className="flex items-start gap-2 py-0.5">
-              <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-[#333]" />
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-                <p className="text-[10px] text-muted-foreground/60">{item.detail}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
