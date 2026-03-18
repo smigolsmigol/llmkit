@@ -186,9 +186,10 @@ export function AnalyticsView() {
 
   const totalNpmWeekly = data.npm.reduce((sum, p) => sum + p.weekly, 0);
   const totalNpmAll = data.npm.reduce((sum, p) => sum + p.total, 0);
+  const grandTotalAll = totalNpmAll + data.pypi.total;
   const sortedByWeekly = [...data.npm].sort((a, b) => b.weekly - a.weekly);
   const topPkg = sortedByWeekly[0];
-  const maxWeekly = topPkg?.weekly ?? 0;
+  const maxWeekly = Math.max(topPkg?.weekly ?? 0, data.pypi.weekly);
   const servicesUp = data.health.filter((h) => h.status === 'up').length;
   const servicesTotal = data.health.length;
   const allUp = servicesUp === servicesTotal && servicesTotal > 0;
@@ -359,8 +360,8 @@ export function AnalyticsView() {
             <tbody>
               {sortedByWeekly.map((pkg) => {
                 const pctOfTotal =
-                  totalNpmAll > 0
-                    ? ((pkg.total / totalNpmAll) * 100).toFixed(1)
+                  grandTotalAll > 0
+                    ? ((pkg.total / grandTotalAll) * 100).toFixed(1)
                     : '0.0';
                 return (
                   <tr key={pkg.name} className="border-t border-[#1a1a1a]">
@@ -408,7 +409,7 @@ export function AnalyticsView() {
                   {formatNumber(data.pypi.total)}
                 </td>
                 <td className="py-1.5 text-right font-mono text-xs text-muted-foreground">
-                  -
+                  {grandTotalAll > 0 ? ((data.pypi.total / grandTotalAll) * 100).toFixed(1) : '0.0'}%
                 </td>
               </tr>
             </tbody>
