@@ -134,9 +134,11 @@ export function AnalyticsView() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    fetch('/api/analytics')
+    setLoading(true);
+    fetch('/api/analytics', { cache: 'no-store' })
       .then(async (res) => {
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -147,7 +149,7 @@ export function AnalyticsView() {
       .then(setData)
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   if (loading) {
     return (
@@ -197,11 +199,19 @@ export function AnalyticsView() {
       {/* header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Analytics</h1>
-        {data.updatedAt && (
-          <span className="text-xs text-muted-foreground">
-            updated {timeAgo(data.updatedAt)}
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {data.updatedAt && (
+            <span className="text-xs text-muted-foreground">
+              updated {timeAgo(data.updatedAt)}
+            </span>
+          )}
+          <button
+            onClick={() => setRefreshKey((k) => k + 1)}
+            className="rounded px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            refresh
+          </button>
+        </div>
       </div>
 
       {/* stat cards: 6 across */}
@@ -339,7 +349,7 @@ export function AnalyticsView() {
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
                 <th className="pb-1">Package</th>
-                <th className="pb-1 text-right">Recent</th>
+                <th className="pb-1 text-right">Daily Avg</th>
                 <th className="pb-1 text-right">Weekly</th>
                 <th className="w-32 pb-1" />
                 <th className="pb-1 text-right">Total</th>
@@ -355,8 +365,8 @@ export function AnalyticsView() {
                 return (
                   <tr key={pkg.name} className="border-t border-[#1a1a1a]">
                     <td className="py-1.5 font-mono text-xs">{pkg.name}</td>
-                    <td className="py-1.5 text-right font-mono text-xs text-emerald-400">
-                      {pkg.recent > 0 ? formatNumber(pkg.recent) : '-'}
+                    <td className="py-1.5 text-right font-mono text-xs text-muted-foreground">
+                      {pkg.weekly > 0 ? Math.round(pkg.weekly / 7) : '-'}
                     </td>
                     <td className="py-1.5 text-right font-mono text-xs font-medium">
                       {formatNumber(pkg.weekly)}
@@ -382,7 +392,7 @@ export function AnalyticsView() {
                   {data.pypi.name}
                 </td>
                 <td className="py-1.5 text-right font-mono text-xs text-muted-foreground">
-                  -
+                  {data.pypi.weekly > 0 ? Math.round(data.pypi.weekly / 7) : '-'}
                 </td>
                 <td className="py-1.5 text-right font-mono text-xs font-medium">
                   {formatNumber(data.pypi.weekly)}
