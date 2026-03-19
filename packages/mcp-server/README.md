@@ -65,9 +65,19 @@ All tools return both human-readable text and typed JSON (`structuredContent`) w
 
 The server detects the MCP client via `clientInfo` during initialization. Claude Desktop sees only the 6 proxy tools. Claude Code and Cursor see all 11 tools including the local `cc_*` tools.
 
-## Example
+## Examples
 
-Ask Claude: "How much is this session costing me?"
+Try these prompts in Claude Code:
+
+1. **"How much is this session costing me?"** - calls `llmkit_cc_session_cost`, returns cost breakdown by model with token counts. Renders an interactive dashboard via MCP App.
+
+2. **"Which agents in this session are using the most tokens?"** - calls `llmkit_cc_agent_costs`, shows main conversation vs subagent cost split with per-agent attribution.
+
+3. **"Show me my AI spend for the week, broken down by model"** - calls `llmkit_cost_query` (needs API key), returns cost per model with request counts and token totals.
+
+Prompts 1 and 2 work immediately with no API key. Prompt 3 requires a free key from the [dashboard](https://llmkit-dashboard.vercel.app).
+
+Sample output for prompt 1:
 
 ```
 Claude Code Session Cost (API rates)
@@ -83,6 +93,14 @@ claude-opus-4-6: $13.6463 (2,886 in, 56,790 out)
 
 Costs up to the previous message. Max subscribers pay a flat rate.
 ```
+
+## MCP features
+
+- Tool annotations on all tools (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `title`)
+- `outputSchema` and `structuredContent` on every tool response
+- Content annotations with `audience` and `priority`
+- `clientInfo` detection: Claude Desktop gets 6 proxy tools, Claude Code/Cursor get all 11
+- MCP App resource: interactive HTML dashboard rendered inline in chat
 
 ## License
 
