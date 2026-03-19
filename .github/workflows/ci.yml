@@ -179,7 +179,7 @@ jobs:
 
       - name: verify dashboard reachable
         run: |
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://dashboard-two-zeta-54.vercel.app/sign-in")
+          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://llmkit-dashboard.vercel.app/sign-in")
           if [ "$STATUS" -eq 404 ] || [ "$STATUS" -eq 500 ] || [ "$STATUS" -eq 000 ]; then
             echo "::error::Dashboard check failed: got $STATUS"
             exit 1

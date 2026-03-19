@@ -56,7 +56,7 @@ Auth, budget check, route to provider (with fallback), log tokens and costs, upd
 
 ## Get started
 
-1. **Create an account** at [dashboard-two-zeta-54.vercel.app](https://dashboard-two-zeta-54.vercel.app) (free while in beta)
+1. **Create an account** at [llmkit-dashboard.vercel.app](https://llmkit-dashboard.vercel.app) (free while in beta)
 2. **Create an API key** in the Keys tab
 3. **Use it**: pick any method below
 

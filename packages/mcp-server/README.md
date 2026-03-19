@@ -22,7 +22,7 @@ Add to your `.mcp.json` (Claude Code) or `.cursor/mcp.json` (Cursor):
 }
 ```
 
-The Claude Code tools (`llmkit_cc_*`) work immediately with no API key. They read local session data from `~/.claude/`. For the proxy tools, create a free key at the [dashboard](https://dashboard-two-zeta-54.vercel.app).
+The Claude Code tools (`llmkit_cc_*`) work immediately with no API key. They read local session data from `~/.claude/`. For the proxy tools, create a free key at the [dashboard](https://llmkit-dashboard.vercel.app).
 
 ## Tools
 

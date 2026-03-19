@@ -4,7 +4,7 @@
 
 export const RESOURCE_URI = 'ui://llmkit/session-cost';
 export const RESOURCE_MIME = 'text/html+mcp';
-export const DASHBOARD_URL = process.env.LLMKIT_DASHBOARD_URL || 'https://dashboard-two-zeta-54.vercel.app';
+export const DASHBOARD_URL = process.env.LLMKIT_DASHBOARD_URL || 'https://llmkit-dashboard.vercel.app';
 
 export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
 <html lang="en">
