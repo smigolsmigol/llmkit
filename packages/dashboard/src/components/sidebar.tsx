@@ -15,12 +15,9 @@ const navItems = [
 
 const adminItem = { href: '/dashboard/admin', label: 'Admin', icon: Shield };
 
-const adminSubItems: Array<{ href: string; label: string; icon: typeof Shield }> = [];
-
 export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
   const pathname = usePathname();
   const items = isAdmin ? [...navItems, adminItem] : navItems;
-  const onAdminRoute = pathname.startsWith('/dashboard/admin');
 
   return (
     <aside className="fixed left-0 top-0 flex h-full w-56 flex-col border-r border-border bg-background px-3 py-6">
@@ -32,47 +29,23 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
       <nav className="flex flex-1 flex-col gap-2">
         {items.map((item) => {
           const active = item.href === '/dashboard/admin'
-            ? onAdminRoute
+            ? pathname.startsWith('/dashboard/admin')
             : pathname === item.href;
           const Icon = item.icon;
           return (
-            <div key={item.href}>
-              <Link
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2.5 text-base transition-colors',
-                  active
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                )}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                {item.label}
-              </Link>
-              {item.href === '/dashboard/admin' && isAdmin && onAdminRoute && (
-                <div className="ml-5 mt-1 flex flex-col gap-0.5 border-l border-[#2a2a2a] pl-3">
-                  {adminSubItems.map((sub) => {
-                    const subActive = pathname === sub.href;
-                    const SubIcon = sub.icon;
-                    return (
-                      <Link
-                        key={sub.href}
-                        href={sub.href}
-                        className={cn(
-                          'flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors',
-                          subActive
-                            ? 'text-primary'
-                            : 'text-muted-foreground hover:text-foreground'
-                        )}
-                      >
-                        <SubIcon className="h-3.5 w-3.5 shrink-0" />
-                        {sub.label}
-                      </Link>
-                    );
-                  })}
-                </div>
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex items-center gap-3 rounded-md px-3 py-2.5 text-base transition-colors',
+                active
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
               )}
-            </div>
+            >
+              <Icon className="h-5 w-5 shrink-0" />
+              {item.label}
+            </Link>
           );
         })}
       </nav>

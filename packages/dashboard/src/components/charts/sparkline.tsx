@@ -31,6 +31,8 @@ export function Sparkline({ data, color = '#7c3aed', height = 32 }: SparklinePro
     };
   }, [data, color]);
 
-  if (!option) return null;
+  if (!option) {
+    return <div className="mt-1 h-0.5 w-full rounded bg-[#1a1a1a]" style={{ marginTop: height / 2 }} />;
+  }
   return <ReactEChartsCore echarts={echarts} option={option} notMerge style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} />;
 }

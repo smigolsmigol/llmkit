@@ -217,8 +217,8 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
           {funnelMax > 0 && (
             <div className="border-t border-[#1a1a1a] pt-1">
               <p className="text-[10px] text-muted-foreground">
-                {accountCount > 0 ? ((activeUserCount / accountCount) * 100).toFixed(0) : 0}% activation rate,{' '}
-                {funnelMax > 0 ? ((accountCount / funnelMax) * 100).toFixed(1) : 0}% install-to-signup
+                {accountCount > 0 ? ((activeUserCount / accountCount) * 100).toFixed(0) : '0'}% activation,{' '}
+                {funnelMax > 0 ? ((accountCount / funnelMax) * 100).toFixed(1) : '0'}% install-to-signup
               </p>
             </div>
           )}

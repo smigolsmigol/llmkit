@@ -122,9 +122,7 @@ export default async function AdminPage({
       </div>
 
       {/* ecosystem metrics (client component, fetches from analytics API) */}
-      <div className="rounded-lg border border-[#2a2a2a] bg-card/50 p-1.5">
-        <EcosystemPanel accountCount={accounts.length} activeUserCount={activeUsers} />
-      </div>
+      <EcosystemPanel accountCount={accounts.length} activeUserCount={activeUsers} />
 
       {/* proxy charts: 2x2 grid */}
       <div className="grid grid-cols-2 gap-1.5">
