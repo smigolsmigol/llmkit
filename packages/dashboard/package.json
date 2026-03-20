@@ -18,7 +18,7 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "lucide-react": "^0.575.0",
-    "next": "15.5.12",
+    "next": "15.5.14",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "tailwind-merge": "^3.5.0"
