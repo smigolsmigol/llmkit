@@ -76,8 +76,8 @@ jobs:
           # 5. Glama listing (follows 301 redirect)
           check_http "Glama" "https://glama.ai/mcp/servers/smigolsmigol-llmkit"
 
-          # 6. MCP Registry listing
-          check_http "MCP Registry" "https://registry.modelcontextprotocol.io/servers/io.github.smigolsmigol/llmkit"
+          # 6. MCP Registry listing (slash must be URL-encoded, /versions is the lookup endpoint)
+          check_http "MCP Registry" "https://registry.modelcontextprotocol.io/v0/servers/io.github.smigolsmigol%2Fllmkit/versions"
 
           # 7-8. Hetzner services: check port responds (auth handled separately)
           if [ -n "$HETZNER_IP" ]; then
