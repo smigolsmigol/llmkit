@@ -2,7 +2,7 @@ name: Health Check
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -13,6 +13,7 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HETZNER_IP: ${{ secrets.HETZNER_IP }}
         run: |
           FAILURES=""
 
@@ -63,8 +64,17 @@ jobs:
           # 4. PyPI package
           check_pypi "llmkit-sdk"
 
-          # 5. SDK default URL (same as proxy, but validates the actual domain resolves)
-          check_http "SDK default URL" "https://llmkit-proxy.smigolsmigol.workers.dev/health"
+          # 5. Glama listing
+          check_http "Glama listing" "https://glama.ai/mcp/servers/smigolsmigol-llmkit"
+
+          # 6. MCP Registry listing
+          check_http "MCP Registry" "https://registry.modelcontextprotocol.io/servers/io.github.smigolsmigol/llmkit"
+
+          # 7-8. Hetzner services (skip if secret not set)
+          if [ -n "$HETZNER_IP" ]; then
+            check_http "Analytics API" "http://${HETZNER_IP}:3200/api/analytics/overview"
+            check_http "Pricing API" "http://${HETZNER_IP}:3100/api/models?limit=1"
+          fi
 
           # send result
           DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
