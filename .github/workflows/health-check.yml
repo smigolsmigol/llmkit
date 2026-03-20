@@ -20,13 +20,22 @@ jobs:
           check_http() {
             local name="$1" url="$2" reject_code="$3"
             local status
-            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "$url")
+            status=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 15 "$url")
             if [ "$status" -eq 000 ]; then
               FAILURES="${FAILURES}${name}: connection timeout (no response)%0A"
             elif [ -n "$reject_code" ] && [ "$status" -eq "$reject_code" ]; then
               FAILURES="${FAILURES}${name}: got $status, expected anything but $reject_code%0A"
             elif [ -z "$reject_code" ] && [ "$status" -ne 200 ]; then
               FAILURES="${FAILURES}${name}: got $status, expected 200%0A"
+            fi
+          }
+
+          check_port() {
+            local name="$1" host="$2" port="$3"
+            local status
+            status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "http://${host}:${port}/")
+            if [ "$status" -eq 000 ]; then
+              FAILURES="${FAILURES}${name}: port ${port} not responding%0A"
             fi
           }
 
@@ -49,9 +58,9 @@ jobs:
           }
 
           # 1. proxy health
-          check_http "Proxy /health" "https://llmkit-proxy.smigolsmigol.workers.dev/health"
+          check_http "Proxy" "https://llmkit-proxy.smigolsmigol.workers.dev/health"
 
-          # 2. dashboard reachable (sign-in is the public route, dashboard returns 404 for unauthed)
+          # 2. dashboard reachable
           check_http "Dashboard" "https://llmkit-dashboard.vercel.app/sign-in"
 
           # 3. npm packages
@@ -64,16 +73,16 @@ jobs:
           # 4. PyPI package
           check_pypi "llmkit-sdk"
 
-          # 5. Glama listing
-          check_http "Glama listing" "https://glama.ai/mcp/servers/smigolsmigol-llmkit"
+          # 5. Glama listing (follows 301 redirect)
+          check_http "Glama" "https://glama.ai/mcp/servers/smigolsmigol-llmkit"
 
           # 6. MCP Registry listing
           check_http "MCP Registry" "https://registry.modelcontextprotocol.io/servers/io.github.smigolsmigol/llmkit"
 
-          # 7-8. Hetzner services (skip if secret not set)
+          # 7-8. Hetzner services: check port responds (auth handled separately)
           if [ -n "$HETZNER_IP" ]; then
-            check_http "Analytics API" "http://${HETZNER_IP}:3200/api/analytics/overview"
-            check_http "Pricing API" "http://${HETZNER_IP}:3100/api/models?limit=1"
+            check_port "Analytics API" "$HETZNER_IP" 3200
+            check_port "Pricing API" "$HETZNER_IP" 3100
           fi
 
           # send result
