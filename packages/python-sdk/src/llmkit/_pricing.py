@@ -57,6 +57,11 @@ _PRICING: dict[str, dict[str, tuple[float, float]]] = {
         "codestral-latest": (0.30, 0.90),
     },
     "xai": {
+        "grok-4.20-0309-reasoning": (2.0, 6.0),
+        "grok-4.20-0309-non-reasoning": (2.0, 6.0),
+        "grok-4.20-multi-agent-0309": (2.0, 6.0),
+        "grok-4-1-fast-reasoning": (0.2, 0.5),
+        "grok-4-1-fast-non-reasoning": (0.2, 0.5),
         "grok-4": (3.0, 15.0),
         "grok-3": (3.0, 15.0),
         "grok-3-mini": (0.30, 0.50),

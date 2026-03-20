@@ -9,7 +9,7 @@ interface ModelPricing {
 
 type PricingTable = Record<string, ModelPricing>;
 
-// last updated: 2026-03-07
+// last updated: 2026-03-20
 // prices in USD per 1M tokens
 const PRICING: Record<ProviderName, PricingTable> = {
   anthropic: {
@@ -133,6 +133,11 @@ const PRICING: Record<ProviderName, PricingTable> = {
   },
 
   xai: {
+    'grok-4.20-0309-reasoning': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2 },
+    'grok-4.20-0309-non-reasoning': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2 },
+    'grok-4.20-multi-agent-0309': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2 },
+    'grok-4-1-fast-reasoning': { inputPerMillion: 0.2, outputPerMillion: 0.5, cacheReadPerMillion: 0.05 },
+    'grok-4-1-fast-non-reasoning': { inputPerMillion: 0.2, outputPerMillion: 0.5, cacheReadPerMillion: 0.05 },
     'grok-4': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
     'grok-3': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
     'grok-3-mini': { inputPerMillion: 0.30, outputPerMillion: 0.50 },
