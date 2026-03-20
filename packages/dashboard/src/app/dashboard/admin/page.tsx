@@ -1,25 +1,26 @@
 export const dynamic = 'force-dynamic';
 
 import { auth } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import {
-  getAllAccounts,
-  getAdminStatsTrend,
-  getAdminRequestTimeseries,
-  getAdminUserBreakdown,
-  getAdminTopModels,
-  getAdminProviderHealth,
-  getAdminProviderSpend,
-  getAccountPlan,
-} from '@/lib/queries';
-import { StatCard } from '@/components/stat-card';
+import { redirect } from 'next/navigation';
 import { CostChart } from '@/components/charts/cost-chart';
+import { ProviderChart } from '@/components/charts/provider-chart';
 import { RequestChart } from '@/components/charts/request-chart';
 import { TokenChart } from '@/components/charts/token-chart';
-import { ProviderChart } from '@/components/charts/provider-chart';
+import { EcosystemPanel } from '@/components/ecosystem-panel';
+import { StatCard } from '@/components/stat-card';
 import { TimeRangeSelector } from '@/components/time-range-selector';
 import { formatCents } from '@/lib/format';
+import {
+  getAccountPlan,
+  getAdminProviderHealth,
+  getAdminProviderSpend,
+  getAdminRequestTimeseries,
+  getAdminStatsTrend,
+  getAdminTopModels,
+  getAdminUserBreakdown,
+  getAllAccounts,
+} from '@/lib/queries';
 import { AccountTable } from './account-table';
 
 function timeAgo(date: string): string {
@@ -58,14 +59,17 @@ export default async function AdminPage({
 
   const stats = trend.current;
   const totalTokens = stats.totalInputTokens + stats.totalOutputTokens;
+  const activeUsers = userBreakdown.filter((u) => u.requests > 0).length;
 
   return (
     <div className="space-y-1.5">
+      {/* header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Admin</h1>
         <TimeRangeSelector />
       </div>
 
+      {/* proxy metrics: row 1 */}
       <div className="grid grid-cols-4 gap-1.5">
         <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="flex items-center justify-between">
@@ -81,7 +85,7 @@ export default async function AdminPage({
           </p>
         </div>
         <StatCard label="Total Requests" value={stats.totalRequests.toLocaleString()} delta={trend.deltas.requests} />
-        <StatCard label="Accounts" value={String(stats.totalAccounts)} />
+        <StatCard label="Accounts" value={String(stats.totalAccounts)} sublabel={`${activeUsers} active in period`} />
         <StatCard
           label="Tokens Processed"
           value={totalTokens > 1_000_000 ? `${(totalTokens / 1_000_000).toFixed(1)}M` : totalTokens.toLocaleString()}
@@ -89,6 +93,7 @@ export default async function AdminPage({
         />
       </div>
 
+      {/* proxy metrics: row 2 */}
       <div className="grid grid-cols-4 gap-1.5">
         <StatCard
           label="Active Keys (today)"
@@ -116,56 +121,12 @@ export default async function AdminPage({
         />
       </div>
 
-      {providerHealth.length > 0 && (
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Provider Health</h2>
-          </div>
-          <div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs text-muted-foreground">
-                  <th className="pb-1">Provider</th>
-                  <th className="pb-1 text-right">Reqs</th>
-                  <th className="pb-1 text-right">Success</th>
-                  <th className="pb-1 text-right">Last Error</th>
-                  <th className="pb-1 text-right">Avg ms</th>
-                  <th className="pb-1 text-right">p95 ms</th>
-                  <th className="pb-1 text-right">Spend</th>
-                </tr>
-              </thead>
-              <tbody>
-                {providerHealth.map((p) => (
-                  <tr key={p.provider} className="border-t border-[#1a1a1a]">
-                    <td className="py-1 text-xs font-medium">
-                      <Link href={`/dashboard/admin/requests?provider=${p.provider}`} className="text-primary hover:underline">
-                        {p.provider}
-                      </Link>
-                    </td>
-                    <td className="py-1 text-right text-xs">{p.requests}</td>
-                    <td className={`py-1 text-right text-xs font-mono ${p.successRate < 95 ? 'text-red-400' : 'text-emerald-400'}`}>
-                      {p.successRate < 100 ? (
-                        <Link href={`/dashboard/admin/requests?provider=${p.provider}&status=error`} className="hover:underline">
-                          {p.successRate}%
-                        </Link>
-                      ) : (
-                        <>{p.successRate}%</>
-                      )}
-                    </td>
-                    <td className="py-1 text-right text-xs text-muted-foreground">
-                      {p.lastErrorAt ? timeAgo(p.lastErrorAt) : '-'}
-                    </td>
-                    <td className="py-1 text-right text-xs text-muted-foreground">{p.avgLatencyMs.toLocaleString()}</td>
-                    <td className="py-1 text-right text-xs text-muted-foreground">{p.p95LatencyMs.toLocaleString()}</td>
-                    <td className="py-1 text-right font-mono text-xs">{formatCents(p.spendCents)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* ecosystem metrics (client component, fetches from analytics API) */}
+      <div className="rounded-lg border border-[#2a2a2a] bg-card/50 p-1.5">
+        <EcosystemPanel accountCount={accounts.length} activeUserCount={activeUsers} />
+      </div>
 
+      {/* proxy charts: 2x2 grid */}
       <div className="grid grid-cols-2 gap-1.5">
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
           <div className="mb-1 border-b border-[#1a1a1a] pb-1">
@@ -200,6 +161,56 @@ export default async function AdminPage({
         </div>
       </div>
 
+      {/* provider health */}
+      {providerHealth.length > 0 && (
+        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
+            <h2 className="text-xs font-medium">Provider Health</h2>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-muted-foreground">
+                <th className="pb-1">Provider</th>
+                <th className="pb-1 text-right">Reqs</th>
+                <th className="pb-1 text-right">Success</th>
+                <th className="pb-1 text-right">Last Error</th>
+                <th className="pb-1 text-right">Avg ms</th>
+                <th className="pb-1 text-right">p95 ms</th>
+                <th className="pb-1 text-right">Spend</th>
+              </tr>
+            </thead>
+            <tbody>
+              {providerHealth.map((p) => (
+                <tr key={p.provider} className="border-t border-[#1a1a1a]">
+                  <td className="py-1 text-xs font-medium">
+                    <Link href={`/dashboard/admin/requests?provider=${p.provider}`} className="text-primary hover:underline">
+                      {p.provider}
+                    </Link>
+                  </td>
+                  <td className="py-1 text-right text-xs">{p.requests}</td>
+                  <td className={`py-1 text-right text-xs font-mono ${p.successRate < 95 ? 'text-red-400' : 'text-emerald-400'}`}>
+                    {p.successRate < 100 ? (
+                      <Link href={`/dashboard/admin/requests?provider=${p.provider}&status=error`} className="hover:underline">
+                        {p.successRate}%
+                      </Link>
+                    ) : (
+                      <>{p.successRate}%</>
+                    )}
+                  </td>
+                  <td className="py-1 text-right text-xs text-muted-foreground">
+                    {p.lastErrorAt ? timeAgo(p.lastErrorAt) : '-'}
+                  </td>
+                  <td className="py-1 text-right text-xs text-muted-foreground">{p.avgLatencyMs.toLocaleString()}</td>
+                  <td className="py-1 text-right text-xs text-muted-foreground">{p.p95LatencyMs.toLocaleString()}</td>
+                  <td className="py-1 text-right font-mono text-xs">{formatCents(p.spendCents)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* top models + per-user */}
       <div className="grid grid-cols-2 gap-1.5">
         {topModels.length > 0 && (
           <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
@@ -288,6 +299,7 @@ export default async function AdminPage({
         )}
       </div>
 
+      {/* accounts */}
       <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
         <div className="mb-1 border-b border-[#1a1a1a] pb-1">
           <h2 className="text-xs font-medium">Accounts ({accounts.length})</h2>

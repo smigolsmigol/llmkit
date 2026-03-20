@@ -1,8 +1,8 @@
 'use client';
 
+import { Key, LayoutDashboard, List, Plug, Settings, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, List, Key, Plug, Settings, Shield, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -15,9 +15,7 @@ const navItems = [
 
 const adminItem = { href: '/dashboard/admin', label: 'Admin', icon: Shield };
 
-const adminSubItems = [
-  { href: '/dashboard/admin/analytics', label: 'Analytics', icon: BarChart3 },
-];
+const adminSubItems: Array<{ href: string; label: string; icon: typeof Shield }> = [];
 
 export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
   const pathname = usePathname();
