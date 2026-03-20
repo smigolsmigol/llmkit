@@ -133,7 +133,7 @@ Streaming, CostTracker (local cost tracking without the proxy), and Vercel AI SD
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
 </a>
 
-Query AI costs from Claude Code or Cursor. The Claude Code tools work without an API key.
+Query AI costs from Claude Code or Cursor. Claude Code tools work without an API key. Notion tools sync cost data to your workspace.
 
 ```json
 {
@@ -142,14 +142,22 @@ Query AI costs from Claude Code or Cursor. The Claude Code tools work without an
       "command": "npx",
       "args": ["@f3d1/llmkit-mcp-server"],
       "env": {
-        "LLMKIT_API_KEY": "llmk_your_key_here"
+        "LLMKIT_API_KEY": "llmk_your_key_here",
+        "NOTION_TOKEN": "",
+        "NOTION_PAGE_ID": ""
       }
     }
   }
 }
 ```
 
-11 tools: `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`, `llmkit_cc_session_cost`, `llmkit_cc_agent_costs`, `llmkit_cc_cache_savings`, `llmkit_cc_cost_forecast`, `llmkit_cc_project_costs`.
+**14 tools** across 3 domains:
+
+**Proxy** (need `LLMKIT_API_KEY`): `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`
+
+**Claude Code** (no key needed): `llmkit_cc_session_cost`, `llmkit_cc_agent_costs`, `llmkit_cc_cache_savings`, `llmkit_cc_cost_forecast`, `llmkit_cc_project_costs`
+
+**Notion** (need `NOTION_TOKEN` + `NOTION_PAGE_ID`): `llmkit_notion_cost_snapshot`, `llmkit_notion_budget_check`, `llmkit_notion_session_report`
 
 ## Packages
 
@@ -160,7 +168,7 @@ Query AI costs from Claude Code or Cursor. The Claude Code tools work without an
 | [@f3d1/llmkit-cli](packages/cli) | `npx @f3d1/llmkit-cli -- <cmd>`: zero-code cost tracking for any language |
 | [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy: auth, budgets, routing, logging |
 | [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
-| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 11 tools for Claude Code and Cursor |
+| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 14 tools: proxy analytics, Claude Code costs, Notion sync |
 | [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
 
 ## Testing
