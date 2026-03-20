@@ -129,8 +129,8 @@ Streaming, CostTracker (local cost tracking without the proxy), and Vercel AI SD
 
 ## MCP Server
 
-<a href="https://glama.ai/mcp/servers/@smigolsmigol/llmkit-mcp-server">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
+<a href="https://glama.ai/mcp/servers/smigolsmigol/llmkit-mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
 </a>
 
 Query AI costs from Claude Code or Cursor. Claude Code tools work without an API key. Notion tools sync cost data to your workspace.
