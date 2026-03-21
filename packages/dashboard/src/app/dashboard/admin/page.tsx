@@ -90,6 +90,7 @@ export default async function AdminPage({
           label="Tokens Processed"
           value={totalTokens > 1_000_000 ? `${(totalTokens / 1_000_000).toFixed(1)}M` : totalTokens.toLocaleString()}
           sublabel={`${stats.totalInputTokens.toLocaleString()} in / ${stats.totalOutputTokens.toLocaleString()} out`}
+          delta={trend.deltas.tokens}
         />
       </div>
 
@@ -118,6 +119,7 @@ export default async function AdminPage({
           label="p95 Latency"
           value={`${stats.p95LatencyMs}ms`}
           sublabel="95th percentile"
+          delta={trend.deltas.p95Latency}
         />
       </div>
 

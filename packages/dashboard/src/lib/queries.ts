@@ -647,6 +647,8 @@ export interface AdminStatsTrend {
     requests: number | null;
     errorRate: number | null;
     avgLatency: number | null;
+    tokens: number | null;
+    p95Latency: number | null;
   };
 }
 
@@ -752,6 +754,8 @@ export async function getAdminStatsTrend(days: number): Promise<AdminStatsTrend>
       requests: pctDelta(curr.totalRequests, prev.totalRequests),
       errorRate: pctDelta(curr.errorRate, prev.errorRate),
       avgLatency: pctDelta(curr.avgLatencyMs, prev.avgLatencyMs),
+      tokens: pctDelta(curr.totalInputTokens + curr.totalOutputTokens, prev.totalInputTokens + prev.totalOutputTokens),
+      p95Latency: pctDelta(curr.p95LatencyMs, prev.p95LatencyMs),
     },
   };
 }
