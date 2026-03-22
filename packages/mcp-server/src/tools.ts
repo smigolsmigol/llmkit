@@ -208,12 +208,12 @@ const CC_TOOLS = [
   },
   {
     name: 'llmkit_cc_project_costs',
-    description: 'Cost breakdown across all Claude Code projects, ranked by spend.',
+    description: 'Cumulative cost breakdown across all Claude Code projects and sessions, ranked by total spend.',
     inputSchema: { type: 'object' as const, properties: {} },
     outputSchema: {
       type: 'object' as const,
       properties: {
-        projects: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, sessionCount: { type: 'number' }, latestCostUsd: { type: 'number' }, latestMessages: { type: 'number' }, topModel: { type: 'string' }, date: { type: 'string' } } } },
+        projects: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, sessionCount: { type: 'number' }, totalCostUsd: { type: 'number' }, totalMessages: { type: 'number' }, totalInputTokens: { type: 'number' }, totalOutputTokens: { type: 'number' }, latestCostUsd: { type: 'number' }, topModel: { type: 'string' }, date: { type: 'string' } } } },
       },
       required: ['projects'],
     },

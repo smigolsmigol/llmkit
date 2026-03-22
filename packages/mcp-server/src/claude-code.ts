@@ -387,6 +387,10 @@ export async function getCostForecast(): Promise<CostForecastResult | null> {
 export interface ProjectCostResult {
   project: string;
   sessionCount: number;
+  totalCostUsd: number;
+  totalMessages: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
   latestSession: { id: string; cost: number; messages: number; topModel: string; date: string };
 }
 
@@ -408,28 +412,56 @@ export async function getProjectCosts(): Promise<ProjectCostResult[]> {
     const jsonls = files.filter(f => f.endsWith('.jsonl'));
     if (jsonls.length === 0) return null;
 
-    const sessionFile = await findCurrentSessionFile(projectDir);
-    if (!sessionFile) return null;
+    // parse all sessions with a per-file timeout
+    const parsed = await Promise.allSettled(
+      jsonls.map(f => Promise.race([
+        parseSessionJsonl(join(projectDir, f)),
+        new Promise<null>(r => { setTimeout(() => r(null), 15000); }),
+      ])),
+    );
 
-    const session = await Promise.race([
-      parseSessionJsonl(sessionFile),
-      new Promise<null>((resolve) => { setTimeout(() => { resolve(null); }, 15000); }),
-    ]);
+    const sessions = parsed
+      .map(r => r.status === 'fulfilled' ? r.value : null)
+      .filter((s): s is SessionCost => s !== null && s.messages > 0);
 
-    if (!session || session.messages === 0) return null;
+    if (sessions.length === 0) return null;
 
-    const s = await stat(sessionFile).catch(() => null);
-    const topModel = Object.entries(session.models).sort(([, a], [, b]) => b.cost - a.cost)[0];
+    let totalCost = 0;
+    let totalMessages = 0;
+    let totalInput = 0;
+    let totalOutput = 0;
+    for (const s of sessions) {
+      totalCost += s.totalCost;
+      totalMessages += s.messages;
+      totalInput += s.totalInput;
+      totalOutput += s.totalOutput;
+    }
+
+    // latest session by mtime for the "latest" field
+    const mtimes = await Promise.all(
+      jsonls.map(async f => {
+        const s = await stat(join(projectDir, f)).catch(() => null);
+        return { file: f, mtime: s?.mtimeMs ?? 0 };
+      }),
+    );
+    mtimes.sort((a, b) => b.mtime - a.mtime);
+    const latest = sessions.find(s => mtimes[0]?.file.includes(s.sessionId)) ?? sessions[0]!;
+    const latestMtime = mtimes[0]?.mtime ?? 0;
+    const topModel = Object.entries(latest.models).sort(([, a], [, b]) => b.cost - a.cost)[0];
 
     return {
       project: decodeProjectName(dir),
-      sessionCount: jsonls.length,
+      sessionCount: sessions.length,
+      totalCostUsd: totalCost,
+      totalMessages,
+      totalInputTokens: totalInput,
+      totalOutputTokens: totalOutput,
       latestSession: {
-        id: session.sessionId.slice(0, 12),
-        cost: session.totalCost,
-        messages: session.messages,
+        id: latest.sessionId.slice(0, 12),
+        cost: latest.totalCost,
+        messages: latest.messages,
         topModel: topModel?.[0] ?? 'unknown',
-        date: s ? new Date(s.mtimeMs).toISOString().slice(0, 10) : 'unknown',
+        date: latestMtime ? new Date(latestMtime).toISOString().slice(0, 10) : 'unknown',
       },
     };
   };
@@ -440,6 +472,6 @@ export async function getProjectCosts(): Promise<ProjectCostResult[]> {
     if (r.status === 'fulfilled' && r.value) results.push(r.value);
   }
 
-  results.sort((a, b) => b.latestSession.cost - a.latestSession.cost);
+  results.sort((a, b) => b.totalCostUsd - a.totalCostUsd);
   return results;
 }

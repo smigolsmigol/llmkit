@@ -147,17 +147,25 @@ export async function handleCCCostForecast() {
 export async function handleCCProjectCosts() {
   const projects = await getProjectCosts();
   const projectData = projects.map(proj => ({
-    name: proj.project, sessionCount: proj.sessionCount, latestCostUsd: proj.latestSession.cost,
-    latestMessages: proj.latestSession.messages, topModel: proj.latestSession.topModel, date: proj.latestSession.date,
+    name: proj.project,
+    sessionCount: proj.sessionCount,
+    totalCostUsd: proj.totalCostUsd,
+    totalMessages: proj.totalMessages,
+    totalInputTokens: proj.totalInputTokens,
+    totalOutputTokens: proj.totalOutputTokens,
+    latestCostUsd: proj.latestSession.cost,
+    topModel: proj.latestSession.topModel,
+    date: proj.latestSession.date,
   }));
 
   if (!projectData.length) return ok('No Claude Code projects found with session data.', { projects: projectData });
 
+  const totalAll = projectData.reduce((s, p) => s + p.totalCostUsd, 0);
   return ok([
-    'Claude Code Project Costs',
+    'Claude Code Project Costs (cumulative)',
     '\u2500'.repeat(25),
-    `${projectData.length} projects found`,
+    `${projectData.length} projects, $${totalAll.toFixed(2)} total`,
     '',
-    ...projectData.map(p => `${p.name}: $${p.latestCostUsd.toFixed(4)} (${p.latestMessages} msgs, ${p.topModel}, ${p.date})`),
+    ...projectData.map(p => `${p.name}: $${p.totalCostUsd.toFixed(2)} across ${p.sessionCount} sessions (${p.totalMessages} msgs, ${(p.totalInputTokens + p.totalOutputTokens).toLocaleString()} tokens)`),
   ].join('\n'), { projects: projectData });
 }
