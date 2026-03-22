@@ -19,9 +19,10 @@ export default async function Home() {
       {/* nav */}
       <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-violet-500 to-indigo-600 text-[10px] font-bold">LK</div>
-            <span className="font-semibold tracking-tight">LLMKit</span>
+          <div className="flex items-center">
+            <span className="font-mono text-lg font-semibold tracking-tight">LLM</span>
+            <img src="/logo-animated.svg" alt="K" width={24} height={24} className="-mx-0.5" />
+            <span className="font-mono text-lg font-semibold tracking-tight">it</span>
           </div>
           <div className="flex items-center gap-4">
             <a
