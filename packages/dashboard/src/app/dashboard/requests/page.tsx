@@ -66,7 +66,16 @@ export default async function RequestsPage({ searchParams }: PageProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Requests</h1>
-        <Filters providers={providers} models={models} />
+        <div className="flex items-center gap-2">
+          <a
+            href={`/api/export?format=detailed&days=30${filters.provider ? `&provider=${filters.provider}` : ''}${filters.model ? `&model=${filters.model}` : ''}${filters.sessionId ? `&session=${filters.sessionId}` : ''}`}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent"
+            download
+          >
+            Export CSV
+          </a>
+          <Filters providers={providers} models={models} />
+        </div>
       </div>
 
       {/* Summary cards */}
