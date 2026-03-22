@@ -39,28 +39,34 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* dashboard preview */}
-        <div className="mt-16 overflow-hidden rounded-xl border border-border shadow-2xl">
-          <video
-            src="https://github.com/user-attachments/assets/d07dac81-8f18-4920-ae77-62872822d078"
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full"
-          />
-        </div>
-
-        {/* CLI demo */}
-        <div className="mt-12 overflow-hidden rounded-xl border border-border shadow-2xl">
-          <video
-            src="https://github.com/user-attachments/assets/8ec33732-f651-4e35-9a27-5263c8a87ba7"
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full"
-          />
+        {/* demos */}
+        <div className="mt-16 space-y-10">
+          <div>
+            <p className="mb-3 text-center text-sm font-medium text-muted-foreground">Dashboard: cost breakdown by model, provider, and session</p>
+            <div className="overflow-hidden rounded-xl border border-border shadow-2xl">
+              <video
+                src="https://github.com/user-attachments/assets/d07dac81-8f18-4920-ae77-62872822d078"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full"
+              />
+            </div>
+          </div>
+          <div>
+            <p className="mb-3 text-center text-sm font-medium text-muted-foreground">CLI: wrap any command, get a cost summary when it exits</p>
+            <div className="overflow-hidden rounded-xl border border-border shadow-2xl">
+              <video
+                src="https://github.com/user-attachments/assets/8ec33732-f651-4e35-9a27-5263c8a87ba7"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full"
+              />
+            </div>
+          </div>
         </div>
 
         {/* features */}
