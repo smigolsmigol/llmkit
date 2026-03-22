@@ -34,11 +34,11 @@ Open-source API gateway that sits between your app and AI providers. Every reque
 
 Most cost tracking tools give you "soft limits" that agents blow past in the first hour. LLMKit runs cost estimation before every request. If it would exceed the budget, the request gets rejected before reaching the provider. Per-key or per-session scope.
 
-Tag requests with a session ID to track costs per agent, per conversation, per user. The dashboard and MCP server surface this data in real time.
+Tag requests with a session ID or end-user ID to track costs per agent, per conversation, per user. The dashboard and MCP server surface this data in real time. Cost anomaly detection alerts when a single request costs 3x the recent median.
 
 11 providers through one interface: Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Fallback chains with one header (`x-llmkit-fallback: anthropic,openai,gemini`).
 
-Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 40+ models priced. Open source, MIT licensed.
+Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 45+ models priced. Open source, MIT licensed.
 
 ## How it works
 
@@ -133,7 +133,7 @@ Streaming, CostTracker (local cost tracking without the proxy), and Vercel AI SD
   <img width="380" height="200" src="https://glama.ai/mcp/servers/smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
 </a>
 
-Query AI costs from Claude Code or Cursor. Claude Code tools work without an API key. Notion tools sync cost data to your workspace.
+Query AI costs from Claude Code, Cline, or Cursor. Local tools auto-detect installed tools and work without an API key. Notion tools sync cost data to your workspace.
 
 ```json
 {
@@ -159,7 +159,7 @@ Query AI costs from Claude Code or Cursor. Claude Code tools work without an API
 
 **Notion** (need `NOTION_TOKEN` + `NOTION_PAGE_ID`): `llmkit_notion_cost_snapshot`, `llmkit_notion_budget_check`, `llmkit_notion_session_report`
 
-**Compliance**: per-request logging with timestamps, model attribution, cost tracking, tamper-evident export with sha256 integrity hash. EU AI Act Article 12 export format. [Dashboard export API](/api/export?format=article12).
+**Compliance**: per-request logging with timestamps, model attribution, cost tracking, per-end-user attribution (`x-llmkit-user-id`), tool invocation logging, tamper-evident CSV export with sha256 integrity hash (EU AI Act Article 12 format).
 
 ### SessionEnd Hook
 
@@ -185,7 +185,7 @@ Parses the session transcript and prints cost summary (tokens, spend, models use
 | [@f3d1/llmkit-cli](packages/cli) | `npx @f3d1/llmkit-cli -- <cmd>`: zero-code cost tracking for any language |
 | [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy: auth, budgets, routing, logging |
 | [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
-| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 14 tools: proxy analytics, Claude Code costs, Notion sync |
+| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 14 tools: proxy analytics, local costs (Claude Code + Cline + Cursor), Notion sync |
 | [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
 
 ## Testing
