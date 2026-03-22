@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { DownloadTrendChart } from '@/components/charts/download-trend';
+import { PackageDownloadsChart } from '@/components/charts/package-downloads';
 import { Sparkline } from '@/components/charts/sparkline';
 
 interface NpmPackage {
@@ -197,10 +197,10 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
       <div className="grid grid-cols-2 gap-1.5">
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
           <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Download Trends</h2>
-            <p className="text-[10px] text-muted-foreground">npm (all packages) + PyPI, last 14 days</p>
+            <h2 className="text-xs font-medium">Daily Downloads</h2>
+            <p className="text-[10px] text-muted-foreground">per package, last 14 days</p>
           </div>
-          <DownloadTrendChart npmDaily={aggregatedDaily} />
+          <PackageDownloadsChart packages={data.npm} />
         </div>
 
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
