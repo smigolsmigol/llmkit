@@ -16,7 +16,7 @@ We aim to acknowledge reports within 48 hours and provide a fix timeline within 
 
 **Authentication**: All proxy API calls require a valid API key via `Authorization: Bearer` header. Dashboard uses Clerk for user authentication.
 
-**Data boundaries**: The MCP server's local tools (`llmkit_cc_*`) never transmit data. Proxy tools only send request metadata (model, tokens, cost), never prompt content or completions.
+**Data boundaries**: The MCP server's local tools (`llmkit_local_*`) never transmit data. Proxy tools only send request metadata (model, tokens, cost), never prompt content or completions.
 
 **Infrastructure**: Proxy runs on Cloudflare Workers (edge, no persistent server). Database on Supabase with Row Level Security enabled on all tables. Dashboard on Vercel with Clerk SSO.
 
@@ -26,8 +26,8 @@ We aim to acknowledge reports within 48 hours and provide a fix timeline within 
 
 | Version | Supported |
 |---------|-----------|
-| 0.3.x   | Yes       |
-| < 0.3   | No        |
+| 0.4.x   | Yes       |
+| < 0.4   | No        |
 
 ## Scope
 

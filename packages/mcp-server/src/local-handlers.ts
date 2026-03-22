@@ -124,8 +124,14 @@ export async function handleLocalForecast() {
   const totalCost = allProjects.reduce((s, p) => s + p.totalCost, 0);
   const totalSessions = allProjects.reduce((s, p) => s + p.sessionCount, 0);
 
-  // rough projection: assume data spans ~30 days, project to monthly
-  const dailyAvg = totalCost / 30;
+  // project from actual date range, not hardcoded 30 days
+  const timestamps = allProjects.map(p => p.latestTimestamp).filter(Boolean).sort();
+  const earliest = timestamps[0] ?? '';
+  const latest = timestamps[timestamps.length - 1] ?? '';
+  const daySpan = earliest && latest
+    ? Math.max(1, Math.ceil((new Date(latest).getTime() - new Date(earliest).getTime()) / 86400000) + 1)
+    : 30;
+  const dailyAvg = totalCost / daySpan;
   const monthlyProjection = dailyAvg * 30;
   const maxSavings = monthlyProjection - 200; // vs $200/mo Max subscription
 

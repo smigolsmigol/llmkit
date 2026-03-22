@@ -364,9 +364,12 @@ function decodeProjectName(encoded: string): string {
   // Windows: C--user-project -> project
   const winMatch = encoded.match(/^[A-Z]--[^-]+-(.+)$/);
   if (winMatch?.[1]) return winMatch[1];
-  // WSL: -mnt-c-f3d1-llmkit -> llmkit
+  // WSL: -mnt-c-user-project -> project
   const wslMatch = encoded.match(/^-mnt-[a-z]-[^-]+-(.+)$/);
   if (wslMatch?.[1]) return wslMatch[1];
+  // macOS/Linux: -Users-cocco-projects-myapp or -home-user-projects-myapp -> last segment
+  const lastSegment = encoded.split('-').pop();
+  if (lastSegment && lastSegment !== encoded) return lastSegment;
   return encoded;
 }
 

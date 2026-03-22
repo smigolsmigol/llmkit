@@ -6,7 +6,7 @@ LLMKit is an open-source AI API gateway. This policy covers the LLMKit MCP serve
 
 ## What data we collect
 
-**Claude Code tools (llmkit_cc_*)**: These tools read local session files from `~/.claude/` on your machine. No data leaves your device. We never see, store, or transmit this data.
+**Local tools (llmkit_local_*)**: These tools read local session files from Claude Code, Cline, and Cursor on your machine. No data leaves your device. We never see, store, or transmit this data.
 
 **Proxy tools (llmkit_*)**: When you use an API key to query the hosted proxy, we process:
 - Your API key (for authentication)

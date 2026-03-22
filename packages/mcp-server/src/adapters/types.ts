@@ -1,5 +1,5 @@
 // Shared types for local AI tool cost tracking adapters.
-// Each adapter (Claude Code, Cline, Aider) implements LocalAdapter.
+// Each adapter (Claude Code, Cline) implements LocalAdapter.
 
 export interface LocalSession {
   source: string;
