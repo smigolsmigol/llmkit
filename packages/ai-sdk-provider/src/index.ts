@@ -11,6 +11,7 @@ export interface LLMKitProviderConfig {
   apiKey: string;
   baseUrl?: string;
   sessionId?: string;
+  userId?: string;
   budgetId?: string;
   provider?: 'anthropic' | 'openai' | 'gemini';
   providerKey?: string;
@@ -196,6 +197,7 @@ function buildHeaders(config: LLMKitProviderConfig): Record<string, string> {
     'x-llmkit-format': 'llmkit',
   };
   if (config.sessionId) headers['x-llmkit-session-id'] = config.sessionId;
+  if (config.userId) headers['x-llmkit-user-id'] = config.userId;
   if (config.provider) headers['x-llmkit-provider'] = config.provider;
   if (config.providerKey) headers['x-llmkit-provider-key'] = config.providerKey;
   return headers;
