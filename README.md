@@ -177,7 +177,7 @@ Query AI costs from Claude Code, Cline, or Cursor. Local tools auto-detect insta
 
 **Notion** (need `NOTION_TOKEN` + `NOTION_PAGE_ID`): `llmkit_notion_cost_snapshot`, `llmkit_notion_budget_check`, `llmkit_notion_session_report`
 
-**Compliance**: per-request logging with timestamps, model attribution, cost tracking, per-end-user attribution (`x-llmkit-user-id`), tool invocation logging, tamper-evident CSV export with sha256 integrity hash (EU AI Act Article 12 format).
+**Audit logging**: per-request logging with timestamps, model attribution, cost tracking, per-end-user attribution (`x-llmkit-user-id`), tool invocation logging, CSV export with sha256 integrity hash. This data can support record-keeping requirements but does not constitute regulatory compliance.
 
 ### SessionEnd Hook
 
@@ -208,7 +208,7 @@ Parses the session transcript and prints cost summary (tokens, spend, models use
 
 ## Testing
 
-200+ tests across the monorepo covering budget enforcement, cost calculation, adversarial bypass vectors, crypto, CLI parsing, SDK tracking, and the full Python SDK. CI runs on every push. See [SECURITY.md](SECURITY.md) for the security audit methodology.
+60+ tests covering cost calculation, pricing accuracy, client behavior, transport hooks, type validation, and the full Python SDK. CI runs on every push. See [SECURITY.md](SECURITY.md) for the security audit methodology.
 
 ## Self-host
 
@@ -235,6 +235,10 @@ npx wrangler deploy
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Disclaimer
+
+Cost estimates are based on publicly available pricing data and may not reflect the latest provider pricing. Do not use these estimates as the sole basis for billing. LLMKit is a logging and cost tracking tool, not a compliance product. Users are responsible for their own regulatory compliance.
 
 ## License
 

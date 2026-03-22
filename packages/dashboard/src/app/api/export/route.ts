@@ -3,7 +3,7 @@ import { createServerClient } from '@/lib/supabase';
 import { getAccountPlan } from '@/lib/queries';
 import { createHash } from 'node:crypto';
 
-const ARTICLE_12_COLUMNS = [
+const DETAILED_COLUMNS = [
   'timestamp', 'operator_id', 'system_id', 'end_user_id', 'model', 'provider',
   'input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens',
   'cost_usd', 'duration_ms', 'session_id', 'status', 'error_code',
@@ -59,11 +59,11 @@ export async function GET(req: Request) {
   const { data: rows } = await query;
   if (!rows?.length) return new Response('no data', { status: 404 });
 
-  const isArticle12 = format === 'article12';
-  const columns = isArticle12 ? ARTICLE_12_COLUMNS : RAW_COLUMNS;
+  const isDetailed = format === 'detailed' || format === 'article12';
+  const columns = isDetailed ? DETAILED_COLUMNS : RAW_COLUMNS;
 
   function rowToCsv(row: Record<string, unknown>): string {
-    if (isArticle12) {
+    if (isDetailed) {
       return [
         escCsv(row.created_at as string),
         escCsv(row.user_id as string ?? userId),
@@ -94,7 +94,7 @@ export async function GET(req: Request) {
   csvLines.push(`# Period: ${days}d`);
   csvLines.push(`# Records: ${rows.length}`);
   csvLines.push(`# Total spend: $${totalSpend.toFixed(2)}`);
-  csvLines.push(`# Format: ${isArticle12 ? 'EU AI Act Article 12' : 'raw'}`);
+  csvLines.push(`# Format: ${isDetailed ? 'detailed' : 'raw'}`);
   csvLines.push(columns.join(','));
 
   for (const row of rows) {
