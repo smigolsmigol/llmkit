@@ -180,6 +180,15 @@ export function getModelPricing(
       bestLen = key.length;
       best = pricing;
     }
+    // reverse: key is a dated version of the model (e.g. key "claude-sonnet-4-20250514" for model "claude-sonnet-4")
+    // only match if the remaining part looks like a date suffix (-YYYYMMDD or -YYYY-MM-DD)
+    if (key.startsWith(model) && key.length > bestLen) {
+      const remainder = key.slice(model.length);
+      if (/^-\d{8}$/.test(remainder) || /^-\d{4}-\d{2}-\d{2}$/.test(remainder)) {
+        bestLen = key.length;
+        best = pricing;
+      }
+    }
   }
 
   return best;
