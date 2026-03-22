@@ -6,7 +6,7 @@ import {
   ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { DASHBOARD_HTML, DASHBOARD_URL, RESOURCE_MIME, RESOURCE_URI } from './app.js';
-import { handleCCAgentCosts, handleCCCacheSavings, handleCCCostForecast, handleCCProjectCosts, handleCCSessionCost } from './cc-handlers.js';
+import { handleLocalAgents, handleLocalCache, handleLocalForecast, handleLocalProjects, handleLocalSession } from './local-handlers.js';
 import { loadNotionConfig } from './notion.js';
 import { handleNotionBudgetCheck, handleNotionCostSnapshot, handleNotionSessionReport } from './notion-handlers.js';
 import { fail, handleBudgetStatus, handleCostQuery, handleHealth, handleListKeys, handleSessionSummary, handleUsageStats, type ok } from './proxy-handlers.js';
@@ -131,31 +131,71 @@ const PROXY_TOOLS = [
   },
 ];
 
-const CC_TOOLS = [
+const LOCAL_TOOLS = [
   {
-    name: 'llmkit_cc_session_cost',
-    description: 'Estimated cost of the current Claude Code session at API rates. Reads local token data.',
+    name: 'llmkit_local_session',
+    description: 'Current session cost across all detected AI coding tools (Claude Code, Cline). No API key needed.',
     inputSchema: { type: 'object' as const, properties: {} },
     outputSchema: {
       type: 'object' as const,
       properties: {
-        sessionId: { type: 'string' },
-        messages: { type: 'number' },
+        sessions: { type: 'array', items: { type: 'object', properties: { source: { type: 'string' }, id: { type: 'string' }, cost: { type: 'number' }, messages: { type: 'number' }, inputTokens: { type: 'number' }, outputTokens: { type: 'number' }, topModel: { type: 'string' } } } },
         totalCostUsd: { type: 'number' },
-        inputTokens: { type: 'number' },
-        outputTokens: { type: 'number' },
-        cacheReadTokens: { type: 'number' },
-        cacheWriteTokens: { type: 'number' },
-        models: { type: 'array', items: { type: 'object', properties: { model: { type: 'string' }, costUsd: { type: 'number' }, inputTokens: { type: 'number' }, outputTokens: { type: 'number' } } } },
+        sourceCount: { type: 'number' },
       },
-      required: ['sessionId', 'messages', 'totalCostUsd'],
+      required: ['totalCostUsd', 'sourceCount'],
     },
     annotations: { title: 'Session Cost', ...HINTS },
     _meta: { ui: { resourceUri: RESOURCE_URI } },
   },
   {
-    name: 'llmkit_cc_agent_costs',
-    description: 'Cost attribution for subagents in the current session. Shows which agents cost the most.',
+    name: 'llmkit_local_projects',
+    description: 'Cumulative cost across all projects and sessions from all detected AI coding tools, ranked by spend.',
+    inputSchema: { type: 'object' as const, properties: {} },
+    outputSchema: {
+      type: 'object' as const,
+      properties: {
+        projects: { type: 'array', items: { type: 'object', properties: { source: { type: 'string' }, project: { type: 'string' }, sessionCount: { type: 'number' }, totalCost: { type: 'number' }, totalMessages: { type: 'number' }, topModel: { type: 'string' } } } },
+        totalCostUsd: { type: 'number' },
+      },
+      required: ['projects', 'totalCostUsd'],
+    },
+    annotations: { title: 'Project Costs', ...HINTS },
+  },
+  {
+    name: 'llmkit_local_cache',
+    description: 'Cache savings analysis across all detected AI coding tools. Shows how much prompt caching saved.',
+    inputSchema: { type: 'object' as const, properties: {} },
+    outputSchema: {
+      type: 'object' as const,
+      properties: {
+        savings: { type: 'array', items: { type: 'object', properties: { source: { type: 'string' }, totalSaved: { type: 'number' }, readToWriteRatio: { type: 'number' } } } },
+        totalSavedUsd: { type: 'number' },
+      },
+      required: ['totalSavedUsd'],
+    },
+    annotations: { title: 'Cache Savings', ...HINTS },
+  },
+  {
+    name: 'llmkit_local_forecast',
+    description: 'Monthly cost projection based on local AI tool usage. Compares to Max subscription.',
+    inputSchema: { type: 'object' as const, properties: {} },
+    outputSchema: {
+      type: 'object' as const,
+      properties: {
+        projectedMonthlyUsd: { type: 'number' },
+        dailyAverageUsd: { type: 'number' },
+        totalTrackedUsd: { type: 'number' },
+        totalSessions: { type: 'number' },
+        maxSubscriptionSavingsUsd: { type: 'number' },
+      },
+      required: ['projectedMonthlyUsd', 'dailyAverageUsd'],
+    },
+    annotations: { title: 'Cost Forecast', ...HINTS },
+  },
+  {
+    name: 'llmkit_local_agents',
+    description: 'Subagent cost attribution for the current Claude Code session. Shows which agents cost the most.',
     inputSchema: { type: 'object' as const, properties: {} },
     outputSchema: {
       type: 'object' as const,
@@ -166,58 +206,10 @@ const CC_TOOLS = [
         subagentsTotalCostUsd: { type: 'number' },
         agentCount: { type: 'number' },
         byType: { type: 'array', items: { type: 'object', properties: { type: { type: 'string' }, count: { type: 'number' }, costUsd: { type: 'number' }, tokens: { type: 'number' } } } },
-        topAgents: { type: 'array', items: { type: 'object', properties: { type: { type: 'string' }, id: { type: 'string' }, costUsd: { type: 'number' }, messages: { type: 'number' }, models: { type: 'array', items: { type: 'string' } } } } },
       },
       required: ['sessionId', 'totalCostUsd', 'agentCount'],
     },
     annotations: { title: 'Agent Costs', ...HINTS },
-  },
-  {
-    name: 'llmkit_cc_cache_savings',
-    description: 'How much prompt caching saved in the current session vs full-price tokens.',
-    inputSchema: { type: 'object' as const, properties: {} },
-    outputSchema: {
-      type: 'object' as const,
-      properties: {
-        totalSavedUsd: { type: 'number' },
-        cacheEfficiency: { type: 'number' },
-        models: { type: 'array', items: { type: 'object', properties: { model: { type: 'string' }, savedUsd: { type: 'number' }, readToWriteRatio: { type: 'number' }, cacheReadTokens: { type: 'number' }, cacheWriteTokens: { type: 'number' } } } },
-      },
-      required: ['totalSavedUsd', 'cacheEfficiency'],
-    },
-    annotations: { title: 'Cache Savings', ...HINTS },
-  },
-  {
-    name: 'llmkit_cc_cost_forecast',
-    description: 'Monthly cost projection based on recent sessions. Compares to Max subscription.',
-    inputSchema: { type: 'object' as const, properties: {} },
-    outputSchema: {
-      type: 'object' as const,
-      properties: {
-        projectedMonthlyUsd: { type: 'number' },
-        dailyAverageUsd: { type: 'number' },
-        daysAnalyzed: { type: 'number' },
-        trend: { type: 'string', enum: ['increasing', 'decreasing', 'stable'] },
-        maxSubscriptionSavingsUsd: { type: 'number' },
-        topModels: { type: 'array', items: { type: 'object', properties: { model: { type: 'string' }, monthlyCostUsd: { type: 'number' } } } },
-        dataFreshness: { type: 'string' },
-      },
-      required: ['projectedMonthlyUsd', 'dailyAverageUsd', 'daysAnalyzed', 'trend'],
-    },
-    annotations: { title: 'Cost Forecast', ...HINTS },
-  },
-  {
-    name: 'llmkit_cc_project_costs',
-    description: 'Cumulative cost breakdown across all Claude Code projects and sessions, ranked by total spend.',
-    inputSchema: { type: 'object' as const, properties: {} },
-    outputSchema: {
-      type: 'object' as const,
-      properties: {
-        projects: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, sessionCount: { type: 'number' }, totalCostUsd: { type: 'number' }, totalMessages: { type: 'number' }, totalInputTokens: { type: 'number' }, totalOutputTokens: { type: 'number' }, latestCostUsd: { type: 'number' }, topModel: { type: 'string' }, date: { type: 'string' } } } },
-      },
-      required: ['projects'],
-    },
-    annotations: { title: 'Project Costs', ...HINTS },
   },
 ];
 
@@ -303,11 +295,11 @@ const HANDLER_MAP: Record<string, Handler> = {
   llmkit_budget_status: handleBudgetStatus,
   llmkit_health: () => handleHealth(),
   llmkit_session_summary: handleSessionSummary,
-  llmkit_cc_session_cost: () => handleCCSessionCost(),
-  llmkit_cc_agent_costs: () => handleCCAgentCosts(),
-  llmkit_cc_cache_savings: () => handleCCCacheSavings(),
-  llmkit_cc_cost_forecast: () => handleCCCostForecast(),
-  llmkit_cc_project_costs: () => handleCCProjectCosts(),
+  llmkit_local_session: () => handleLocalSession(),
+  llmkit_local_projects: () => handleLocalProjects(),
+  llmkit_local_cache: () => handleLocalCache(),
+  llmkit_local_forecast: () => handleLocalForecast(),
+  llmkit_local_agents: () => handleLocalAgents(),
   llmkit_notion_cost_snapshot: handleNotionCostSnapshot,
   llmkit_notion_budget_check: handleNotionBudgetCheck,
   llmkit_notion_session_report: handleNotionSessionReport,
@@ -320,7 +312,7 @@ export function registerTools(server: Server): void {
     const isDesktop = clientName.includes('desktop') && !clientName.includes('code');
     const tools = [
       ...PROXY_TOOLS,
-      ...(isDesktop ? [] : CC_TOOLS),
+      ...(isDesktop ? [] : LOCAL_TOOLS),
       ...(loadNotionConfig() ? NOTION_TOOLS : []),
     ];
     return { tools };
