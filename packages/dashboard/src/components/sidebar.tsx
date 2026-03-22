@@ -21,9 +21,9 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
 
   return (
     <aside className="fixed left-0 top-0 z-30 flex h-full w-56 flex-col border-r border-border bg-[#0a0a0a]/95 backdrop-blur-xl px-3 py-6">
-      <Link href="/dashboard" className="mb-8 flex items-center gap-3 px-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-indigo-600 text-xs font-bold text-white shadow-lg shadow-violet-600/20">LK</div>
-        <span className="text-lg font-semibold tracking-tight">LLMKit</span>
+      <Link href="/dashboard" className="mb-8 flex items-center gap-2 px-3">
+        <img src="/logo-animated.svg" alt="LLMKit" width={36} height={36} />
+        <span className="font-mono text-xl font-semibold tracking-tight text-primary">LLMKit</span>
       </Link>
 
       <nav className="flex flex-1 flex-col gap-2">

@@ -14,8 +14,22 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'LLMKit Dashboard',
-  description: 'AI API gateway with cost tracking and budget enforcement. Python, TypeScript, and any language via CLI.',
+  title: 'LLMKit - Know exactly what your AI agents cost',
+  description: 'Open-source API gateway with cost tracking and budget enforcement. Per-request logging, per-key budgets across 11 AI providers. Free during beta.',
+  keywords: ['AI cost tracking', 'LLM budget', 'API gateway', 'Claude Code cost', 'AI agent cost', 'OpenAI budget', 'MCP server', 'cost tracking', 'budget enforcement'],
+  openGraph: {
+    title: 'LLMKit - Know exactly what your AI agents cost',
+    description: 'Open-source API gateway with cost tracking and budget enforcement. 11 providers, 45+ models, budget limits that actually reject requests.',
+    url: 'https://llmkit-dashboard.vercel.app',
+    siteName: 'LLMKit',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'LLMKit - AI cost tracking and budget enforcement',
+    description: 'Open-source API gateway that tracks what your AI agents cost and stops them from overspending.',
+  },
+  metadataBase: new URL('https://llmkit-dashboard.vercel.app'),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
