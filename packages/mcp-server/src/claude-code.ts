@@ -1,7 +1,7 @@
-import { createReadStream } from 'node:fs';
+import { createReadStream, existsSync, readdirSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline';
 
 // per-million token rates (USD). only models used by Claude Code.
@@ -397,14 +397,50 @@ export interface ProjectCostResult {
 }
 
 function decodeProjectName(encoded: string): string {
-  const match = encoded.match(/^[A-Z]--[^-]+-(.+)$/);
-  return match?.[1] ?? encoded;
+  // Windows: C--user-project -> project
+  const winMatch = encoded.match(/^[A-Z]--[^-]+-(.+)$/);
+  if (winMatch?.[1]) return winMatch[1];
+  // WSL: -mnt-c-f3d1-llmkit -> llmkit
+  const wslMatch = encoded.match(/^-mnt-[a-z]-[^-]+-(.+)$/);
+  if (wslMatch?.[1]) return wslMatch[1];
+  return encoded;
+}
+
+function findAllProjectDirs(): string[] {
+  const dirs: string[] = [];
+  const primary = join(claudeDir(), 'projects');
+  if (existsSync(primary)) dirs.push(primary);
+
+  // on Windows, also check WSL distros via UNC paths
+  if (process.platform === 'win32') {
+    // path.resolve preserves UNC prefix, path.join does not
+    const wslRoot = resolve('//wsl.localhost');
+    try {
+      const distros = readdirSync(wslRoot);
+      for (const distro of distros) {
+        try {
+          const homesDir = resolve('//wsl.localhost', distro, 'home');
+          const homes = readdirSync(homesDir);
+          for (const user of homes) {
+            const wslProjects = resolve('//wsl.localhost', distro, 'home', user, '.claude', 'projects');
+            if (existsSync(wslProjects)) dirs.push(wslProjects);
+          }
+        } catch { /* can't read this distro's home */ }
+      }
+    } catch { /* WSL not available */ }
+  }
+
+  return dirs;
 }
 
 export async function getProjectCosts(): Promise<ProjectCostResult[]> {
-  const projectsDir = join(claudeDir(), 'projects');
-  let dirs: string[];
-  try { dirs = await readdir(projectsDir); } catch { return []; }
+  const projectDirs = findAllProjectDirs();
+  if (projectDirs.length === 0) return [];
+
+  const allResults: ProjectCostResult[] = [];
+  for (const projectsDir of projectDirs) {
+    let dirs: string[];
+    try { dirs = await readdir(projectsDir); } catch { continue; }
 
   const parseProject = async (dir: string): Promise<ProjectCostResult | null> => {
     const projectDir = join(projectsDir, dir);
@@ -418,7 +454,7 @@ export async function getProjectCosts(): Promise<ProjectCostResult[]> {
     const parsed = await Promise.allSettled(
       jsonls.map(f => Promise.race([
         parseSessionJsonl(join(projectDir, f)),
-        new Promise<null>(r => { setTimeout(() => r(null), 15000); }),
+        new Promise<null>(r => { setTimeout(() => r(null), 60000); }),
       ])),
     );
 
@@ -468,12 +504,31 @@ export async function getProjectCosts(): Promise<ProjectCostResult[]> {
     };
   };
 
-  const settled = await Promise.allSettled(dirs.map(parseProject));
-  const results: ProjectCostResult[] = [];
-  for (const r of settled) {
-    if (r.status === 'fulfilled' && r.value) results.push(r.value);
+    const settled = await Promise.allSettled(dirs.map(parseProject));
+    for (const r of settled) {
+      if (r.status === 'fulfilled' && r.value) allResults.push(r.value);
+    }
   }
 
+  // merge projects with the same decoded name (Windows + WSL duplicates)
+  const merged = new Map<string, ProjectCostResult>();
+  for (const p of allResults) {
+    const existing = merged.get(p.project);
+    if (existing) {
+      existing.sessionCount += p.sessionCount;
+      existing.totalCostUsd += p.totalCostUsd;
+      existing.totalMessages += p.totalMessages;
+      existing.totalInputTokens += p.totalInputTokens;
+      existing.totalOutputTokens += p.totalOutputTokens;
+      if (p.latestSession.date > existing.latestSession.date) {
+        existing.latestSession = p.latestSession;
+      }
+    } else {
+      merged.set(p.project, { ...p });
+    }
+  }
+
+  const results = Array.from(merged.values());
   results.sort((a, b) => b.totalCostUsd - a.totalCostUsd);
   return results;
 }
