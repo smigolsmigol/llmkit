@@ -159,6 +159,21 @@ Query AI costs from Claude Code or Cursor. Claude Code tools work without an API
 
 **Notion** (need `NOTION_TOKEN` + `NOTION_PAGE_ID`): `llmkit_notion_cost_snapshot`, `llmkit_notion_budget_check`, `llmkit_notion_session_report`
 
+### SessionEnd Hook
+
+Auto-log session costs when Claude Code exits. Add to your `settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionEnd": [{"hooks": [{"type": "command",
+      "command": "npx @f3d1/llmkit-mcp-server --hook"}]}]
+  }
+}
+```
+
+Parses the session transcript and prints cost summary (tokens, spend, models used). No API key needed.
+
 ## Packages
 
 | Package | Description |
