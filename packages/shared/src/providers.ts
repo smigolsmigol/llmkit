@@ -175,12 +175,9 @@ export function getModelPricing(
   let bestLen = 0;
 
   for (const [key, pricing] of Object.entries(providerPricing)) {
+    // model starts with key: "claude-sonnet-4-20250514" matches "claude-sonnet-4"
     if (model.startsWith(key) && key.length > bestLen) {
       bestLen = key.length;
-      best = pricing;
-    }
-    if (key.startsWith(model) && model.length > bestLen) {
-      bestLen = model.length;
       best = pricing;
     }
   }
