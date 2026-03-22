@@ -49,224 +49,62 @@ export interface RecordResult {
 
 const DAY_MS = 86_400_000;
 const SESSION_TTL = 7 * DAY_MS;
-const RESERVATION_TTL = 5 * 60_000; // 5 min - stale reservations auto-expire
+const RESERVATION_TTL = 5 * 60_000;
+const ANOMALY_MULTIPLIER = 3;
+const ANOMALY_HISTORY_SIZE = 20;
+const ANOMALY_MIN_SAMPLES = 5;
+const ANOMALY_COOLDOWN_MS = 3_600_000;
+const DEFAULT_ALERT_THRESHOLD = 0.8;
 
 export class BudgetDO extends DurableObject {
 
+  // --- check: can this request proceed? ---
+
   async check(input: CheckInput): Promise<CheckResult> {
-    let root = await this.ctx.storage.get<BudgetState>('root');
+    const root = await this.initOrSyncRoot(input.budgetConfig);
+    if (!root) return { allowed: true, remaining: Infinity, reservationId: '', scope: 'key', limitCents: 0, usedCents: 0 };
 
-    // lazy-init from DB config on first request
-    if (!root && input.budgetConfig) {
-      const period = input.budgetConfig.period as BudgetState['period'];
-      root = {
-        limitCents: input.budgetConfig.limitCents,
-        usedCents: 0,
-        reservedCents: 0,
-        period,
-        resetAt: period !== 'total' ? nextReset(period) : 0,
-      };
-      await this.ctx.storage.put('root', root);
-    }
+    await this.resetPeriodIfDue(root);
 
-    if (!root) {
-      return { allowed: true, remaining: Infinity, reservationId: '', scope: 'key', limitCents: 0, usedCents: 0 };
-    }
-
-    // sync config changes from DB (limit or period updated in dashboard)
-    if (input.budgetConfig &&
-      (root.limitCents !== input.budgetConfig.limitCents || root.period !== input.budgetConfig.period)) {
-      root.limitCents = input.budgetConfig.limitCents;
-      const newPeriod = input.budgetConfig.period as BudgetState['period'];
-      if (root.period !== newPeriod) {
-        root.period = newPeriod;
-        root.resetAt = newPeriod !== 'total' ? nextReset(newPeriod) : 0;
-      }
-      await this.ctx.storage.put('root', root);
-    }
-
-    // period reset
-    if (root.period !== 'total' && root.resetAt > 0 && Date.now() >= root.resetAt) {
-      root.usedCents = 0;
-      root.reservedCents = 0;
-      root.resetAt = nextReset(root.period);
-      root.lastAlertAt = undefined;
-      await this.ctx.storage.put('root', root);
-      await this.clearReservations();
-    }
-
-    let active = root;
-
-    if (root.scope === 'session' && input.sessionId) {
-      const sKey = `s:${input.sessionId}`;
-      let session = await this.ctx.storage.get<BudgetState>(sKey);
-
-      if (!session) {
-        session = {
-          limitCents: root.limitCents,
-          usedCents: 0,
-          reservedCents: 0,
-          period: root.period,
-          resetAt: root.resetAt,
-          alertThreshold: root.alertThreshold,
-          alertWebhookUrl: root.alertWebhookUrl,
-        };
-      }
-
-      await this.ctx.storage.put(sKey, session);
-      await this.ctx.storage.put(`${sKey}:ts`, Date.now());
-      active = session;
-
-      const existing = await this.ctx.storage.getAlarm();
-      if (!existing) {
-        await this.ctx.storage.setAlarm(Date.now() + DAY_MS);
-      }
-    }
-
-    // committed = spent + reserved (in-flight requests)
-    const sessionCommitted = active.usedCents + (active.reservedCents || 0);
-    const rootCommitted = root.usedCents + (root.reservedCents || 0);
-    const sessionRemaining = active.limitCents - sessionCommitted;
-    const rootRemaining = root.limitCents - rootCommitted;
-    const remaining = Math.min(sessionRemaining, rootRemaining);
+    const active = await this.resolveTarget(root, input.sessionId);
+    const remaining = this.computeRemaining(active, root);
 
     if (remaining <= 0 || (input.estimatedCents > 0 && remaining < input.estimatedCents)) {
       return { allowed: false, remaining: Math.max(0, remaining), reservationId: '', scope: root.scope || 'key', limitCents: active.limitCents, usedCents: active.usedCents };
     }
 
-    // reserve the estimated amount atomically
-    const reservationId = crypto.randomUUID();
-    const reserveAmount = Math.max(input.estimatedCents, 1);
-
-    root.reservedCents = (root.reservedCents || 0) + reserveAmount;
-    await this.ctx.storage.put('root', root);
-
-    if (active !== root) {
-      active.reservedCents = (active.reservedCents || 0) + reserveAmount;
-      await this.ctx.storage.put(`s:${input.sessionId}`, active);
-    }
-
-    await this.ctx.storage.put(`r:${reservationId}`, {
-      amount: reserveAmount,
-      sessionId: input.sessionId,
-      createdAt: Date.now(),
-    });
-
-    return { allowed: true, remaining: remaining - reserveAmount, reservationId, scope: root.scope || 'key', limitCents: active.limitCents, usedCents: active.usedCents };
+    const reservationId = await this.createReservation(root, active, input);
+    return { allowed: true, remaining: remaining - Math.max(input.estimatedCents, 1), reservationId, scope: root.scope || 'key', limitCents: active.limitCents, usedCents: active.usedCents };
   }
+
+  // --- record: settle actual cost after response ---
 
   async record(input: RecordInput): Promise<RecordResult> {
     const root = await this.ctx.storage.get<BudgetState>('root');
     if (!root) return { usedCents: 0, limitCents: 0 };
 
-    // settle the reservation: release reserved amount, add actual cost
-    let reservedAmount = 0;
-    if (input.reservationId) {
-      const reservation = await this.ctx.storage.get<{ amount: number; sessionId?: string }>(
-        `r:${input.reservationId}`,
-      );
-      if (reservation) {
-        reservedAmount = reservation.amount;
-        await this.ctx.storage.delete(`r:${input.reservationId}`);
-      }
-    }
+    const reservedAmount = await this.settleReservation(input.reservationId);
+    const { key, target } = await this.resolveRecordTarget(root, input.sessionId);
 
-    let key = 'root';
-    let target = root;
-
-    if (root.scope === 'session' && input.sessionId) {
-      const sKey = `s:${input.sessionId}`;
-      const session = await this.ctx.storage.get<BudgetState>(sKey);
-      if (session) {
-        key = sKey;
-        target = session;
-      }
-    }
-
-    // settle: remove reservation, add actual cost
-    target.reservedCents = Math.max(0, (target.reservedCents || 0) - reservedAmount);
-    if (input.costCents > 0) {
-      target.usedCents += input.costCents;
-    }
+    this.applyCostSettlement(target, reservedAmount, input.costCents);
     await this.ctx.storage.put(key, target);
 
     if (key !== 'root') {
-      root.reservedCents = Math.max(0, (root.reservedCents || 0) - reservedAmount);
-      if (input.costCents > 0) {
-        root.usedCents += input.costCents;
-      }
+      this.applyCostSettlement(root, reservedAmount, input.costCents);
       await this.ctx.storage.put('root', root);
     }
 
-    if (input.costCents <= 0) {
-      return { usedCents: target.usedCents, limitCents: target.limitCents };
-    }
+    if (input.costCents <= 0) return { usedCents: target.usedCents, limitCents: target.limitCents };
 
-    const threshold = target.alertThreshold ?? root.alertThreshold ?? 0.8;
-    const webhookUrl = target.alertWebhookUrl ?? root.alertWebhookUrl;
-    const pct = target.usedCents / target.limitCents;
-
-    let alert: RecordResult['alert'];
-
-    if (webhookUrl?.startsWith('https://') && pct >= threshold) {
-      const alreadyAlerted = target.lastAlertAt
-        && target.resetAt > 0
-        && target.lastAlertAt > (target.resetAt - periodMs(target.period));
-
-      if (!alreadyAlerted) {
-        target.lastAlertAt = Date.now();
-        await this.ctx.storage.put(key, target);
-        alert = {
-          webhookUrl,
-          budgetId: this.ctx.id.name ?? this.ctx.id.toString(),
-          usedCents: target.usedCents,
-          limitCents: target.limitCents,
-          percentage: Math.round(pct * 100),
-          period: target.period,
-        };
-      }
-    }
-
-    // anomaly detection: check if this cost is 3x+ the recent median
-    if (input.costCents > 0 && webhookUrl) {
-      const costsKey = 'recent_costs';
-      const recentCosts = (await this.ctx.storage.get<number[]>(costsKey)) ?? [];
-      recentCosts.push(input.costCents);
-      if (recentCosts.length > 20) recentCosts.shift();
-      await this.ctx.storage.put(costsKey, recentCosts);
-
-      if (recentCosts.length >= 5) {
-        const sorted = [...recentCosts].sort((a, b) => a - b);
-        const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
-        const anomalyLastKey = 'anomaly_last_alert';
-        if (median > 0 && input.costCents > median * 3) {
-          const lastAnomaly = await this.ctx.storage.get<number>(anomalyLastKey);
-          if (!lastAnomaly || Date.now() - lastAnomaly > 3600000) {
-            await this.ctx.storage.put(anomalyLastKey, Date.now());
-            if (!alert) {
-              alert = {
-                webhookUrl,
-                budgetId: this.ctx.id.name ?? this.ctx.id.toString(),
-                usedCents: target.usedCents,
-                limitCents: target.limitCents,
-                percentage: Math.round(pct * 100),
-                period: target.period,
-                anomaly: { costCents: input.costCents, medianCents: median, multiplier: +(input.costCents / median).toFixed(1) },
-              };
-            }
-          }
-        }
-      }
-    }
-
+    const alert = await this.checkAlerts(target, root, key, input.costCents);
     return { usedCents: target.usedCents, limitCents: target.limitCents, alert };
   }
 
+  // --- release: free reservation without recording cost ---
+
   async release(reservationId: string): Promise<void> {
     if (!reservationId) return;
-    const reservation = await this.ctx.storage.get<{ amount: number; sessionId?: string }>(
-      `r:${reservationId}`,
-    );
+    const reservation = await this.ctx.storage.get<{ amount: number; sessionId?: string }>(`r:${reservationId}`);
     if (!reservation) return;
 
     await this.ctx.storage.delete(`r:${reservationId}`);
@@ -278,11 +116,10 @@ export class BudgetDO extends DurableObject {
     await this.ctx.storage.put('root', root);
 
     if (root.scope === 'session' && reservation.sessionId) {
-      const sKey = `s:${reservation.sessionId}`;
-      const session = await this.ctx.storage.get<BudgetState>(sKey);
+      const session = await this.ctx.storage.get<BudgetState>(`s:${reservation.sessionId}`);
       if (session) {
         session.reservedCents = Math.max(0, (session.reservedCents || 0) - reservation.amount);
-        await this.ctx.storage.put(sKey, session);
+        await this.ctx.storage.put(`s:${reservation.sessionId}`, session);
       }
     }
   }
@@ -297,7 +134,6 @@ export class BudgetDO extends DurableObject {
     const entries = await this.ctx.storage.list({ prefix: 's:' });
     const reservations = await this.ctx.storage.list<{ amount: number; sessionId?: string; createdAt: number }>({ prefix: 'r:' });
 
-    // clean stale sessions
     const toDelete: string[] = [];
     let hasSessions = false;
 
@@ -310,7 +146,6 @@ export class BudgetDO extends DurableObject {
       }
     }
 
-    // clean stale reservations (request crashed or timed out without settling)
     let staleReserved = 0;
     for (const [key, val] of reservations) {
       if (val && typeof val === 'object' && val.createdAt < reservationCutoff) {
@@ -319,11 +154,8 @@ export class BudgetDO extends DurableObject {
       }
     }
 
-    if (toDelete.length > 0) {
-      await this.ctx.storage.delete(toDelete);
-    }
+    if (toDelete.length > 0) await this.ctx.storage.delete(toDelete);
 
-    // reclaim stale reservation amounts from root
     if (staleReserved > 0) {
       const root = await this.ctx.storage.get<BudgetState>('root');
       if (root) {
@@ -337,24 +169,166 @@ export class BudgetDO extends DurableObject {
     }
   }
 
+  // --- private: check sub-methods ---
+
+  private async initOrSyncRoot(budgetConfig?: { limitCents: number; period: string }): Promise<BudgetState | null> {
+    let root = await this.ctx.storage.get<BudgetState>('root');
+
+    if (!root && budgetConfig) {
+      const period = budgetConfig.period as BudgetState['period'];
+      root = { limitCents: budgetConfig.limitCents, usedCents: 0, reservedCents: 0, period, resetAt: period !== 'total' ? nextReset(period) : 0 };
+      await this.ctx.storage.put('root', root);
+    }
+
+    if (root && budgetConfig && (root.limitCents !== budgetConfig.limitCents || root.period !== budgetConfig.period)) {
+      root.limitCents = budgetConfig.limitCents;
+      const newPeriod = budgetConfig.period as BudgetState['period'];
+      if (root.period !== newPeriod) {
+        root.period = newPeriod;
+        root.resetAt = newPeriod !== 'total' ? nextReset(newPeriod) : 0;
+      }
+      await this.ctx.storage.put('root', root);
+    }
+
+    return root ?? null;
+  }
+
+  private async resetPeriodIfDue(root: BudgetState): Promise<void> {
+    if (root.period !== 'total' && root.resetAt > 0 && Date.now() >= root.resetAt) {
+      root.usedCents = 0;
+      root.reservedCents = 0;
+      root.resetAt = nextReset(root.period);
+      root.lastAlertAt = undefined;
+      await this.ctx.storage.put('root', root);
+      await this.clearReservations();
+    }
+  }
+
+  private async resolveTarget(root: BudgetState, sessionId?: string): Promise<BudgetState> {
+    if (root.scope !== 'session' || !sessionId) return root;
+
+    const sKey = `s:${sessionId}`;
+    let session = await this.ctx.storage.get<BudgetState>(sKey);
+
+    if (!session) {
+      session = { limitCents: root.limitCents, usedCents: 0, reservedCents: 0, period: root.period, resetAt: root.resetAt, alertThreshold: root.alertThreshold, alertWebhookUrl: root.alertWebhookUrl };
+    }
+
+    await this.ctx.storage.put(sKey, session);
+    await this.ctx.storage.put(`${sKey}:ts`, Date.now());
+
+    if (!(await this.ctx.storage.getAlarm())) {
+      await this.ctx.storage.setAlarm(Date.now() + DAY_MS);
+    }
+
+    return session;
+  }
+
+  private computeRemaining(active: BudgetState, root: BudgetState): number {
+    const sessionRemaining = active.limitCents - active.usedCents - (active.reservedCents || 0);
+    const rootRemaining = root.limitCents - root.usedCents - (root.reservedCents || 0);
+    return Math.min(sessionRemaining, rootRemaining);
+  }
+
+  private async createReservation(root: BudgetState, active: BudgetState, input: CheckInput): Promise<string> {
+    const reservationId = crypto.randomUUID();
+    const amount = Math.max(input.estimatedCents, 1);
+
+    root.reservedCents = (root.reservedCents || 0) + amount;
+    await this.ctx.storage.put('root', root);
+
+    if (active !== root && input.sessionId) {
+      active.reservedCents = (active.reservedCents || 0) + amount;
+      await this.ctx.storage.put(`s:${input.sessionId}`, active);
+    }
+
+    await this.ctx.storage.put(`r:${reservationId}`, { amount, sessionId: input.sessionId, createdAt: Date.now() });
+    return reservationId;
+  }
+
+  // --- private: record sub-methods ---
+
+  private async settleReservation(reservationId: string): Promise<number> {
+    if (!reservationId) return 0;
+    const reservation = await this.ctx.storage.get<{ amount: number }>(`r:${reservationId}`);
+    if (!reservation) return 0;
+    await this.ctx.storage.delete(`r:${reservationId}`);
+    return reservation.amount;
+  }
+
+  private async resolveRecordTarget(root: BudgetState, sessionId?: string): Promise<{ key: string; target: BudgetState }> {
+    if (root.scope === 'session' && sessionId) {
+      const sKey = `s:${sessionId}`;
+      const session = await this.ctx.storage.get<BudgetState>(sKey);
+      if (session) return { key: sKey, target: session };
+    }
+    return { key: 'root', target: root };
+  }
+
+  private applyCostSettlement(state: BudgetState, reservedAmount: number, costCents: number): void {
+    state.reservedCents = Math.max(0, (state.reservedCents || 0) - reservedAmount);
+    if (costCents > 0) state.usedCents += costCents;
+  }
+
+  private async checkAlerts(target: BudgetState, root: BudgetState, key: string, costCents: number): Promise<RecordResult['alert']> {
+    const threshold = target.alertThreshold ?? root.alertThreshold ?? DEFAULT_ALERT_THRESHOLD;
+    const webhookUrl = target.alertWebhookUrl ?? root.alertWebhookUrl;
+    const pct = target.usedCents / target.limitCents;
+
+    let alert: RecordResult['alert'];
+
+    if (webhookUrl?.startsWith('https://') && pct >= threshold) {
+      const alreadyAlerted = target.lastAlertAt && target.resetAt > 0 && target.lastAlertAt > (target.resetAt - periodMs(target.period));
+      if (!alreadyAlerted) {
+        target.lastAlertAt = Date.now();
+        await this.ctx.storage.put(key, target);
+        alert = { webhookUrl, budgetId: this.ctx.id.name ?? this.ctx.id.toString(), usedCents: target.usedCents, limitCents: target.limitCents, percentage: Math.round(pct * 100), period: target.period };
+      }
+    }
+
+    if (webhookUrl) {
+      const anomaly = await this.checkAnomaly(costCents);
+      if (anomaly && !alert) {
+        alert = { webhookUrl, budgetId: this.ctx.id.name ?? this.ctx.id.toString(), usedCents: target.usedCents, limitCents: target.limitCents, percentage: Math.round(pct * 100), period: target.period, anomaly };
+      }
+    }
+
+    return alert;
+  }
+
+  private async checkAnomaly(costCents: number): Promise<{ costCents: number; medianCents: number; multiplier: number } | undefined> {
+    const recentCosts = (await this.ctx.storage.get<number[]>('recent_costs')) ?? [];
+    recentCosts.push(costCents);
+    if (recentCosts.length > ANOMALY_HISTORY_SIZE) recentCosts.shift();
+    await this.ctx.storage.put('recent_costs', recentCosts);
+
+    if (recentCosts.length < ANOMALY_MIN_SAMPLES) return undefined;
+
+    const sorted = [...recentCosts].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+    if (median <= 0 || costCents <= median * ANOMALY_MULTIPLIER) return undefined;
+
+    const lastAnomaly = await this.ctx.storage.get<number>('anomaly_last_alert');
+    if (lastAnomaly && Date.now() - lastAnomaly < ANOMALY_COOLDOWN_MS) return undefined;
+
+    await this.ctx.storage.put('anomaly_last_alert', Date.now());
+    return { costCents, medianCents: median, multiplier: +(costCents / median).toFixed(1) };
+  }
+
   private async clearReservations(): Promise<void> {
     const reservations = await this.ctx.storage.list({ prefix: 'r:' });
-    if (reservations.size > 0) {
-      await this.ctx.storage.delete([...reservations.keys()]);
-    }
+    if (reservations.size > 0) await this.ctx.storage.delete([...reservations.keys()]);
   }
 }
 
 export function nextReset(period: 'daily' | 'weekly' | 'monthly'): number {
   const now = new Date();
-
   if (period === 'daily') {
     const next = new Date(now);
     next.setUTCDate(next.getUTCDate() + 1);
     next.setUTCHours(0, 0, 0, 0);
     return next.getTime();
   }
-
   if (period === 'weekly') {
     const next = new Date(now);
     const daysUntilMonday = (8 - next.getUTCDay()) % 7 || 7;
@@ -362,7 +336,6 @@ export function nextReset(period: 'daily' | 'weekly' | 'monthly'): number {
     next.setUTCHours(0, 0, 0, 0);
     return next.getTime();
   }
-
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)).getTime();
 }
 
