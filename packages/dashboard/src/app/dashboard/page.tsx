@@ -81,18 +81,21 @@ export default async function OverviewPage({
       )}
 
       {totalRequests > 0 && <div className="grid grid-cols-4 gap-1.5">
-        <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Total Spend ({days}d)</p>
-            {trend.deltas.spend != null && (
-              <span className={`text-[10px] font-medium ${trend.deltas.spend > 0 ? 'text-emerald-400' : trend.deltas.spend < 0 ? 'text-red-400' : 'text-muted-foreground'}`}>
-                {trend.deltas.spend > 0 ? '\u2191' : trend.deltas.spend < 0 ? '\u2193' : ''}{Math.abs(trend.deltas.spend)}%
-              </span>
-            )}
+        <div className="group relative">
+          <div className="absolute -inset-px rounded-lg bg-gradient-to-b from-white/[0.06] to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
+          <div className="relative glow-hover rounded-lg border border-border bg-card p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-zinc-500">Total Spend ({days}d)</p>
+              {trend.deltas.spend != null && (
+                <span className={`text-[10px] font-medium ${trend.deltas.spend > 0 ? 'text-emerald-400' : trend.deltas.spend < 0 ? 'text-red-400' : 'text-zinc-500'}`}>
+                  {trend.deltas.spend > 0 ? '\u2191' : trend.deltas.spend < 0 ? '\u2193' : ''}{Math.abs(trend.deltas.spend)}%
+                </span>
+              )}
+            </div>
+            <p className="text-gradient-violet mt-0.5 font-mono text-2xl font-bold">
+              {formatCents(spend.month)}
+            </p>
           </div>
-          <p className="mt-0.5 font-mono text-2xl font-bold text-primary">
-            {formatCents(spend.month)}
-          </p>
         </div>
         <StatCard label="Today" value={formatCents(spend.today)} />
         <StatCard label="This Week" value={formatCents(spend.week)} />
@@ -105,7 +108,7 @@ export default async function OverviewPage({
             const pct = b.limitCents > 0 ? Math.min(100, (b.usedCents / b.limitCents) * 100) : 0;
             const warn = pct >= 80;
             return (
-              <div key={b.budgetId} className="rounded-lg border border-[#2a2a2a] bg-card p-3">
+              <div key={b.budgetId} className="rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">{b.name}</p>
                   <span className={`text-[10px] font-medium ${warn ? 'text-amber-400' : 'text-muted-foreground'}`}>
@@ -115,7 +118,7 @@ export default async function OverviewPage({
                 <p className="mt-0.5 font-mono text-lg font-semibold">
                   {formatCents(b.usedCents)} <span className="text-sm text-muted-foreground">/ {formatCents(b.limitCents)}</span>
                 </p>
-                <div className="mt-1.5 h-1.5 rounded-full bg-[#1a1a1a]">
+                <div className="mt-1.5 h-1.5 rounded-full bg-secondary">
                   <div
                     className={`h-full rounded-full transition-all ${warn ? 'bg-amber-400' : 'bg-primary'}`}
                     style={{ width: `${pct}%` }}
@@ -160,7 +163,7 @@ export default async function OverviewPage({
       {totalRequests > 0 ? (
         <>
           <div className="grid grid-cols-2 gap-1.5">
-            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Spend</h2>
                 <p className="text-[10px] text-muted-foreground">
@@ -170,21 +173,21 @@ export default async function OverviewPage({
               </div>
               <CostChart data={timeseries} />
             </div>
-            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Request Volume</h2>
                 <p className="text-[10px] text-muted-foreground">Requests per hour</p>
               </div>
               <RequestChart data={timeseries} />
             </div>
-            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">By Provider</h2>
                 <p className="text-[10px] text-muted-foreground">Spend distribution</p>
               </div>
               <ProviderChart data={providerData} />
             </div>
-            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Token Usage</h2>
                 <p className="text-[10px] text-muted-foreground">
@@ -197,7 +200,7 @@ export default async function OverviewPage({
           </div>
 
           <div className="grid grid-cols-2 gap-1.5">
-            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Cost by Model</h2>
               </div>
@@ -225,7 +228,7 @@ export default async function OverviewPage({
               </table>
             </div>
 
-            <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+            <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Recent Sessions</h2>
               </div>
@@ -264,7 +267,7 @@ export default async function OverviewPage({
             </div>
           </div>
 
-          <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+          <div className="rounded-lg border border-border bg-card p-2">
             <div className="mb-1 border-b border-[#1a1a1a] pb-1">
               <h2 className="text-xs font-medium">Recent Requests</h2>
             </div>
@@ -272,7 +275,7 @@ export default async function OverviewPage({
           </div>
         </>
       ) : (
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
+        <div className="rounded-lg border border-border bg-card p-2">
           <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Recent Requests</h2>
           </div>

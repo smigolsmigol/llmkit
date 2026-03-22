@@ -20,7 +20,7 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
   const items = isAdmin ? [...navItems, adminItem] : navItems;
 
   return (
-    <aside className="fixed left-0 top-0 flex h-full w-56 flex-col border-r border-border bg-background px-3 py-6">
+    <aside className="fixed left-0 top-0 z-30 flex h-full w-56 flex-col border-r border-border bg-[#0a0a0a]/95 backdrop-blur-xl px-3 py-6">
       <Link href="/dashboard" className="mb-8 flex items-center gap-2 px-3">
         <img src="/logo-animated.svg" alt="LLMKit" width={64} height={64} />
         <span className="font-mono text-xl font-semibold tracking-tight text-primary">LLMKit</span>
@@ -39,8 +39,8 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2.5 text-base transition-colors',
                 active
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  ? 'bg-white/[0.06] text-violet-400'
+                  : 'text-zinc-400 hover:bg-white/[0.04] hover:text-white'
               )}
             >
               <Icon className="h-5 w-5 shrink-0" />

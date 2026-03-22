@@ -83,22 +83,22 @@
   .dark {
     --background: #0a0a0a;
     --foreground: #fafafa;
-    --card: #111111;
+    --card: #0f0f0f;
     --card-foreground: #fafafa;
-    --popover: #111111;
+    --popover: #0f0f0f;
     --popover-foreground: #fafafa;
     --primary: #7c3aed;
     --primary-foreground: #fafafa;
-    --secondary: #1a1a1a;
+    --secondary: #141414;
     --secondary-foreground: #fafafa;
-    --muted: #1a1a1a;
-    --muted-foreground: #a3a3a3;
-    --accent: #1a1a1a;
+    --muted: #141414;
+    --muted-foreground: #71717a;
+    --accent: #141414;
     --accent-foreground: #fafafa;
     --destructive: #dc2626;
     --destructive-foreground: #fafafa;
-    --border: #1f1f1f;
-    --input: #1f1f1f;
+    --border: #1a1a1a;
+    --input: #1a1a1a;
     --ring: #7c3aed;
     --chart-1: #7c3aed;
     --chart-2: #14b8a6;
@@ -109,9 +109,9 @@
     --sidebar-foreground: #fafafa;
     --sidebar-primary: #7c3aed;
     --sidebar-primary-foreground: #fafafa;
-    --sidebar-accent: #1a1a1a;
+    --sidebar-accent: #141414;
     --sidebar-accent-foreground: #fafafa;
-    --sidebar-border: #1f1f1f;
+    --sidebar-border: #1a1a1a;
     --sidebar-ring: #7c3aed;
   }
 }
@@ -126,8 +126,39 @@
 }
 
 .glow-hover {
-  transition: box-shadow 150ms ease;
+  transition: box-shadow 200ms ease, border-color 200ms ease;
 }
 .glow-hover:hover {
-  box-shadow: 0 0 20px rgba(124, 58, 237, 0.1);
+  box-shadow: 0 0 24px rgba(124, 58, 237, 0.08), 0 0 48px rgba(124, 58, 237, 0.04);
+  border-color: rgba(124, 58, 237, 0.15);
+}
+
+.noise-overlay::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.text-gradient-primary {
+  background: linear-gradient(to bottom, #ffffff, #a1a1aa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-violet {
+  background: linear-gradient(to right, #a78bfa, #7c3aed, #6d28d9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glass {
+  background: rgba(10, 10, 10, 0.8);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
