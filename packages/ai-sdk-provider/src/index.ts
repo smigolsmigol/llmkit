@@ -57,8 +57,8 @@ export function createLLMKit(config: LLMKitProviderConfig) {
             inputTokens: {
               total: usage?.inputTokens,
               noCache: undefined,
-              cacheRead: undefined,
-              cacheWrite: undefined,
+              cacheRead: usage?.cacheReadTokens,
+              cacheWrite: usage?.cacheWriteTokens,
             },
             outputTokens: {
               total: usage?.outputTokens,
@@ -154,8 +154,8 @@ export function createLLMKit(config: LLMKitProviderConfig) {
                           inputTokens: {
                             total: usage?.inputTokens,
                             noCache: undefined,
-                            cacheRead: undefined,
-                            cacheWrite: undefined,
+                            cacheRead: usage?.cacheReadTokens,
+                            cacheWrite: usage?.cacheWriteTokens,
                           },
                           outputTokens: {
                             total: usage?.outputTokens,
