@@ -27,7 +27,7 @@ function requireConfig(): Config {
   if (!config) {
     const dashUrl = process.env.LLMKIT_DASHBOARD_URL || 'https://llmkit-dashboard.vercel.app';
     throw new Error(
-      `LLMKIT_API_KEY required. The llmkit_cc_* tools work without a key.\nGet one at ${dashUrl}`,
+      `LLMKIT_API_KEY required. The llmkit_local_* tools work without a key.\nGet one at ${dashUrl}`,
     );
   }
   return config;

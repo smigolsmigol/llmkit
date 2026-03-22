@@ -98,7 +98,7 @@ export async function handleBudgetStatus(args: Record<string, unknown> | undefin
 export async function handleHealth() {
   const config = loadConfig();
   if (!config) {
-    return fail(`LLMKIT_API_KEY required. The llmkit_cc_* tools work without a key.\nGet one at ${DASHBOARD_URL}`);
+    return fail(`LLMKIT_API_KEY required. The llmkit_local_* tools work without a key.\nGet one at ${DASHBOARD_URL}`);
   }
   const start = Date.now();
   try {

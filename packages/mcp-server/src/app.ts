@@ -335,7 +335,7 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
       btn.addEventListener('click', function() {
         btn.disabled = true;
         btn.textContent = '...';
-        sendRpc('tools/call', { name: 'llmkit_cc_session_cost', arguments: {} })
+        sendRpc('tools/call', { name: 'llmkit_local_session', arguments: {} })
           .then(function(result) {
             var data = result;
             if (data && data.structuredContent) data = data.structuredContent;

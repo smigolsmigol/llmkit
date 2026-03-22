@@ -6,6 +6,9 @@ node_modules/
 dist/
 .turbo/
 *.tsbuildinfo
+*.b64
+*.mcpb.zip
+test-*.html
 
 # env
 .env
