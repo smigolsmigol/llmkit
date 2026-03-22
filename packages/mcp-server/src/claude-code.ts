@@ -242,7 +242,9 @@ async function parseSubagents(projectDir: string, sessionId: string): Promise<Ag
   return agents;
 }
 
-export async function getSessionCost(): Promise<SessionCost | null> {
+export async function getSessionCost(transcriptPath?: string): Promise<SessionCost | null> {
+  if (transcriptPath) return parseSessionJsonl(transcriptPath);
+
   const projectDir = await findProjectDir();
   if (!projectDir) return null;
 
