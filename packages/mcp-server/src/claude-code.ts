@@ -450,7 +450,8 @@ export async function getProjectCosts(): Promise<ProjectCostResult[]> {
       }),
     );
     mtimes.sort((a, b) => b.mtime - a.mtime);
-    const latest = sessions.find(s => mtimes[0]?.file.includes(s.sessionId)) ?? sessions[0]!;
+    const latest = sessions.find(s => mtimes[0]?.file.includes(s.sessionId)) ?? sessions[0];
+    if (!latest) return null;
     const latestMtime = mtimes[0]?.mtime ?? 0;
     const topModel = Object.entries(latest.models).sort(([, a], [, b]) => b.cost - a.cost)[0];
 

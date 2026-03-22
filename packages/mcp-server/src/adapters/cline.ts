@@ -227,7 +227,9 @@ export const clineAdapter: LocalAdapter = {
     if (tasks.length === 0) return null;
 
     tasks.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
-    const t = tasks[0]!;
+    const first = tasks[0];
+    if (!first) return null;
+    const t = first;
 
     return {
       source: `Cline (${t.variant})`,
