@@ -43,6 +43,7 @@ export interface RecordResult {
     limitCents: number;
     percentage: number;
     period: string;
+    anomaly?: { costCents: number; medianCents: number; multiplier: number };
   };
 }
 
@@ -223,6 +224,38 @@ export class BudgetDO extends DurableObject {
           percentage: Math.round(pct * 100),
           period: target.period,
         };
+      }
+    }
+
+    // anomaly detection: check if this cost is 3x+ the recent median
+    if (input.costCents > 0 && webhookUrl) {
+      const costsKey = 'recent_costs';
+      const recentCosts = (await this.ctx.storage.get<number[]>(costsKey)) ?? [];
+      recentCosts.push(input.costCents);
+      if (recentCosts.length > 20) recentCosts.shift();
+      await this.ctx.storage.put(costsKey, recentCosts);
+
+      if (recentCosts.length >= 5) {
+        const sorted = [...recentCosts].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+        const anomalyLastKey = 'anomaly_last_alert';
+        if (median > 0 && input.costCents > median * 3) {
+          const lastAnomaly = await this.ctx.storage.get<number>(anomalyLastKey);
+          if (!lastAnomaly || Date.now() - lastAnomaly > 3600000) {
+            await this.ctx.storage.put(anomalyLastKey, Date.now());
+            if (!alert) {
+              alert = {
+                webhookUrl,
+                budgetId: this.ctx.id.name ?? this.ctx.id.toString(),
+                usedCents: target.usedCents,
+                limitCents: target.limitCents,
+                percentage: Math.round(pct * 100),
+                period: target.period,
+                anomaly: { costCents: input.costCents, medianCents: median, multiplier: +(input.costCents / median).toFixed(1) },
+              };
+            }
+          }
+        }
       }
     }
 

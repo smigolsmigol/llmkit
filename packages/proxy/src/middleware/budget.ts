@@ -75,18 +75,19 @@ export async function recordUsage(
   const result = await stub.record({ reservationId: reservationId || '', sessionId, costCents });
 
   if (result.alert) {
-    return {
-      webhookUrl: result.alert.webhookUrl,
-      body: {
-        type: 'budget.threshold',
-        budgetId: result.alert.budgetId,
-        usedCents: result.alert.usedCents,
-        limitCents: result.alert.limitCents,
-        percentage: result.alert.percentage,
-        period: result.alert.period,
-        timestamp: new Date().toISOString(),
-      },
+    const body: Record<string, unknown> = {
+      type: result.alert.anomaly ? 'budget.anomaly' : 'budget.threshold',
+      budgetId: result.alert.budgetId,
+      usedCents: result.alert.usedCents,
+      limitCents: result.alert.limitCents,
+      percentage: result.alert.percentage,
+      period: result.alert.period,
+      timestamp: new Date().toISOString(),
     };
+    if (result.alert.anomaly) {
+      body.anomaly = result.alert.anomaly;
+    }
+    return { webhookUrl: result.alert.webhookUrl, body };
   }
 
   return null;
