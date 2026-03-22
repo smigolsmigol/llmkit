@@ -15,7 +15,7 @@ Add to your `.mcp.json` (Claude Code) or `.cursor/mcp.json` (Cursor):
       "command": "npx",
       "args": ["@f3d1/llmkit-mcp-server"],
       "env": {
-        "LLMKIT_API_KEY": "lk_your_key_here",
+        "LLMKIT_API_KEY": "llmk_your_key_here",
         "NOTION_TOKEN": "",
         "NOTION_PAGE_ID": ""
       }

@@ -86,11 +86,25 @@ Works with Python, Ruby, Go, Rust, anything that calls the OpenAI or Anthropic A
 pip install llmkit-sdk
 ```
 
-Set your API key and add cost tracking with one line:
+Two ways to track costs:
 
-```bash
-export LLMKIT_API_KEY=llmk_your_key_here
+**With the proxy** (budget enforcement, logging, dashboard):
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://llmkit-proxy.smigolsmigol.workers.dev/v1",
+    api_key="llmk_your_key_here",
+)
+
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "hello"}],
+)
 ```
+
+**Without the proxy** (local cost estimation, zero setup):
 
 ```python
 from llmkit import tracked
@@ -102,10 +116,10 @@ response = client.chat.completions.create(
     model="gpt-4o",
     messages=[{"role": "user", "content": "hello"}],
 )
-# costs tracked automatically through the proxy
+# costs estimated locally from bundled pricing table
 ```
 
-`tracked()` returns a standard `httpx.Client` that routes through the LLMKit proxy. Works with any SDK that accepts `http_client`: OpenAI, Anthropic, Mistral, Cohere. See the [SDK docs](https://pypi.org/project/llmkit-sdk/) for all options.
+`tracked()` wraps your HTTP client and estimates costs from token usage. No proxy needed. Works with any SDK that accepts `http_client`. See the [SDK docs](https://pypi.org/project/llmkit-sdk/) for all options.
 
 ## TypeScript
 
