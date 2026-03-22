@@ -161,10 +161,7 @@ jobs:
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=<b>Deployed to CF Workers</b>
-
-<code>${FIRST_LINE}</code>
-by ${{ github.actor }}"
+            --data-urlencode "text=<b>Deployed to CF Workers</b>%0A%0A<code>${FIRST_LINE}</code>%0Aby ${{ github.actor }}"
 
   post-deploy-verify:
     needs: deploy
@@ -257,10 +254,7 @@ by ${{ github.actor }}"
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=<b>Post-deploy verification FAILED</b>
-
-Something is broken in production.
-<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+            --data-urlencode "text=<b>Post-deploy verification FAILED</b>%0A%0ASomething is broken in production.%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
 
   notify-failure:
     needs: [secrets-scan, semgrep, check-ts, check-python, deploy]
@@ -275,9 +269,4 @@ Something is broken in production.
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=<b>CI failed</b>
-
-<code>${FIRST_LINE}</code>
-by ${{ github.actor }}
-
-<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+            --data-urlencode "text=<b>CI failed</b>%0A%0A<code>${FIRST_LINE}</code>%0Aby ${{ github.actor }}%0A%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
