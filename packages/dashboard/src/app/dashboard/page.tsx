@@ -53,16 +53,34 @@ export default async function OverviewPage({
       </div>
 
       {totalRequests === 0 && (
-        <div className="rounded-lg border border-primary/20 bg-card p-4">
-          <p className="font-medium">No proxy traffic yet</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Route requests through LLMKit to see cost and usage data here.
-            Create an API key in the <Link href="/dashboard/keys" className="text-primary hover:underline">Keys</Link> tab, then point your SDK or CLI at the proxy.
-          </p>
+        <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-8">
+          <h2 className="text-lg font-semibold">Get started</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Three steps to start tracking costs.</p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Link href="/dashboard/keys" className="group rounded-lg border border-border bg-card p-5 hover:border-violet-500/40">
+              <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600/10 text-sm font-bold text-violet-400">1</div>
+              <p className="font-medium group-hover:text-violet-400">Create an API key</p>
+              <p className="mt-1 text-xs text-muted-foreground">Generate a key to authenticate proxy requests.</p>
+            </Link>
+            <Link href="/dashboard/providers" className="group rounded-lg border border-border bg-card p-5 hover:border-violet-500/40">
+              <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600/10 text-sm font-bold text-violet-400">2</div>
+              <p className="font-medium group-hover:text-violet-400">Add a provider key</p>
+              <p className="mt-1 text-xs text-muted-foreground">Paste your OpenAI, Anthropic, or other provider API key.</p>
+            </Link>
+            <div className="rounded-lg border border-border bg-card p-5">
+              <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600/10 text-sm font-bold text-violet-400">3</div>
+              <p className="font-medium">Send your first request</p>
+              <p className="mt-1 text-xs text-muted-foreground">Point your SDK at the proxy and make a call. Costs appear here automatically.</p>
+            </div>
+          </div>
+          <div className="mt-6 rounded-lg border border-border bg-card p-4">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Or try the local MCP tools (no proxy needed)</p>
+            <code className="text-sm">npx @f3d1/llmkit-mcp-server</code>
+          </div>
         </div>
       )}
 
-      <div className="grid grid-cols-4 gap-1.5">
+      {totalRequests > 0 && <div className="grid grid-cols-4 gap-1.5">
         <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">Total Spend ({days}d)</p>
@@ -79,7 +97,7 @@ export default async function OverviewPage({
         <StatCard label="Today" value={formatCents(spend.today)} />
         <StatCard label="This Week" value={formatCents(spend.week)} />
         <StatCard label="Total Requests" value={totalRequests.toLocaleString()} delta={trend.deltas.requests} />
-      </div>
+      </div>}
 
       {budgetUsage.length > 0 && (
         <div className="grid grid-cols-2 gap-1.5">

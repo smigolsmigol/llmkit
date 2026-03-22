@@ -41,7 +41,7 @@ export default async function SettingsPage() {
       {!connected ? (
         <div className="rounded-lg border border-border bg-card p-8 text-center">
           <p className="text-muted-foreground">
-            Supabase not connected. Add env vars to .env.local
+            Unable to load data. Please refresh to try again.
           </p>
         </div>
       ) : (

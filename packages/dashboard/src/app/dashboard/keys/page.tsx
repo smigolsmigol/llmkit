@@ -26,7 +26,7 @@ export default async function KeysPage() {
         <h1 className="text-xl font-semibold">API Keys</h1>
         <div className="rounded-lg border border-border bg-card p-8 text-center">
           <p className="text-muted-foreground">
-            Supabase not connected. Add env vars to .env.local
+            Unable to load data. Please refresh to try again.
           </p>
         </div>
       </div>
