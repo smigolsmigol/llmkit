@@ -32,6 +32,8 @@ function getBasePath(): string {
 }
 
 const VARIANTS = ['Code', 'Code - Insiders', 'VSCodium', 'Cursor', 'Windsurf'];
+// remote server directories (VS Code/Cursor opened via WSL/SSH)
+const SERVER_VARIANTS = ['.vscode-server', '.cursor-server', '.windsurf-server'];
 const EXTENSION_ID = 'saoudrizwan.claude-dev';
 
 function findClineDataDirs(): { variant: string; path: string }[] {
@@ -60,6 +62,8 @@ function findClineDataDirs(): { variant: string; path: string }[] {
   }
 
   const found: { variant: string; path: string }[] = [];
+
+  // standard desktop installations: {base}/{variant}/User/globalStorage/{ext}
   for (const base of bases) {
     for (const v of VARIANTS) {
       const p = join(base, v, 'User', 'globalStorage', EXTENSION_ID);
@@ -69,6 +73,37 @@ function findClineDataDirs(): { variant: string; path: string }[] {
       }
     }
   }
+
+  // remote server installations (WSL/SSH): ~/{server}/data/User/globalStorage/{ext}
+  if (process.platform === 'win32') {
+    try {
+      const wslRoot = resolve('//wsl.localhost');
+      const distros = readdirSync(wslRoot);
+      for (const distro of distros) {
+        try {
+          const homesDir = resolve('//wsl.localhost', distro, 'home');
+          const homes = readdirSync(homesDir);
+          for (const user of homes) {
+            for (const sv of SERVER_VARIANTS) {
+              const p = resolve('//wsl.localhost', distro, 'home', user, sv, 'data', 'User', 'globalStorage', EXTENSION_ID);
+              if (existsSync(join(p, 'tasks'))) {
+                found.push({ variant: `${sv} (WSL)`, path: p });
+              }
+            }
+          }
+        } catch { /* skip */ }
+      }
+    } catch { /* WSL not available */ }
+  }
+
+  // also check server dirs in local home (Linux/macOS SSH target)
+  if (process.platform !== 'win32') {
+    for (const sv of SERVER_VARIANTS) {
+      const p = join(homedir(), sv, 'data', 'User', 'globalStorage', EXTENSION_ID);
+      if (existsSync(join(p, 'tasks'))) found.push({ variant: sv, path: p });
+    }
+  }
+
   return found;
 }
 
