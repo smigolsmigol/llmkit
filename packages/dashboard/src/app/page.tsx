@@ -99,8 +99,20 @@ export default async function Home() {
 
           <p className="mt-4 text-xs text-zinc-500">No credit card. Unlimited requests during beta.</p>
 
+          {/* provider badges */}
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-2">
+            {['Anthropic', 'OpenAI', 'Google Gemini', 'xAI Grok', 'DeepSeek', 'Groq', 'Mistral'].map((p) => (
+              <span key={p} className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3.5 py-1.5 text-xs text-zinc-400">
+                {p}
+              </span>
+            ))}
+            <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3.5 py-1.5 text-xs text-zinc-500">
+              +4 more
+            </span>
+          </div>
+
           {/* code snippet - above the fold */}
-          <div className="mx-auto mt-12 max-w-2xl overflow-hidden rounded-xl border border-white/[0.06] bg-[#111] text-left">
+          <div className="mx-auto mt-10 max-w-2xl overflow-hidden rounded-xl border border-white/[0.06] bg-[#111] text-left">
             <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
               <div className="flex gap-1.5">
                 <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
