@@ -19,10 +19,11 @@ export default async function Home() {
       {/* nav */}
       <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-1.5">
-            <img src="/logo-animated.svg" alt="LLMKit" width={28} height={28} />
-            <span className="font-mono text-lg font-semibold tracking-tight">LLMKit</span>
-            <svg className="ml-0.5 h-3.5 w-3.5 shrink-0 text-violet-400" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <div className="flex items-baseline">
+            <span className="font-mono text-lg font-semibold tracking-tight">LLM</span>
+            <img src="/logo-animated.svg" alt="K" className="relative -top-px mx-[-1px] inline-block h-[20px] w-[20px]" />
+            <span className="font-mono text-lg font-semibold tracking-tight">it</span>
+            <svg className="relative -top-px ml-1.5 h-3 w-3 shrink-0 text-violet-400" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
               <circle cx="12" cy="4" r="2" fill="currentColor" opacity="0.8">
                 <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="2.5s" repeatCount="indefinite" />

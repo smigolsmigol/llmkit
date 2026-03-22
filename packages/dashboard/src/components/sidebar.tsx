@@ -21,10 +21,11 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
 
   return (
     <aside className="fixed left-0 top-0 z-30 flex h-full w-56 flex-col border-r border-border bg-[#0a0a0a]/95 backdrop-blur-xl px-3 py-6">
-      <Link href="/dashboard" className="mb-8 flex items-center gap-1.5 px-3">
-        <img src="/logo-animated.svg" alt="LLMKit" width={32} height={32} />
-        <span className="font-mono text-lg font-semibold tracking-tight text-primary">LLMKit</span>
-        <svg className="ml-1 h-4 w-4 shrink-0" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <Link href="/dashboard" className="mb-8 flex items-baseline px-3">
+        <span className="font-mono text-xl font-semibold tracking-tight text-primary">LLM</span>
+        <img src="/logo-animated.svg" alt="K" className="relative -top-px mx-[-2px] inline-block h-[22px] w-[22px]" />
+        <span className="font-mono text-xl font-semibold tracking-tight text-primary">it</span>
+        <svg className="relative -top-px ml-2 h-3.5 w-3.5 shrink-0 text-primary" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
           <circle cx="12" cy="4" r="2" fill="currentColor" opacity="0.8">
             <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="2.5s" repeatCount="indefinite" />
