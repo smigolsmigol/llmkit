@@ -155,6 +155,9 @@ export class OpenAIAdapter implements ProviderAdapter {
 
 function parseResponse(data: OpenAIResponse): ProviderResponse {
   const choice = data.choices[0];
+  const rawTools = (choice?.message as { tool_calls?: { function?: { name?: string } }[] })?.tool_calls;
+  const toolCalls = rawTools?.map(t => ({ name: t.function?.name ?? 'unknown' }));
+
   return {
     id: data.id,
     content: choice?.message?.content || '',
@@ -165,5 +168,6 @@ function parseResponse(data: OpenAIResponse): ProviderResponse {
       totalTokens: data.usage.total_tokens,
     },
     finishReason: choice?.finish_reason || 'unknown',
+    ...(toolCalls?.length && { toolCalls }),
   };
 }

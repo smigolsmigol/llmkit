@@ -123,6 +123,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
         cost,
         usage: result.usage,
         latency,
+        toolCalls: result.toolCalls,
       };
       c.set('llmkit_response', meta);
 
@@ -207,6 +208,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
         await trackRequest({
           sessionId: c.req.header('x-llmkit-session-id') || undefined,
           endUserId: c.req.header('x-llmkit-user-id') || undefined,
+          toolCalls: undefined, // streaming tool calls tracked in non-streaming path
           apiKey: c.get('apiKey'),
           apiKeyId: c.get('apiKeyId'),
           userId: c.get('userId'),

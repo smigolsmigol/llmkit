@@ -19,7 +19,7 @@ interface AnthropicResponse {
   type: 'message';
   role: 'assistant';
   model: string;
-  content: Array<{ type: 'text'; text: string }>;
+  content: Array<{ type: 'text'; text: string } | { type: 'tool_use'; id: string; name: string; input: unknown }>;
   stop_reason: string;
   usage: {
     input_tokens: number;
@@ -209,11 +209,16 @@ function parseResponse(data: AnthropicResponse): ProviderResponse {
     .map((b) => b.text)
     .join('');
 
+  const toolCalls = data.content
+    .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
+    .map((b) => ({ name: b.name }));
+
   return {
     id: data.id,
     content,
     model: data.model,
     usage: mapUsage(data.usage),
     finishReason: data.stop_reason,
+    ...(toolCalls.length > 0 && { toolCalls }),
   };
 }

@@ -25,6 +25,7 @@ async function hasSuccessfulRequest(supabaseUrl: string, supabaseKey: string, ap
 export interface TrackParams {
   sessionId: string | undefined;
   endUserId: string | undefined;
+  toolCalls: { name: string }[] | undefined;
   apiKey: string | undefined;
   apiKeyId: string | undefined;
   userId: string | undefined;
@@ -91,6 +92,7 @@ function persistAndNotify(p: TrackParams & { userId: string; apiKeyId: string })
     status: 'success',
     error_code: null,
     source: 'proxy',
+    tool_calls: p.toolCalls?.length ? p.toolCalls : null,
   };
   p.ctx.waitUntil(logRequest(url, key, row));
 
@@ -129,6 +131,7 @@ export function costLogger() {
     await trackRequest({
       sessionId: c.req.header('x-llmkit-session-id') || undefined,
       endUserId: c.req.header('x-llmkit-user-id') || undefined,
+      toolCalls: meta.toolCalls,
       apiKey: c.get('apiKey'),
       apiKeyId: c.get('apiKeyId'),
       userId: c.get('userId'),

@@ -115,6 +115,7 @@ app.onError(async (err, c) => {
         status: 'error',
         error_code: code,
         source: 'proxy',
+        tool_calls: null,
       }),
     );
 

@@ -46,6 +46,7 @@ export interface RequestInsert {
   status: string;
   error_code: string | null;
   source: 'proxy' | 'claude-code';
+  tool_calls: { name: string }[] | null;
 }
 
 function postgrest(

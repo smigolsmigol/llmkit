@@ -14,17 +14,23 @@ export interface ProviderRequest {
   apiKey: string;
 }
 
+export interface ToolCall {
+  name: string;
+}
+
 export interface ProviderResponse {
   id: string;
   content: string;
   model: string;
   usage: TokenUsage;
   finishReason: string;
+  toolCalls?: ToolCall[];
 }
 
 export interface StreamEvent {
-  type: 'text' | 'end';
+  type: 'text' | 'tool' | 'end';
   text?: string;
+  toolName?: string;
   usage?: TokenUsage;
   id?: string;
   model?: string;

@@ -8,6 +8,7 @@ export interface ResponseMeta {
   usage: TokenUsage;
   model?: string;
   latency?: number;
+  toolCalls?: { name: string }[];
 }
 
 export type Env = {
