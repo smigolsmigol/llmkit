@@ -11,6 +11,12 @@ function validateSessionId(sessionId: string | undefined): void {
   }
 }
 
+function validateEndUserId(endUserId: string | undefined): void {
+  if (endUserId && !/^[\w@.+\-]{1,256}$/.test(endUserId)) {
+    throw new ValidationError('invalid end user ID format');
+  }
+}
+
 async function parseBody(c: { req: { json(): Promise<Record<string, unknown>> } }): Promise<Record<string, unknown>> {
   try {
     return await c.req.json();
@@ -27,6 +33,7 @@ export function budgetCheck() {
 
     const sessionId = c.req.header('x-llmkit-session-id');
     validateSessionId(sessionId);
+    validateEndUserId(c.req.header('x-llmkit-user-id'));
 
     const body = await parseBody(c);
     const model = body.model as string;

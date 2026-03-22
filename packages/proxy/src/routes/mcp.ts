@@ -112,7 +112,7 @@ interface BudgetRow {
 }
 
 async function getUserKeyIds(url: string, key: string, userId: string): Promise<string[]> {
-  const keys = await query<{ id: string }>(url, key, `api_keys?user_id=eq.${userId}&select=id`);
+  const keys = await query<{ id: string }>(url, key, `api_keys?user_id=eq.${encodeURIComponent(userId)}&select=id`);
   return keys.map((k) => k.id);
 }
 
@@ -120,7 +120,7 @@ async function getRequests(url: string, key: string, userId: string, days: numbe
   const keyIds = await getUserKeyIds(url, key, userId);
   if (!keyIds.length) return [];
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
-  return query<RequestRow>(url, key, `requests?api_key_id=in.(${keyIds.join(',')})&created_at=gte.${cutoff}&order=created_at.desc&limit=5000&select=*`);
+  return query<RequestRow>(url, key, `requests?api_key_id=in.(${keyIds.map(encodeURIComponent).join(',')})&created_at=gte.${cutoff}&order=created_at.desc&limit=5000&select=*`);
 }
 
 // tool handlers
@@ -186,7 +186,7 @@ async function handleCostQuery(url: string, key: string, userId: string, args: R
 }
 
 async function handleListKeys(url: string, key: string, userId: string) {
-  const keys = await query<KeyRow>(url, key, `api_keys?user_id=eq.${userId}&order=created_at.desc&select=id,name,key_prefix,budget_id,created_at,revoked_at`);
+  const keys = await query<KeyRow>(url, key, `api_keys?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc&select=id,name,key_prefix,budget_id,created_at,revoked_at`);
   if (!keys.length) return text('No API keys found.');
   const lines = ['API Keys'];
   for (const k of keys) {
@@ -196,7 +196,7 @@ async function handleListKeys(url: string, key: string, userId: string) {
 }
 
 async function handleBudgetStatus(url: string, key: string, userId: string, args: Record<string, unknown>) {
-  const budgets = await query<BudgetRow>(url, key, `budgets?user_id=eq.${userId}&select=id,name,limit_cents,period`);
+  const budgets = await query<BudgetRow>(url, key, `budgets?user_id=eq.${encodeURIComponent(userId)}&select=id,name,limit_cents,period`);
   if (!budgets.length) return text('No budgets configured.');
   const filtered = args.budgetId ? budgets.filter((b) => b.id === args.budgetId) : budgets;
   const requests = await getRequests(url, key, userId, 30);

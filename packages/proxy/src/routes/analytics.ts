@@ -29,7 +29,7 @@ async function getUserRequests(
   if (!keys.length) return [];
 
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
-  const keyFilter = `api_key_id=in.(${keys.map(k => k.id).join(',')})&created_at=gte.${cutoff}&source=eq.${source}&order=created_at.desc`;
+  const keyFilter = `api_key_id=in.(${keys.map(k => encodeURIComponent(k.id)).join(',')})&created_at=gte.${cutoff}&source=eq.${encodeURIComponent(source)}&order=created_at.desc`;
 
   // paginated fetch (Supabase caps at 1000 per page)
   const all: RequestRow[] = [];
