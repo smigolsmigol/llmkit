@@ -386,6 +386,46 @@ export async function getCostForecast(): Promise<CostForecastResult | null> {
   };
 }
 
+// legacy usage data from old Claude Code versions (~/.claude/usage/YYYY/MM/DD/HH.json)
+export async function getLegacyUsage(): Promise<{ totalCost: number; months: { month: string; cost: number }[] }> {
+  const usageDir = join(claudeDir(), 'usage');
+  const months: { month: string; cost: number }[] = [];
+  let totalCost = 0;
+
+  let years: string[];
+  try { years = await readdir(usageDir); } catch { return { totalCost: 0, months: [] }; }
+
+  for (const year of years) {
+    let monthDirs: string[];
+    try { monthDirs = await readdir(join(usageDir, year)); } catch { continue; }
+    for (const month of monthDirs) {
+      let days: string[];
+      try { days = await readdir(join(usageDir, year, month)); } catch { continue; }
+      let monthCost = 0;
+      for (const day of days) {
+        let hours: string[];
+        try { hours = await readdir(join(usageDir, year, month, day)); } catch { continue; }
+        for (const hour of hours) {
+          if (!hour.endsWith('.json')) continue;
+          try {
+            const raw = await readFile(join(usageDir, year, month, day, hour), 'utf-8');
+            const data = JSON.parse(raw);
+            for (const m of Object.values(data.models ?? {})) {
+              monthCost += (m as { cost?: number }).cost ?? 0;
+            }
+          } catch { /* skip malformed */ }
+        }
+      }
+      if (monthCost > 0) {
+        months.push({ month: `${year}-${month}`, cost: monthCost });
+        totalCost += monthCost;
+      }
+    }
+  }
+
+  return { totalCost, months };
+}
+
 export interface ProjectCostResult {
   project: string;
   sessionCount: number;
