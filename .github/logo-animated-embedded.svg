@@ -22,7 +22,7 @@
 
     <filter id="k-glow">
       <feGaussianBlur stdDeviation="4" result="blur"/>
-      <feFlood flood-color="#2dd4bf" flood-opacity="0.15" result="teal"/>
+      <feFlood flood-color="#a78bfa" flood-opacity="0.15" result="teal"/>
       <feComposite in="teal" in2="blur" operator="in" result="glow"/>
       <feMerge>
         <feMergeNode in="glow"/>
