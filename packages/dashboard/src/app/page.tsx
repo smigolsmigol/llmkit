@@ -51,6 +51,18 @@ export default async function Home() {
           />
         </div>
 
+        {/* CLI demo */}
+        <div className="mt-12 overflow-hidden rounded-xl border border-border shadow-2xl">
+          <video
+            src="https://github.com/user-attachments/assets/8ec33732-f651-4e35-9a27-5263c8a87ba7"
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full"
+          />
+        </div>
+
         {/* features */}
         <div className="mt-20 grid gap-8 sm:grid-cols-2">
           <div className="rounded-lg border border-border bg-card p-6">
