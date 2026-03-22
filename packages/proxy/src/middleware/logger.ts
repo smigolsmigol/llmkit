@@ -24,6 +24,7 @@ async function hasSuccessfulRequest(supabaseUrl: string, supabaseKey: string, ap
 
 export interface TrackParams {
   sessionId: string | undefined;
+  endUserId: string | undefined;
   apiKey: string | undefined;
   apiKeyId: string | undefined;
   userId: string | undefined;
@@ -78,6 +79,7 @@ function persistAndNotify(p: TrackParams & { userId: string; apiKeyId: string })
     user_id: p.userId,
     api_key_id: p.apiKeyId,
     session_id: p.sessionId || null,
+    end_user_id: p.endUserId || null,
     provider: p.provider,
     model: p.model,
     input_tokens: p.usage.inputTokens,
@@ -126,6 +128,7 @@ export function costLogger() {
 
     await trackRequest({
       sessionId: c.req.header('x-llmkit-session-id') || undefined,
+      endUserId: c.req.header('x-llmkit-user-id') || undefined,
       apiKey: c.get('apiKey'),
       apiKeyId: c.get('apiKeyId'),
       userId: c.get('userId'),

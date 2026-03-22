@@ -83,8 +83,8 @@ const app = new Hono<Env>();
 
 app.use('*', cors({
   origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-format'],
-  exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-format'],
+  exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'x-llmkit-user-id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
   allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'],
 }));
 
@@ -103,6 +103,7 @@ app.onError(async (err, c) => {
         user_id: userId,
         api_key_id: apiKeyId,
         session_id: c.req.header('x-llmkit-session-id') || null,
+        end_user_id: c.req.header('x-llmkit-user-id') || null,
         provider: ctx.provider,
         model: ctx.model,
         input_tokens: 0,

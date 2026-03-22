@@ -155,9 +155,11 @@ Query AI costs from Claude Code or Cursor. Claude Code tools work without an API
 
 **Proxy** (need `LLMKIT_API_KEY`): `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`
 
-**Claude Code** (no key needed): `llmkit_cc_session_cost`, `llmkit_cc_agent_costs`, `llmkit_cc_cache_savings`, `llmkit_cc_cost_forecast`, `llmkit_cc_project_costs`
+**Local** (no key needed, works with Claude Code + Cline + Cursor): `llmkit_local_session`, `llmkit_local_projects`, `llmkit_local_cache`, `llmkit_local_forecast`, `llmkit_local_agents`
 
 **Notion** (need `NOTION_TOKEN` + `NOTION_PAGE_ID`): `llmkit_notion_cost_snapshot`, `llmkit_notion_budget_check`, `llmkit_notion_session_report`
+
+**Compliance**: per-request logging with timestamps, model attribution, cost tracking, tamper-evident export with sha256 integrity hash. EU AI Act Article 12 export format. [Dashboard export API](/api/export?format=article12).
 
 ### SessionEnd Hook
 

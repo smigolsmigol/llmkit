@@ -4,13 +4,13 @@ import { getAccountPlan } from '@/lib/queries';
 import { createHash } from 'node:crypto';
 
 const ARTICLE_12_COLUMNS = [
-  'timestamp', 'operator_id', 'system_id', 'model', 'provider',
+  'timestamp', 'operator_id', 'system_id', 'end_user_id', 'model', 'provider',
   'input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens',
   'cost_usd', 'duration_ms', 'session_id', 'status', 'error_code',
 ] as const;
 
 const RAW_COLUMNS = [
-  'created_at', 'api_key_id', 'model', 'provider',
+  'created_at', 'api_key_id', 'end_user_id', 'model', 'provider',
   'input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens',
   'cost_cents', 'latency_ms', 'session_id', 'status', 'error_code',
 ] as const;
@@ -68,6 +68,7 @@ export async function GET(req: Request) {
         escCsv(row.created_at as string),
         escCsv(row.user_id as string ?? userId),
         escCsv(row.api_key_id as string),
+        escCsv(row.end_user_id as string),
         escCsv(row.model as string),
         escCsv(row.provider as string),
         escCsv(row.input_tokens as number),

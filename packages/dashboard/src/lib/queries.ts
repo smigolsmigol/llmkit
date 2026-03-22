@@ -10,6 +10,7 @@ export interface RequestRow {
   id: string;
   api_key_id: string;
   session_id: string | null;
+  end_user_id: string | null;
   provider: string;
   model: string;
   input_tokens: number;

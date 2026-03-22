@@ -31,6 +31,8 @@ function setCostHeaders(c: Context<Env>, cost: CostBreakdown, provider: string, 
   c.header('x-llmkit-latency-ms', String(latencyMs));
   const sid = c.req.header('x-llmkit-session-id');
   if (sid) c.header('x-llmkit-session-id', sid);
+  const uid = c.req.header('x-llmkit-user-id');
+  if (uid) c.header('x-llmkit-user-id', uid);
 }
 
 function toOpenAIFinishReason(reason: string): string {
@@ -135,6 +137,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
           latencyMs: latency,
           cached: false,
           sessionId: c.req.header('x-llmkit-session-id') || undefined,
+          endUserId: c.req.header('x-llmkit-user-id') || undefined,
         });
       }
 
@@ -203,6 +206,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
 
         await trackRequest({
           sessionId: c.req.header('x-llmkit-session-id') || undefined,
+          endUserId: c.req.header('x-llmkit-user-id') || undefined,
           apiKey: c.get('apiKey'),
           apiKeyId: c.get('apiKeyId'),
           userId: c.get('userId'),
