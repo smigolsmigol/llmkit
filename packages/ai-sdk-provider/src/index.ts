@@ -12,7 +12,6 @@ export interface LLMKitProviderConfig {
   baseUrl?: string;
   sessionId?: string;
   userId?: string;
-  budgetId?: string;
   provider?: 'anthropic' | 'openai' | 'gemini';
   providerKey?: string;
 }
@@ -106,7 +105,7 @@ export function createLLMKit(config: LLMKitProviderConfig) {
             const decoder = new TextDecoder();
             let buffer = '';
             let currentEvent = '';
-            let textStarted = false;
+            let textBlockId = '';
 
             try {
               while (true) {
@@ -135,17 +134,16 @@ export function createLLMKit(config: LLMKitProviderConfig) {
                     const data = JSON.parse(payload);
 
                     if (currentEvent === 'delta' && data.text !== undefined) {
-                      const id = String(partId++);
-                      if (!textStarted) {
-                        controller.enqueue({ type: 'text-start', id });
-                        textStarted = true;
+                      if (!textBlockId) {
+                        textBlockId = String(partId++);
+                        controller.enqueue({ type: 'text-start', id: textBlockId });
                       }
-                      controller.enqueue({ type: 'text-delta', id, delta: data.text });
+                      controller.enqueue({ type: 'text-delta', id: textBlockId, delta: data.text });
                     }
 
                     if (currentEvent === 'done') {
-                      if (textStarted) {
-                        controller.enqueue({ type: 'text-end', id: String(partId++) });
+                      if (textBlockId) {
+                        controller.enqueue({ type: 'text-end', id: textBlockId });
                       }
 
                       const usage = data.usage as Record<string, number> | undefined;
