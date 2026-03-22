@@ -1,24 +1,24 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.smigolsmigol/llmkit",
-  "description": "AI cost tracking: 11 tools for spend queries, budgets, and Claude Code session costs",
+  "description": "AI cost tracking: 14 tools for spend, budgets, local costs (Claude Code + Cline + Cursor), and Notion sync",
   "repository": {
     "url": "https://github.com/smigolsmigol/llmkit",
     "source": "github"
   },
-  "version": "0.3.1",
+  "version": "0.4.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@f3d1/llmkit-mcp-server",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
           "name": "LLMKIT_API_KEY",
-          "description": "LLMKit API key. Optional: Claude Code tools work without it.",
+          "description": "LLMKit API key. Optional: local tools work without it.",
           "isRequired": false,
           "format": "string",
           "isSecret": true
@@ -26,6 +26,20 @@
         {
           "name": "LLMKIT_PROXY_URL",
           "description": "LLMKit proxy URL (defaults to hosted service)",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": false
+        },
+        {
+          "name": "NOTION_TOKEN",
+          "description": "Notion integration token for Notion sync tools",
+          "isRequired": false,
+          "format": "string",
+          "isSecret": true
+        },
+        {
+          "name": "NOTION_PAGE_ID",
+          "description": "Parent Notion page ID for sync",
           "isRequired": false,
           "format": "string",
           "isSecret": false
