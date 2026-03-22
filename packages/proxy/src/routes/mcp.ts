@@ -161,6 +161,13 @@ async function handleUsageStats(url: string, key: string, userId: string, args: 
   ].join('\n'));
 }
 
+function resolveGroupKey(r: RequestRow, groupBy: string): string {
+  if (groupBy === 'provider') return r.provider;
+  if (groupBy === 'model') return r.model;
+  if (groupBy === 'session') return r.session_id || 'no-session';
+  return r.created_at.slice(0, 10);
+}
+
 async function handleCostQuery(url: string, key: string, userId: string, args: Record<string, unknown>) {
   const groupBy = (args.groupBy as string) || 'provider';
   const days = (args.days as number) || 30;
@@ -171,12 +178,10 @@ async function handleCostQuery(url: string, key: string, userId: string, args: R
 
   const groups = new Map<string, { count: number; costCents: number }>();
   for (const r of requests) {
-    const k = groupBy === 'provider' ? r.provider : groupBy === 'model' ? r.model
-      : groupBy === 'session' ? (r.session_id || 'no-session') : r.created_at.slice(0, 10);
-    const g = groups.get(k) || { count: 0, costCents: 0 };
+    const g = groups.get(resolveGroupKey(r, groupBy)) || { count: 0, costCents: 0 };
     g.count++;
     g.costCents += Number(r.cost_cents);
-    groups.set(k, g);
+    groups.set(resolveGroupKey(r, groupBy), g);
   }
 
   const sorted = [...groups.entries()].sort((a, b) => b[1].costCents - a[1].costCents);
