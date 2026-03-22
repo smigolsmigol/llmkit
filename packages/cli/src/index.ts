@@ -19,7 +19,7 @@ function startSpinner(text: string): () => void {
   }
   let i = 0;
   const timer = setInterval(() => {
-    const frame = SPIN[i % SPIN.length]!;
+    const frame = SPIN[i % SPIN.length] ?? '⠋';
     const lit = i % BRAND.length;
     const name = [...BRAND].map((c, j) => j === lit ? bold(magenta(c.toUpperCase())) : dim(c)).join('');
     process.stderr.write(`\r  ${magenta(frame)} ${name} ${dim(text)}\x1b[K`);
@@ -61,7 +61,7 @@ function parseArgs(): CliOpts {
   for (let i = 0; i < flags.length; i++) {
     const flag = flags[i];
     if (flag === '--port' && flags[i + 1]) {
-      port = parseInt(flags[++i]!, 10);
+      port = parseInt(flags[++i] ?? '0', 10);
     } else if (flag === '--verbose' || flag === '-v') {
       verbose = true;
     } else if (flag === '--json') {
@@ -89,7 +89,9 @@ async function main(): Promise<void> {
   };
 
   const useShell = process.platform === 'win32';
-  const child = spawn(opts.command[0]!, opts.command.slice(1), {
+  const cmd = opts.command[0];
+  if (!cmd) throw new Error('No command specified');
+  const child = spawn(cmd, opts.command.slice(1), {
     stdio: 'inherit',
     env,
     shell: useShell,

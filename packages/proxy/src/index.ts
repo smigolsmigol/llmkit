@@ -1,9 +1,4 @@
 import { inferProvider, LLMKitError } from '@f3d1/llmkit-shared';
-
-function sanitizeHeader(value: string | undefined, pattern: RegExp): string | null {
-  if (!value) return null;
-  return pattern.test(value) ? value : null;
-}
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
@@ -21,6 +16,11 @@ import { mcpRouter } from './routes/mcp';
 
 export { BudgetDO } from './do/budget-do';
 export { RateLimitDO } from './do/ratelimit-do';
+
+function sanitizeHeader(value: string | undefined, pattern: RegExp): string | null {
+  if (!value) return null;
+  return pattern.test(value) ? value : null;
+}
 
 // per-isolate cache (warm-start dedup only, DB is source of truth)
 const notifiedUsers = new Set<string>();
@@ -108,7 +108,7 @@ app.onError(async (err, c) => {
         user_id: userId,
         api_key_id: apiKeyId,
         session_id: sanitizeHeader(c.req.header('x-llmkit-session-id'), /^[\w-]{1,128}$/),
-        end_user_id: sanitizeHeader(c.req.header('x-llmkit-user-id'), /^[\w@.+\-]{1,256}$/),
+        end_user_id: sanitizeHeader(c.req.header('x-llmkit-user-id'), /^[\w@.+-]{1,256}$/),
         provider: ctx.provider,
         model: ctx.model,
         input_tokens: 0,
