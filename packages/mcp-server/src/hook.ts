@@ -29,7 +29,7 @@ export async function runHook(): Promise<void> {
   if (!session) return;
 
   const cost = session.totalCost;
-  const tokens = session.totalInput + session.totalOutput + session.totalCacheRead + session.totalCacheWrite;
+  const tokens = session.totalInput + session.totalOutput;
   const models = Object.keys(session.models).join(', ');
 
   process.stderr.write(
