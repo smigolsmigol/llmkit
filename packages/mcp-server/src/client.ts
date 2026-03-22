@@ -103,11 +103,11 @@ export interface SessionsResponse {
 // ---- API calls ----
 
 export function getUsage(period: string): Promise<UsageResponse> {
-  return api(`/analytics/usage?period=${period}`);
+  return api(`/analytics/usage?period=${encodeURIComponent(period)}`);
 }
 
 export function getCosts(groupBy: string, days: number, provider?: string, model?: string): Promise<CostsResponse> {
-  let path = `/analytics/costs?groupBy=${groupBy}&days=${days}`;
+  let path = `/analytics/costs?groupBy=${encodeURIComponent(groupBy)}&days=${days}`;
   if (provider) path += `&provider=${encodeURIComponent(provider)}`;
   if (model) path += `&model=${encodeURIComponent(model)}`;
   return api(path);

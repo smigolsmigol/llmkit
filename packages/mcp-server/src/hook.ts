@@ -2,7 +2,14 @@
 // Parses session transcript, prints cost summary to stderr (visible to user).
 // Usage: npx @f3d1/llmkit-mcp-server --hook
 
+import { homedir } from 'node:os';
 import { getSessionCost } from './claude-code.js';
+
+function isValidTranscriptPath(p: string): boolean {
+  const claudeDir = homedir() + '/.claude/';
+  const norm = p.replace(/\\/g, '/');
+  return norm.startsWith(claudeDir.replace(/\\/g, '/')) && norm.endsWith('.jsonl');
+}
 
 export async function runHook(): Promise<void> {
   let input: { session_id?: string; transcript_path?: string } = {};
@@ -14,7 +21,11 @@ export async function runHook(): Promise<void> {
     // no stdin or invalid JSON, still try local session data
   }
 
-  const session = await getSessionCost(input.transcript_path);
+  const transcriptPath = input.transcript_path && isValidTranscriptPath(input.transcript_path)
+    ? input.transcript_path
+    : undefined;
+
+  const session = await getSessionCost(transcriptPath);
   if (!session) return;
 
   const cost = session.totalCost;
