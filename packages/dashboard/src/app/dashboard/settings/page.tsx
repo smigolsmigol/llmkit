@@ -10,6 +10,7 @@ const planLabels: Record<string, string> = {
   beta: 'Beta Tester',
   pro: 'Pro',
   enterprise: 'Enterprise',
+  admin: 'Admin',
 };
 
 export default async function SettingsPage() {
@@ -35,69 +36,72 @@ export default async function SettingsPage() {
     : null;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <h1 className="text-xl font-semibold">Settings</h1>
 
       {!connected ? (
-        <div className="rounded-lg border border-border bg-card p-8 text-center">
-          <p className="text-muted-foreground">
+        <div className="rounded-xl border border-border bg-card p-8 text-center">
+          <p className="text-zinc-500">
             Unable to load data. Please refresh to try again.
           </p>
         </div>
       ) : (
-        <>
-          <div className="space-y-4">
-            <h2 className="text-sm font-medium text-muted-foreground">Plan</h2>
-            <div className="rounded-lg border border-border bg-card p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-lg font-semibold">{planName}</p>
-                  {account?.plan === 'beta' && !expires && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Lifetime access - all features, no limits
-                    </p>
-                  )}
-                  {expires && (
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Expires {expires}
-                    </p>
-                  )}
-                  {account?.note && (
-                    <p className="mt-1 text-xs text-muted-foreground">{account.note}</p>
-                  )}
-                </div>
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* plan card */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-500">Plan</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
               </div>
+              <div>
+                <p className="text-lg font-semibold">{planName}</p>
+                {account?.plan === 'beta' && !expires && (
+                  <p className="text-sm text-zinc-500">Lifetime access</p>
+                )}
+                {expires && (
+                  <p className="text-sm text-zinc-500">Expires {expires}</p>
+                )}
+              </div>
+            </div>
+            {account?.note && (
+              <p className="mt-3 text-xs text-zinc-500">{account.note}</p>
+            )}
+            {(account?.plan === 'free' || !account?.plan) && (
+              <div className="mt-5 rounded-lg bg-violet-500/5 border border-violet-500/10 p-4">
+                <p className="text-sm font-medium text-violet-400">Free during beta</p>
+                <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                  Unlimited requests, all 11 providers, budget enforcement, no credit card.
+                  You bring your own provider API keys.
+                </p>
+              </div>
+            )}
+          </div>
 
-              {(account?.plan === 'free' || !account?.plan) && (
-                <div className="mt-4 rounded-md bg-secondary/50 p-4">
-                  <p className="text-sm font-medium">Free during beta</p>
-                  <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
-                    <li>Unlimited API requests</li>
-                    <li>All 11 providers (OpenAI, Anthropic, Gemini, ...)</li>
-                    <li>Budget enforcement and cost tracking</li>
-                    <li>No credit card required</li>
-                  </ul>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Paid plans coming soon. You bring your own provider API keys, so
-                    you only pay the AI providers directly.
-                  </p>
-                </div>
-              )}
+          {/* account card */}
+          <div className="rounded-xl border border-border bg-card p-6">
+            <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-500">Account</h2>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              </div>
+              <div>
+                <p className="text-xs text-zinc-500">User ID</p>
+                <code className="mt-0.5 block font-mono text-sm text-violet-400">{userId}</code>
+              </div>
             </div>
           </div>
 
-          <BudgetManager budgets={budgets} />
-
-          <McpSetup />
-
-          <div className="space-y-4">
-            <h2 className="text-sm font-medium text-muted-foreground">Account</h2>
-            <div className="rounded-lg border border-border bg-card p-6">
-              <p className="text-xs text-muted-foreground">User ID</p>
-              <code className="mt-1 block font-mono text-sm text-primary">{userId}</code>
-            </div>
+          {/* budgets - full width */}
+          <div className="lg:col-span-2">
+            <BudgetManager budgets={budgets} />
           </div>
-        </>
+
+          {/* MCP setup - full width */}
+          <div className="lg:col-span-2">
+            <McpSetup />
+          </div>
+        </div>
       )}
     </div>
   );
