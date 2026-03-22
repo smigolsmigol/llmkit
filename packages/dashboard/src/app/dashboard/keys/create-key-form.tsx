@@ -63,12 +63,15 @@ export function CreateKeyForm() {
   }
 
   if (newKey) {
-    const trackedSnippet = `pip install llmkit-sdk
+    const trackedSnippet = `pip install llmkit-sdk openai
+
+import os
+os.environ["LLMKIT_API_KEY"] = "${newKey}"
 
 from llmkit import tracked
 from openai import OpenAI
 
-client = OpenAI(http_client=tracked(api_key="${newKey}"))
+client = OpenAI(http_client=tracked())
 
 res = client.chat.completions.create(
     model="gpt-4o",

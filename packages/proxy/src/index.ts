@@ -1,4 +1,9 @@
 import { inferProvider, LLMKitError } from '@f3d1/llmkit-shared';
+
+function sanitizeHeader(value: string | undefined, pattern: RegExp): string | null {
+  if (!value) return null;
+  return pattern.test(value) ? value : null;
+}
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
@@ -102,8 +107,8 @@ app.onError(async (err, c) => {
       logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
         user_id: userId,
         api_key_id: apiKeyId,
-        session_id: c.req.header('x-llmkit-session-id') || null,
-        end_user_id: c.req.header('x-llmkit-user-id') || null,
+        session_id: sanitizeHeader(c.req.header('x-llmkit-session-id'), /^[\w-]{1,128}$/),
+        end_user_id: sanitizeHeader(c.req.header('x-llmkit-user-id'), /^[\w@.+\-]{1,256}$/),
         provider: ctx.provider,
         model: ctx.model,
         input_tokens: 0,
