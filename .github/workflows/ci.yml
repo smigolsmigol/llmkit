@@ -154,11 +154,17 @@ jobs:
 
       - name: notify deploy
         if: success()
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
+          FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d parse_mode="HTML" \
-            -d text="<b>Deployed to CF Workers</b>%0A%0A<code>${{ github.event.head_commit.message }}</code>%0Aby ${{ github.actor }}"
+            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "text=<b>Deployed to CF Workers</b>
+
+<code>${FIRST_LINE}</code>
+by ${{ github.actor }}"
 
   post-deploy-verify:
     needs: deploy
@@ -249,9 +255,12 @@ jobs:
         if: failure()
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d parse_mode="HTML" \
-            -d text="<b>Post-deploy verification FAILED</b>%0A%0ASomething is broken in production. Check the run:%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "text=<b>Post-deploy verification FAILED</b>
+
+Something is broken in production.
+<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
 
   notify-failure:
     needs: [secrets-scan, semgrep, check-ts, check-python, deploy]
@@ -259,8 +268,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: notify failure
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
+          FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
-            -d parse_mode="HTML" \
-            -d text="<b>CI failed</b>%0A%0A<code>${{ github.event.head_commit.message }}</code>%0Aby ${{ github.actor }}%0A%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode "parse_mode=HTML" \
+            --data-urlencode "text=<b>CI failed</b>
+
+<code>${FIRST_LINE}</code>
+by ${{ github.actor }}
+
+<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
