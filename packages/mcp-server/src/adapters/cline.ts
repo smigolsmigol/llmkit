@@ -1,10 +1,10 @@
 // Cline (VS Code extension) adapter. Reads task data from VS Code globalStorage.
 // Zero coupling to claude-code.ts or any other adapter.
 
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { LocalAdapter, LocalCacheSavings, LocalProjectSummary, LocalSession } from './types.js';
 
 // Cline's ClineApiReqInfo shape (from ExtensionMessage.ts)
@@ -40,11 +40,34 @@ function findClineDataDirs(): { variant: string; path: string }[] {
     return [{ variant: 'custom', path: override }];
   }
 
-  const base = getBasePath();
+  const bases = [getBasePath()];
+
+  // on Windows, also check WSL distros for VS Code Server installations
+  if (process.platform === 'win32') {
+    try {
+      const wslRoot = resolve('//wsl.localhost');
+      const distros = readdirSync(wslRoot);
+      for (const distro of distros) {
+        try {
+          const homesDir = resolve('//wsl.localhost', distro, 'home');
+          const homes = readdirSync(homesDir);
+          for (const user of homes) {
+            bases.push(resolve('//wsl.localhost', distro, 'home', user, '.config'));
+          }
+        } catch { /* skip */ }
+      }
+    } catch { /* WSL not available */ }
+  }
+
   const found: { variant: string; path: string }[] = [];
-  for (const v of VARIANTS) {
-    const p = join(base, v, 'User', 'globalStorage', EXTENSION_ID);
-    if (existsSync(join(p, 'tasks'))) found.push({ variant: v, path: p });
+  for (const base of bases) {
+    for (const v of VARIANTS) {
+      const p = join(base, v, 'User', 'globalStorage', EXTENSION_ID);
+      if (existsSync(join(p, 'tasks'))) {
+        const label = base.includes('wsl.localhost') ? `${v} (WSL)` : v;
+        found.push({ variant: label, path: p });
+      }
+    }
   }
   return found;
 }
