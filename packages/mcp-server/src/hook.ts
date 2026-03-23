@@ -6,7 +6,7 @@ import { homedir } from 'node:os';
 import { getSessionCost } from './claude-code.js';
 
 function isValidTranscriptPath(p: string): boolean {
-  const claudeDir = homedir() + '/.claude/';
+  const claudeDir = `${homedir()}/.claude/`;
   const norm = p.replace(/\\/g, '/');
   return norm.startsWith(claudeDir.replace(/\\/g, '/')) && norm.endsWith('.jsonl');
 }

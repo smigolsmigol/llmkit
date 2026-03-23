@@ -101,7 +101,7 @@ export function printSummary(records: RequestRecord[], json: boolean, elapsedMs:
     '',
     logo(),
     '',
-    `    ${bold(`$${totalCost.toFixed(4)}`)} ${dim('total')}  ${records.length} request${records.length === 1 ? '' : 's'}  ${dim(elapsed + 's')}  ${dim(`~$${(totalCost / (elapsedMs / 3600000)).toFixed(2)}/hr`)}`,
+    `    ${bold(`$${totalCost.toFixed(4)}`)} ${dim('total')}  ${records.length} request${records.length === 1 ? '' : 's'}  ${dim(`${elapsed}s`)}  ${dim(`~$${(totalCost / (elapsedMs / 3600000)).toFixed(2)}/hr`)}`,
     '',
   ];
 
