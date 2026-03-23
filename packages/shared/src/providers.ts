@@ -273,5 +273,5 @@ export function inferProvider(model: string): ProviderName | undefined {
   return undefined;
 }
 
-export { PRICING };
 export type { ModelPricing, PricingTable };
+export { PRICING };
