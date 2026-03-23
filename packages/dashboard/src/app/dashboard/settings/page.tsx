@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { auth } from '@clerk/nextjs/server';
 import { getBudgets, getAccount } from '@/lib/queries';
 import { BudgetManager } from '@/components/budget-manager';
-import { McpSetup } from '@/components/mcp-setup';
+
 
 const planLabels: Record<string, string> = {
   free: 'Free',
@@ -93,13 +93,21 @@ export default async function SettingsPage() {
           </div>
 
           {/* budgets - full width */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6">
             <BudgetManager budgets={budgets} />
           </div>
 
-          {/* MCP setup - full width */}
+          {/* MCP link */}
           <div className="lg:col-span-2">
-            <McpSetup />
+            <div className="rounded-xl border border-border bg-card p-6">
+              <h2 className="mb-2 text-xs font-medium uppercase tracking-wider text-zinc-500">MCP Server</h2>
+              <p className="text-sm text-zinc-400">
+                Track costs from Claude Code, Cursor, or Cline. Local tools work without an API key.
+              </p>
+              <a href="/mcp" className="mt-3 inline-block text-sm text-violet-400 hover:text-violet-300 transition">
+                Setup guide and all 14 tools {'\u2192'}
+              </a>
+            </div>
           </div>
         </div>
       )}

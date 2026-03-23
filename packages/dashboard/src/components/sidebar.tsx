@@ -1,6 +1,6 @@
 'use client';
 
-import { Key, LayoutDashboard, List, Plug, Settings, Shield } from 'lucide-react';
+import { ArrowLeft, Key, LayoutDashboard, List, Plug, Settings, Shield } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -22,18 +22,17 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
   return (
     <aside className="fixed left-0 top-0 z-30 flex h-full w-56 flex-col border-r border-border bg-[#0a0a0a]/95 backdrop-blur-xl px-3 py-6">
       <Link href="/dashboard" className="mb-8 flex items-center px-3">
-        <span className="font-mono text-2xl font-bold tracking-tight text-primary">LLM</span>
-        <img src="/logo-animated.svg" alt="K" className="mx-[-3px] h-[34px] w-[34px]" />
-        <span className="font-mono text-2xl font-bold tracking-tight text-primary">it</span>
-        <svg className="ml-2 h-4 w-4 shrink-0 text-primary" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.2" />
-          <circle cx="12" cy="4" r="2" fill="currentColor" opacity="0.8">
-            <animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="2.5s" repeatCount="indefinite" />
-          </circle>
-        </svg>
+        <img src="/logo-wordmark.svg" alt="LLMKit" className="h-[42px] w-auto" />
       </Link>
 
       <nav className="flex flex-1 flex-col gap-2">
+        <Link
+          href="/"
+          className="flex items-center gap-3 rounded-md px-3 py-2 text-xs text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300 transition-colors mb-1"
+        >
+          <ArrowLeft className="h-4 w-4 shrink-0" />
+          Back to site
+        </Link>
         {items.map((item) => {
           const active = item.href === '/dashboard/admin'
             ? pathname.startsWith('/dashboard/admin')

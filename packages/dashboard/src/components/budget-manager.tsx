@@ -42,10 +42,12 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground">Budgets</h2>
-        <Button size="sm" variant="secondary" onClick={() => setCreating(true)}>
-          Add Budget
-        </Button>
+        <h2 className="text-xs font-medium uppercase tracking-wider text-zinc-500">Budgets</h2>
+        {!creating && (
+          <Button size="sm" onClick={() => setCreating(true)} className="bg-violet-600 text-white hover:bg-violet-500">
+            + Add Budget
+          </Button>
+        )}
       </div>
 
       {creating && (

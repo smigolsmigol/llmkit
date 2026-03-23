@@ -67,7 +67,7 @@ tmp/
 .cache/
 
 # planning docs (local only, not repo material)
-docs/
+/docs/
 
 # claude working files (local only, NEVER commit)
 .claude/

@@ -6,7 +6,7 @@ import { printSummary } from './summary.js';
 const tty = process.stderr.isTTY ?? false;
 const esc = (code: string, s: string) => tty ? `\x1b[${code}m${s}\x1b[0m` : s;
 const dim = (s: string) => esc('2', s);
-const magenta = (s: string) => esc('35', s);
+const purple = (s: string) => esc('38;5;177', s);
 const bold = (s: string) => esc('1', s);
 
 const BRAND = 'llmkit';
@@ -21,8 +21,8 @@ function startSpinner(text: string): () => void {
   const timer = setInterval(() => {
     const frame = SPIN[i % SPIN.length] ?? '⠋';
     const lit = i % BRAND.length;
-    const name = [...BRAND].map((c, j) => j === lit ? bold(magenta(c.toUpperCase())) : dim(c)).join('');
-    process.stderr.write(`\r  ${magenta(frame)} ${name} ${dim(text)}\x1b[K`);
+    const name = [...BRAND].map((c, j) => j === lit ? bold(purple(c.toUpperCase())) : dim(c)).join('');
+    process.stderr.write(`\r  ${purple(frame)} ${name} ${dim(text)}\x1b[K`);
     i++;
   }, 80);
   return () => {

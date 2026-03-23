@@ -4,20 +4,21 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { addProviderKey, revokeProviderKey } from './actions';
 import { formatCents } from '@/lib/format';
+import { ProviderIcon } from '@/components/provider-icons';
 import type { ProviderKeyRow, ProviderActivity } from '@/lib/queries';
 
 const ALL_PROVIDERS = [
-  { id: 'openai', name: 'OpenAI' },
-  { id: 'anthropic', name: 'Anthropic' },
-  { id: 'gemini', name: 'Google Gemini' },
-  { id: 'groq', name: 'Groq' },
-  { id: 'together', name: 'Together' },
-  { id: 'fireworks', name: 'Fireworks' },
-  { id: 'deepseek', name: 'DeepSeek' },
-  { id: 'mistral', name: 'Mistral' },
-  { id: 'xai', name: 'xAI (Grok)' },
-  { id: 'ollama', name: 'Ollama' },
-  { id: 'openrouter', name: 'OpenRouter' },
+  { id: 'openai', name: 'OpenAI', letter: 'O', badge: 'bg-emerald-500/15 text-emerald-400' },
+  { id: 'anthropic', name: 'Anthropic', letter: 'A', badge: 'bg-orange-500/15 text-orange-400' },
+  { id: 'gemini', name: 'Google Gemini', letter: 'G', badge: 'bg-blue-500/15 text-blue-400' },
+  { id: 'groq', name: 'Groq', letter: 'G', badge: 'bg-orange-500/15 text-orange-300' },
+  { id: 'together', name: 'Together', letter: 'T', badge: 'bg-violet-500/15 text-violet-400' },
+  { id: 'fireworks', name: 'Fireworks', letter: 'F', badge: 'bg-red-500/15 text-red-400' },
+  { id: 'deepseek', name: 'DeepSeek', letter: 'D', badge: 'bg-sky-500/15 text-sky-400' },
+  { id: 'mistral', name: 'Mistral', letter: 'M', badge: 'bg-amber-500/15 text-amber-400' },
+  { id: 'xai', name: 'xAI (Grok)', letter: 'X', badge: 'bg-zinc-500/15 text-zinc-300' },
+  { id: 'ollama', name: 'Ollama', letter: 'O', badge: 'bg-zinc-500/15 text-zinc-400' },
+  { id: 'openrouter', name: 'OpenRouter', letter: 'R', badge: 'bg-purple-500/15 text-purple-400' },
 ] as const;
 
 function timeAgo(iso: string): string {
@@ -66,8 +67,11 @@ function ActiveProviderCard({
       {/* header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`h-2.5 w-2.5 rounded-full ${hasRecentError ? 'bg-yellow-500' : 'bg-green-500'}`} />
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${provider.badge}`}>
+            <ProviderIcon provider={provider.id} className="h-4 w-4" />
+          </div>
           <span className="text-sm font-medium">{provider.name}</span>
+          {hasRecentError && <div className="h-2 w-2 rounded-full bg-yellow-500" />}
         </div>
         <span className="text-xs text-muted-foreground">{timeAgo(activity.lastUsed)}</span>
       </div>
@@ -203,8 +207,10 @@ function InactiveProviderCard({ provider }: { provider: (typeof ALL_PROVIDERS)[n
   return (
     <div className="rounded-lg border border-border bg-card p-3">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+        <div className="flex items-center gap-2.5">
+          <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${provider.badge} opacity-50`}>
+            <ProviderIcon provider={provider.id} className="h-3.5 w-3.5" />
+          </div>
           <span className="text-sm text-muted-foreground">{provider.name}</span>
         </div>
       </div>

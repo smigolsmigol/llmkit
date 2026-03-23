@@ -2,9 +2,9 @@
      viewBox="0 0 1024 1024" width="256" height="256">
   <defs>
     <radialGradient id="spot">
-      <stop offset="0%" stop-color="white" stop-opacity="1"/>
-      <stop offset="40%" stop-color="white" stop-opacity="0.7"/>
-      <stop offset="100%" stop-color="white" stop-opacity="0"/>
+      <stop offset="0%" stop-color="#a78bfa" stop-opacity="1"/>
+      <stop offset="40%" stop-color="#a78bfa" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
     </radialGradient>
 
     <filter id="brighten">
@@ -41,7 +41,7 @@
     " fill="none"/>
 
     <mask id="glow-mask">
-      <rect width="1024" height="1024" fill="black"/>
+      <rect width="1024" height="1024" fill="none"/>
       <circle r="90" fill="url(#spot)">
         <animateMotion dur="24s" repeatCount="indefinite" calcMode="linear"
           keyTimes="0;0.018;0.055;0.127;0.200;0.273;0.300;0.318;0.336;0.355;0.373;0.391;0.409;0.427;0.445;0.464;0.482;0.500;0.518;0.536;0.555;0.573;0.591;0.609;0.627;0.645;0.664;0.682;0.700;0.727;0.800;0.873;0.945;0.982;1">
@@ -57,7 +57,7 @@
     </mask>
 
     <mask id="k-mask">
-      <rect x="400" y="250" width="240" height="340" fill="white"/>
+      <rect x="400" y="250" width="240" height="340" fill="#a78bfa"/>
     </mask>
   </defs>
 

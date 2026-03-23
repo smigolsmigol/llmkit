@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Space_Grotesk, JetBrains_Mono } from 'next/font/google';
+import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/next';
+import { Space_Grotesk, JetBrains_Mono, Orbitron } from 'next/font/google';
 import './globals.css';
 
 const spaceGrotesk = Space_Grotesk({
@@ -13,12 +15,17 @@ const jetbrainsMono = JetBrains_Mono({
   variable: '--font-mono',
 });
 
+const orbitron = Orbitron({
+  subsets: ['latin'],
+  variable: '--font-logo',
+});
+
 export const metadata: Metadata = {
-  title: 'LLMKit - Know exactly what your AI agents cost',
+  title: 'LLMKit - Track what your AI agents spend',
   description: 'Open-source API gateway with cost tracking and budget enforcement. Per-request logging, per-key budgets across 11 AI providers. Free during beta.',
   keywords: ['AI cost tracking', 'LLM budget', 'API gateway', 'Claude Code cost', 'AI agent cost', 'OpenAI budget', 'MCP server', 'cost tracking', 'budget enforcement'],
   openGraph: {
-    title: 'LLMKit - Know exactly what your AI agents cost',
+    title: 'LLMKit - Track what your AI agents spend',
     description: 'Open-source API gateway with cost tracking and budget enforcement. 11 providers, 45+ models, budget limits that actually reject requests.',
     url: 'https://llmkit-dashboard.vercel.app',
     siteName: 'LLMKit',
@@ -37,9 +44,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ClerkProvider>
       <html lang="en" className="dark">
         <body
-          className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} min-h-screen bg-background text-foreground antialiased`}
+          className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${orbitron.variable} min-h-screen bg-background text-foreground antialiased`}
         >
           {children}
+          <Analytics />
+          <SpeedInsights />
         </body>
       </html>
     </ClerkProvider>

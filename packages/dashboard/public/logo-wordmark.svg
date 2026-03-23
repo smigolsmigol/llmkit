@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 290 115" fill="none">
+  <!-- LL merged -->
+  <path d="M15 15 L15 78" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square"/>
+  <path d="M15 78 L8 86" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square"/>
+  <path d="M15 78 L38 78" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square"/>
+  <circle cx="8" cy="86" r="2" fill="#a78bfa"/>
+  <path d="M38 15 L38 78" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square"/>
+  <path d="M38 78 L31 86" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square"/>
+  <path d="M38 78 L62 78" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square"/>
+  <circle cx="31" cy="86" r="2" fill="#a78bfa"/>
+
+  <!-- M -->
+  <path d="M72 82 L72 15 L92 48 L112 15 L112 82" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
+  <path d="M72 82 L66 90" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square"/>
+  <path d="M112 82 L118 90" stroke="#a78bfa" stroke-width="5.5" stroke-linecap="square"/>
+  <circle cx="66" cy="90" r="2" fill="#a78bfa"/>
+  <circle cx="118" cy="90" r="2" fill="#a78bfa"/>
+
+  <!-- K (hero) - no trailing extensions -->
+  <path d="M140 8 L140 92" stroke="#a78bfa" stroke-width="7.5" stroke-linecap="square"/>
+  <path d="M140 50 L182 5" stroke="#a78bfa" stroke-width="7.5" stroke-linecap="square"/>
+  <path d="M140 50 L185 95" stroke="#a78bfa" stroke-width="7.5" stroke-linecap="square"/>
+  <!-- junction node - extends left from the K vertical bar -->
+  <path d="M140 50 L128 50" stroke="#a78bfa" stroke-width="4" stroke-linecap="square"/>
+  <circle cx="126" cy="50" r="3.5" fill="#a78bfa"/>
+
+  <!-- "it" group - rotated -45, detached from K -->
+  <g transform="rotate(-45, 210, 70)">
+    <!-- i -->
+    <path d="M198 35 L198 70" stroke="#a78bfa" stroke-width="4.5" stroke-linecap="square"/>
+    <rect x="195.5" y="23" width="5" height="5" fill="#a78bfa"/>
+    <!-- t -->
+    <path d="M218 17 L218 70" stroke="#a78bfa" stroke-width="4.5" stroke-linecap="square"/>
+    <path d="M207 33 L229 33" stroke="#a78bfa" stroke-width="4.5" stroke-linecap="square"/>
+  </g>
+</svg>
