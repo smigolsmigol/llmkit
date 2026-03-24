@@ -10,7 +10,7 @@
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/llmkit-sdk?label=PyPI&color=blue)](https://pypi.org/project/llmkit-sdk/)
 [![npm](https://img.shields.io/npm/v/%40f3d1/llmkit-sdk?label=npm&color=blue)](https://www.npmjs.com/package/@f3d1/llmkit-sdk)
-[![MCP](https://img.shields.io/badge/MCP-Registry-blue)](https://registry.modelcontextprotocol.io/servers/io.github.smigolsmigol%2Fllmkit)
+[![MCP](https://img.shields.io/badge/MCP-Registry-blue)](https://github.com/smigolsmigol/llmkit/tree/main/packages/mcp-server)
 
 <p align="center">
   <video src="https://github.com/user-attachments/assets/8ec33732-f651-4e35-9a27-5263c8a87ba7" width="680" autoplay loop muted playsinline>

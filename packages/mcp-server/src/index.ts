@@ -21,7 +21,7 @@ function printUsage(): void {
   const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
   process.stderr.write(`
-  ${purple('LLMKit MCP Server')} ${dim('v0.4.0')}
+  ${purple('LLMKit MCP Server')} ${dim('v0.4.1')}
 
   ${bold('This is an MCP server.')} It connects to Claude Code, Cursor, or Cline
   through the MCP protocol. It's not meant to be run directly.
@@ -50,6 +50,9 @@ function printUsage(): void {
 
   6 proxy tools (needs LLMKIT_API_KEY):
     usage stats, cost query, budget status, session summary, API keys, health check
+
+  3 Notion tools (needs NOTION_TOKEN):
+    cost snapshot, budget check, session report
 
   Then ask your AI assistant: ${dim('"how much did this session cost?"')}
 

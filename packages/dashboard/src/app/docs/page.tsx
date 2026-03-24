@@ -94,7 +94,7 @@ export default function DocsPage() {
             </CodeBlock>
           </div>
           <p className="mt-3 text-xs text-zinc-500">
-            Works with OpenAI, Anthropic, Groq, Together, Cohere, Mistral. Any SDK that accepts http_client.
+            Works with OpenAI, Anthropic, Gemini, xAI, DeepSeek, Groq, Together, Fireworks, Mistral. Any SDK that accepts http_client.
           </p>
         </section>
 
