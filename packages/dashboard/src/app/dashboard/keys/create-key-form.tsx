@@ -63,28 +63,17 @@ export function CreateKeyForm() {
   }
 
   if (newKey) {
-    const trackedSnippet = `pip install llmkit-sdk openai
+    const envSnippet = `export OPENAI_BASE_URL=${PROXY_URL}
+export OPENAI_API_KEY=${newKey}
 
-import os
-os.environ["LLMKIT_API_KEY"] = "${newKey}"
-
-from llmkit import tracked
-from openai import OpenAI
-
-client = OpenAI(http_client=tracked())
-
-res = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "hello"}],
-)
-print(res.choices[0].message.content)`;
+# now run your app normally. requests go through LLMKit.
+python your_app.py`;
 
     const pythonSnippet = `from openai import OpenAI
 
 client = OpenAI(
     base_url="${PROXY_URL}",
     api_key="${newKey}",
-    default_headers={"x-llmkit-provider-key": "sk-your-provider-key"},
 )
 
 res = client.chat.completions.create(
@@ -93,11 +82,18 @@ res = client.chat.completions.create(
 )
 print(res.choices[0].message.content)`;
 
-    const cliSnippet = `LLMKIT_KEY=${newKey} npx @f3d1/llmkit-cli -- python your_app.py`;
+    const localSnippet = `pip install llmkit-sdk openai
 
-    const envSnippet = `export OPENAI_BASE_URL=${PROXY_URL}
-export OPENAI_API_KEY=${newKey}
-python your_app.py`;
+from llmkit import tracked
+from openai import OpenAI
+
+# local cost tracking only (no proxy, no dashboard data)
+client = OpenAI(http_client=tracked())`;
+
+    const curlSnippet = `curl ${PROXY_URL}/chat/completions \\
+  -H "Authorization: Bearer ${newKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"model":"gpt-4o","messages":[{"role":"user","content":"hello"}]}'`;
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
@@ -124,14 +120,15 @@ python your_app.py`;
           <div className="mt-5 border-t border-border pt-4">
             <h3 className="text-sm font-semibold">Quick start</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              Replace <code className="rounded bg-secondary px-1">sk-your-provider-key</code> with your actual provider key.
+              Make sure you&apos;ve added your provider API key (OpenAI, Anthropic, etc.) in the{' '}
+              <a href="/dashboard/providers" className="text-primary hover:underline">Providers</a> tab first.
             </p>
 
             <div className="mt-3 space-y-3">
-              <SnippetBlock label="Python SDK (recommended)" code={trackedSnippet} onCopy={copyText} />
-              <SnippetBlock label="CLI (any language, zero code changes)" code={cliSnippet} onCopy={copyText} />
-              <SnippetBlock label="Env vars (Python/Node)" code={envSnippet} onCopy={copyText} />
-              <SnippetBlock label="Python (direct proxy)" code={pythonSnippet} onCopy={copyText} />
+              <SnippetBlock label="Env vars (recommended, any language)" code={envSnippet} onCopy={copyText} />
+              <SnippetBlock label="Python (explicit)" code={pythonSnippet} onCopy={copyText} />
+              <SnippetBlock label="curl" code={curlSnippet} onCopy={copyText} />
+              <SnippetBlock label="Local only (no proxy, no dashboard)" code={localSnippet} onCopy={copyText} />
             </div>
           </div>
 
