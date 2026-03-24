@@ -21,7 +21,7 @@ function printUsage(): void {
   const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
   process.stderr.write(`
-  ${purple('LLMKit MCP Server')} ${dim('v0.4.1')}
+  ${purple('LLMKit MCP Server')} ${dim('v0.4.2')}
 
   ${bold('This is an MCP server.')} It connects to Claude Code, Cursor, or Cline
   through the MCP protocol. It's not meant to be run directly.
