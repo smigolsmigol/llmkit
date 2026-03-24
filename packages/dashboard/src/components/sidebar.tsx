@@ -4,6 +4,7 @@ import { ArrowLeft, Key, LayoutDashboard, List, Plug, Settings, Shield } from 'l
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { AnimatedLogo } from './animated-logo';
 
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -22,7 +23,7 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
   return (
     <aside className="fixed left-0 top-0 z-30 flex h-full w-56 flex-col border-r border-border bg-[#0a0a0a]/95 backdrop-blur-xl px-3 py-6">
       <Link href="/dashboard" className="mb-8 flex items-center px-3">
-        <img src="/logo-wordmark.svg" alt="LLMKit" className="h-[42px] w-auto" />
+        <AnimatedLogo className="h-[42px] w-auto" />
       </Link>
 
       <nav className="flex flex-1 flex-col gap-2">
