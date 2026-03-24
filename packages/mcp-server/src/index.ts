@@ -5,13 +5,33 @@ if (process.argv.includes('--hook')) {
   import('./hook.js').then(m => m.runHook()).catch(() => process.exit(1));
 } else if (process.argv.includes('--help') || process.argv.includes('-h')) {
   printUsage();
-} else if (process.stdin.isTTY) {
-  printUsage();
 } else {
-  startServer().catch((err) => {
-    process.stderr.write(`llmkit: ${err instanceof Error ? err.message : String(err)}\n`);
-    process.exit(1);
-  });
+  // Print a short notice to stderr. MCP clients ignore stderr, but
+  // a human running this directly will see it and know what's happening.
+  process.stderr.write('llmkit: MCP server starting (stdin/stdout JSON-RPC). Run with --help for setup info.\n');
+
+  // If stdin looks like a terminal (not piped from an MCP client),
+  // also show full setup instructions and exit.
+  if (process.stdin.isTTY) {
+    process.stderr.write('\n');
+    printUsage();
+  } else {
+    // Set a 3-second timeout: if no MCP protocol data arrives,
+    // this is probably a human who ran it without a pipe.
+    const timeout = setTimeout(() => {
+      process.stderr.write('\nllmkit: no MCP client detected after 3s. Run with --help for setup instructions.\n');
+      process.exit(0);
+    }, 3000);
+    // If stdin gets data (MCP client connected), cancel the timeout
+    process.stdin.once('data', () => clearTimeout(timeout));
+    process.stdin.once('end', () => clearTimeout(timeout));
+
+    startServer().catch((err) => {
+      clearTimeout(timeout);
+      process.stderr.write(`llmkit: ${err instanceof Error ? err.message : String(err)}\n`);
+      process.exit(1);
+    });
+  }
 }
 
 function printUsage(): void {
@@ -21,7 +41,7 @@ function printUsage(): void {
   const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
   process.stderr.write(`
-  ${purple('LLMKit MCP Server')} ${dim('v0.4.2')}
+  ${purple('LLMKit MCP Server')} ${dim('v0.4.3')}
 
   ${bold('This is an MCP server.')} It connects to Claude Code, Cursor, or Cline
   through the MCP protocol. It's not meant to be run directly.
