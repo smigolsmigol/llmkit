@@ -49,10 +49,7 @@ def test_calculate_cost_with_cache():
     )
     assert cost is not None
     expected = (
-        (1000 / 1e6) * 5.0
-        + (500 / 1e6) * 25.0
-        + (200 / 1e6) * 0.5
-        + (100 / 1e6) * 6.25
+        (1000 / 1e6) * 5.0 + (500 / 1e6) * 25.0 + (200 / 1e6) * 0.5 + (100 / 1e6) * 6.25
     )
     assert abs(cost - expected) < 1e-10
 
