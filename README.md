@@ -1,11 +1,9 @@
 <p align="center">
-  <img src=".github/logo-animated-embedded.svg" width="120" alt="LLMKit" />
+  <img src=".github/logo-wordmark.svg" width="280" alt="LLMKit" />
 </p>
 
-<h1 align="center">LLMKit</h1>
-
 <p align="center">
-  Know exactly what your AI agents cost.
+  Track what your AI agents spend.
 </p>
 
 [![CI](https://github.com/smigolsmigol/llmkit/actions/workflows/ci.yml/badge.svg)](https://github.com/smigolsmigol/llmkit/actions/workflows/ci.yml)
