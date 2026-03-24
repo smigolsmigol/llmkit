@@ -122,7 +122,7 @@ jobs:
         run: bandit -r src/
 
       - name: pip-audit
-        run: pip-audit
+        run: pip-audit --ignore-vuln CVE-2026-4539  # pygments, no fix released yet
 
       - name: pytest
         run: python -m pytest tests/ -v
