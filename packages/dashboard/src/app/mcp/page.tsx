@@ -87,7 +87,7 @@ export default function McpPage() {
         <p className="mb-3 text-center text-xs text-zinc-500">Add to your MCP client config</p>
         <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
           <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
-            <span className="text-xs text-zinc-500">claude_desktop_config.json</span>
+            <span className="text-xs text-zinc-500">.mcp.json (Claude Code) or .cursor/mcp.json (Cursor)</span>
           </div>
           <pre className="p-5 font-mono text-xs text-zinc-300 overflow-x-auto">{`{
   "mcpServers": {

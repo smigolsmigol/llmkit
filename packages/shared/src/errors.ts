@@ -17,7 +17,7 @@ export class BudgetExceededError extends LLMKitError {
     public usedCents: number
   ) {
     super(
-      `Budget exceeded: ${usedCents / 100}/${limitCents / 100} USD`,
+      `Budget exceeded: $${(usedCents / 100).toFixed(2)} used of $${(limitCents / 100).toFixed(2)} limit. Increase your budget in the dashboard settings.`,
       'BUDGET_EXCEEDED',
       402
     );

@@ -8,10 +8,18 @@ export default async function ProvidersPage() {
   const { userId } = await auth();
   if (!userId) return null;
 
-  const [storedKeys, activity] = await Promise.all([
-    getProviderKeys(userId),
-    getProviderActivity(userId),
-  ]);
+  let storedKeys: Awaited<ReturnType<typeof getProviderKeys>> = [];
+  let activity: Awaited<ReturnType<typeof getProviderActivity>> = [];
+  let connected = true;
+
+  try {
+    [storedKeys, activity] = await Promise.all([
+      getProviderKeys(userId),
+      getProviderActivity(userId),
+    ]);
+  } catch {
+    connected = false;
+  }
 
   return (
     <div className="space-y-6">
@@ -21,7 +29,13 @@ export default async function ProvidersPage() {
           Your AI provider connections. Keys are encrypted with AES-256-GCM.
         </p>
       </div>
-      <ProviderGrid storedKeys={storedKeys} activity={activity} />
+      {connected ? (
+        <ProviderGrid storedKeys={storedKeys} activity={activity} />
+      ) : (
+        <div className="rounded-xl border border-border bg-card p-8 text-center">
+          <p className="text-zinc-500">Unable to load data. Please refresh to try again.</p>
+        </div>
+      )}
     </div>
   );
 }
