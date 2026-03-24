@@ -1,6 +1,17 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PublicNav } from '@/components/public-nav';
 import { PublicFooter } from '@/components/public-footer';
+
+export const metadata: Metadata = {
+  title: 'Getting Started - LLMKit',
+  description: 'Three ways to track AI costs: MCP server for Claude Code/Cursor/Cline, Python SDK, or CLI. Get running in 30 seconds.',
+  openGraph: {
+    title: 'LLMKit - Getting Started',
+    description: 'Track AI costs in 30 seconds. MCP server, Python SDK, or CLI.',
+    url: 'https://llmkit-dashboard.vercel.app/docs',
+  },
+};
 
 function CodeBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (

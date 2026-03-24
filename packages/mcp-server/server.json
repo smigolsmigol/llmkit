@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.smigolsmigol/llmkit",
-  "description": "AI cost tracking: 14 tools for spend, budgets, Claude Code + Cline costs, Notion sync",
+  "description": "AI cost tracking: 14 tools for spend, budgets, Claude Code + Cursor + Cline costs, Notion sync",
   "repository": {
     "url": "https://github.com/smigolsmigol/llmkit",
     "source": "github"
   },
-  "version": "0.4.0",
+  "version": "0.4.2",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@f3d1/llmkit-mcp-server",
-      "version": "0.4.0",
+      "version": "0.4.2",
       "transport": {
         "type": "stdio"
       },
