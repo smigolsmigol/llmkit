@@ -54,8 +54,12 @@ _PRICING: dict[str, dict[str, TokenRates]] = {
         "mistralai/Mixtral-8x7B-Instruct-v0.1": TokenRates(0.60, 0.60),
     },
     "fireworks": {
-        "accounts/fireworks/models/llama-v3p3-70b-instruct": TokenRates(0.90, 0.90, 0.45),
-        "accounts/fireworks/models/llama-v3p1-8b-instruct": TokenRates(0.20, 0.20, 0.10),
+        "accounts/fireworks/models/llama-v3p3-70b-instruct": TokenRates(
+            0.90, 0.90, 0.45
+        ),
+        "accounts/fireworks/models/llama-v3p1-8b-instruct": TokenRates(
+            0.20, 0.20, 0.10
+        ),
     },
     "deepseek": {
         "deepseek-chat": TokenRates(0.28, 0.42, 0.028),

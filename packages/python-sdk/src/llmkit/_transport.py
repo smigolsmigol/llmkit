@@ -23,7 +23,11 @@ def _extract_cost_from_json(body: bytes) -> CostInfo | None:
 
     input_t = usage.get("prompt_tokens") or usage.get("input_tokens") or 0
     output_t = usage.get("completion_tokens") or usage.get("output_tokens") or 0
-    cache_read = usage.get("cache_read_input_tokens") or usage.get("prompt_tokens_details", {}).get("cached_tokens") or 0
+    cache_read = (
+        usage.get("cache_read_input_tokens")
+        or usage.get("prompt_tokens_details", {}).get("cached_tokens")
+        or 0
+    )
     cache_write = usage.get("cache_creation_input_tokens") or 0
     total = calculate_cost(model, input_t, output_t, cache_read, cache_write)
     return CostInfo(total_cost=total, estimated=True)
@@ -93,14 +97,19 @@ class _SSEScanner:
                 self.input_tokens += msg_usage.get("input_tokens") or 0
                 self.output_tokens += msg_usage.get("output_tokens") or 0
                 self.cache_read_tokens += msg_usage.get("cache_read_input_tokens") or 0
-                self.cache_write_tokens += msg_usage.get("cache_creation_input_tokens") or 0
+                self.cache_write_tokens += (
+                    msg_usage.get("cache_creation_input_tokens") or 0
+                )
 
     def result(self) -> CostInfo | None:
         if not self.model or not self.has_usage:
             return None
         total = calculate_cost(
-            self.model, self.input_tokens, self.output_tokens,
-            self.cache_read_tokens, self.cache_write_tokens,
+            self.model,
+            self.input_tokens,
+            self.output_tokens,
+            self.cache_read_tokens,
+            self.cache_write_tokens,
         )
         return CostInfo(total_cost=total, estimated=True)
 
