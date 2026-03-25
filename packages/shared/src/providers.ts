@@ -1,15 +1,32 @@
-import type { CostBreakdown, ProviderName, TokenUsage } from './types.js';
+import type { CostBreakdown, ExtraCost, ExtraCostDimension, ProviderName, TokenUsage } from './types.js';
+
+export interface ExtraRateDefinition {
+  dimension: ExtraCostDimension;
+  rate: number;
+  per: number;
+  label: string;
+}
 
 interface ModelPricing {
   inputPerMillion: number;
   outputPerMillion: number;
   cacheReadPerMillion?: number;
   cacheWritePerMillion?: number;
+  extraRates?: ExtraRateDefinition[];
 }
 
 type PricingTable = Record<string, ModelPricing>;
 
-// last updated: 2026-03-20
+// xAI non-token pricing: tool calls, images, video, voice, RAG
+const XAI_EXTRA_RATES: ExtraRateDefinition[] = [
+  { dimension: 'tool_call', rate: 5.0, per: 1000, label: 'per 1K tool calls' },
+  { dimension: 'image', rate: 0.02, per: 1, label: 'per image (standard)' },
+  { dimension: 'video_sec', rate: 0.05, per: 1, label: 'per second of video' },
+  { dimension: 'voice_min', rate: 0.05, per: 1, label: 'per minute of voice' },
+  { dimension: 'rag_search', rate: 2.50, per: 1000, label: 'per 1K RAG searches' },
+];
+
+// last updated: 2026-03-25
 // prices in USD per 1M tokens
 const PRICING: Record<ProviderName, PricingTable> = {
   anthropic: {
@@ -133,12 +150,12 @@ const PRICING: Record<ProviderName, PricingTable> = {
   },
 
   xai: {
-    'grok-4.20-0309-reasoning': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2 },
-    'grok-4.20-0309-non-reasoning': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2 },
-    'grok-4.20-multi-agent-0309': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2 },
-    'grok-4-1-fast-reasoning': { inputPerMillion: 0.2, outputPerMillion: 0.5, cacheReadPerMillion: 0.05 },
-    'grok-4-1-fast-non-reasoning': { inputPerMillion: 0.2, outputPerMillion: 0.5, cacheReadPerMillion: 0.05 },
-    'grok-4': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
+    'grok-4.20-0309-reasoning': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2, extraRates: XAI_EXTRA_RATES },
+    'grok-4.20-0309-non-reasoning': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2, extraRates: XAI_EXTRA_RATES },
+    'grok-4.20-multi-agent-0309': { inputPerMillion: 2.0, outputPerMillion: 6.0, cacheReadPerMillion: 0.2, extraRates: XAI_EXTRA_RATES },
+    'grok-4-1-fast-reasoning': { inputPerMillion: 0.2, outputPerMillion: 0.5, cacheReadPerMillion: 0.05, extraRates: XAI_EXTRA_RATES },
+    'grok-4-1-fast-non-reasoning': { inputPerMillion: 0.2, outputPerMillion: 0.5, cacheReadPerMillion: 0.05, extraRates: XAI_EXTRA_RATES },
+    'grok-4': { inputPerMillion: 3.0, outputPerMillion: 15.0, extraRates: XAI_EXTRA_RATES },
     'grok-3': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
     'grok-3-mini': { inputPerMillion: 0.30, outputPerMillion: 0.50 },
     'grok-2': { inputPerMillion: 2.0, outputPerMillion: 10.0 },
@@ -197,6 +214,7 @@ export function getModelPricing(
 export function calculateCostFromPricing(
   pricing: ModelPricing,
   usage: TokenUsage,
+  extraUsage?: Array<{ dimension: ExtraCostDimension; quantity: number }>,
 ): CostBreakdown {
   const perM = 1_000_000;
   const inputCost = (usage.inputTokens / perM) * pricing.inputPerMillion;
@@ -208,12 +226,33 @@ export function calculateCostFromPricing(
     ? (usage.cacheWriteTokens / perM) * pricing.cacheWritePerMillion
     : 0;
 
+  let extraCosts: ExtraCost[] | undefined;
+  if (extraUsage?.length && pricing.extraRates?.length) {
+    extraCosts = [];
+    for (const eu of extraUsage) {
+      const rateDef = pricing.extraRates.find(r => r.dimension === eu.dimension);
+      if (rateDef && eu.quantity > 0) {
+        const cost = (eu.quantity / rateDef.per) * rateDef.rate;
+        extraCosts.push({
+          dimension: eu.dimension,
+          quantity: eu.quantity,
+          unitCost: +(rateDef.rate / rateDef.per).toFixed(8),
+          totalCost: +cost.toFixed(8),
+        });
+      }
+    }
+    if (extraCosts.length === 0) extraCosts = undefined;
+  }
+
+  const extraTotal = extraCosts?.reduce((s, c) => s + c.totalCost, 0) ?? 0;
+
   return {
     inputCost: +inputCost.toFixed(8),
     outputCost: +outputCost.toFixed(8),
     cacheReadCost: cacheReadCost ? +cacheReadCost.toFixed(8) : undefined,
     cacheWriteCost: cacheWriteCost ? +cacheWriteCost.toFixed(8) : undefined,
-    totalCost: +(inputCost + outputCost + cacheReadCost + cacheWriteCost).toFixed(8),
+    extraCosts,
+    totalCost: +(inputCost + outputCost + cacheReadCost + cacheWriteCost + extraTotal).toFixed(8),
     currency: 'USD',
   };
 }

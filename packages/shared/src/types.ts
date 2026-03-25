@@ -42,7 +42,22 @@ export interface TokenUsage {
   outputTokens: number;
   cacheReadTokens?: number;
   cacheWriteTokens?: number;
+  reasoningTokens?: number;
   totalTokens: number;
+}
+
+export type ExtraCostDimension =
+  | 'tool_call'
+  | 'image'
+  | 'video_sec'
+  | 'voice_min'
+  | 'rag_search';
+
+export interface ExtraCost {
+  dimension: ExtraCostDimension;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
 }
 
 export interface CostBreakdown {
@@ -50,6 +65,7 @@ export interface CostBreakdown {
   outputCost: number;
   cacheReadCost?: number;
   cacheWriteCost?: number;
+  extraCosts?: ExtraCost[];
   totalCost: number;
   currency: 'USD';
 }
