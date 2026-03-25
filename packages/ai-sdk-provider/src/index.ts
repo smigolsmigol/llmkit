@@ -22,7 +22,7 @@ export interface LLMKitProviderConfig {
   providerKey?: string;
 }
 
-function mapFinishReason(raw: string | undefined): LanguageModelV3FinishReason {
+export function mapFinishReason(raw: string | undefined): LanguageModelV3FinishReason {
   switch (raw) {
     case 'stop':
     case 'end_turn':
@@ -40,7 +40,7 @@ function mapFinishReason(raw: string | undefined): LanguageModelV3FinishReason {
   }
 }
 
-function parseUsage(usage: Record<string, number> | undefined) {
+export function parseUsage(usage: Record<string, number> | undefined) {
   return {
     inputTokens: {
       total: usage?.inputTokens ?? usage?.prompt_tokens,
@@ -222,7 +222,7 @@ async function* parseSSEStream(
   }
 }
 
-function buildHeaders(config: LLMKitProviderConfig): Record<string, string> {
+export function buildHeaders(config: LLMKitProviderConfig): Record<string, string> {
   const headers: Record<string, string> = {
     'Authorization': `Bearer ${config.apiKey}`,
     'Content-Type': 'application/json',
@@ -235,7 +235,7 @@ function buildHeaders(config: LLMKitProviderConfig): Record<string, string> {
   return headers;
 }
 
-function flattenPrompt(prompt: LanguageModelV3Prompt): Array<{ role: string; content: string }> {
+export function flattenPrompt(prompt: LanguageModelV3Prompt): Array<{ role: string; content: string }> {
   return prompt.map((msg) => {
     if (msg.role === 'system') {
       return { role: 'system', content: msg.content };
