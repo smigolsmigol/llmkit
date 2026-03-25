@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
+import { SupportWidget } from '@/components/support-widget';
 import { ensureAccount, getAccountPlan } from '@/lib/queries';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -27,6 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <div className="relative">{children}</div>
         </main>
       </div>
+      <SupportWidget />
     </div>
   );
 }
