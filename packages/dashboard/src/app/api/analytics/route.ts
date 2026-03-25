@@ -87,12 +87,41 @@ export async function GET() {
 
     const updatedAt = raw.npm?.collected_at ?? raw.health?.collected_at ?? new Date().toISOString();
 
+    // v2 fields from upgraded Hetzner collector
+    const freshness = raw.freshness ? {
+      lastCollection: raw.freshness.last_success ?? raw.freshness.collected_at,
+      version: raw.freshness.version ?? '1.0',
+    } : null;
+
+    const accounts = raw.accounts ? {
+      total: raw.accounts.total ?? 0,
+      list: raw.accounts.accounts ?? [],
+    } : null;
+
+    // fetch alerts separately (not in overview response)
+    let alerts: Array<{type: string; message: string; created_at: string}> = [];
+    try {
+      const alertHeaders: Record<string, string> = { Accept: 'application/json' };
+      if (apiKey) alertHeaders['Authorization'] = `Bearer ${apiKey}`;
+      const alertRes = await fetch(`${apiUrl}/api/analytics/alerts?limit=20`, {
+        headers: alertHeaders,
+        next: { revalidate: 60 },
+      });
+      if (alertRes.ok) {
+        const alertData = await alertRes.json();
+        alerts = alertData.alerts ?? [];
+      }
+    } catch { /* alerts are optional */ }
+
     return NextResponse.json({
       npm,
       pypi,
       github,
       health,
       updatedAt,
+      freshness,
+      accounts,
+      alerts,
     });
   } catch {
     return NextResponse.json({ error: 'analytics unavailable' }, { status: 502 });

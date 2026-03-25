@@ -22,6 +22,7 @@ import {
   getAllAccounts,
 } from '@/lib/queries';
 import { AccountTable } from './account-table';
+import { AnalyticsStatus } from '@/components/analytics-status';
 
 function timeAgo(date: string): string {
   const ms = Date.now() - new Date(date).getTime();
@@ -68,6 +69,9 @@ export default async function AdminPage({
         <h1 className="text-xl font-semibold">Admin</h1>
         <TimeRangeSelector />
       </div>
+
+      {/* analytics status: freshness + alerts */}
+      <AnalyticsStatus />
 
       {/* proxy metrics: row 1 */}
       <div className="grid grid-cols-4 gap-1.5">
