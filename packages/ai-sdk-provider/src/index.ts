@@ -1,19 +1,64 @@
 import type {
   LanguageModelV3,
   LanguageModelV3CallOptions,
+  LanguageModelV3FinishReason,
   LanguageModelV3GenerateResult,
   LanguageModelV3Prompt,
   LanguageModelV3StreamPart,
   LanguageModelV3StreamResult,
+  JSONObject,
 } from '@ai-sdk/provider';
+
+type ProviderName =
+  | 'anthropic' | 'openai' | 'gemini' | 'groq' | 'together'
+  | 'fireworks' | 'deepseek' | 'mistral' | 'xai' | 'ollama' | 'openrouter';
 
 export interface LLMKitProviderConfig {
   apiKey: string;
   baseUrl?: string;
   sessionId?: string;
   userId?: string;
-  provider?: 'anthropic' | 'openai' | 'gemini';
+  provider?: ProviderName;
   providerKey?: string;
+}
+
+function mapFinishReason(raw: string | undefined): LanguageModelV3FinishReason {
+  switch (raw) {
+    case 'stop':
+    case 'end_turn':
+      return { unified: 'stop', raw: raw };
+    case 'length':
+    case 'max_tokens':
+      return { unified: 'length', raw: raw };
+    case 'content_filter':
+      return { unified: 'content-filter', raw: raw };
+    case 'tool_calls':
+    case 'tool_use':
+      return { unified: 'tool-calls', raw: raw };
+    default:
+      return { unified: 'stop', raw: raw ?? 'unknown' };
+  }
+}
+
+function parseUsage(usage: Record<string, number> | undefined) {
+  return {
+    inputTokens: {
+      total: usage?.inputTokens ?? usage?.prompt_tokens,
+      noCache: undefined,
+      cacheRead: usage?.cacheReadTokens ?? usage?.cache_read_input_tokens,
+      cacheWrite: usage?.cacheWriteTokens ?? usage?.cache_creation_input_tokens,
+    },
+    outputTokens: {
+      total: usage?.outputTokens ?? usage?.completion_tokens,
+      text: undefined,
+      reasoning: undefined,
+    },
+  };
+}
+
+function parseCostMetadata(cost: Record<string, unknown> | undefined): { llmkit: JSONObject } | undefined {
+  if (!cost) return undefined;
+  return { llmkit: cost as JSONObject };
 }
 
 export function createLLMKit(config: LLMKitProviderConfig) {
@@ -49,26 +94,14 @@ export function createLLMKit(config: LLMKitProviderConfig) {
         const raw = await res.json() as Record<string, unknown>;
         const usage = raw.usage as Record<string, number> | undefined;
         const cost = raw.cost as Record<string, unknown> | undefined;
+        const content = typeof raw.content === 'string' ? raw.content : '';
+        const finishReason = raw.finishReason as string | undefined;
 
         return {
-          content: [{ type: 'text' as const, text: raw.content as string }],
-          finishReason: { unified: 'stop', raw: 'stop' },
-          usage: {
-            inputTokens: {
-              total: usage?.inputTokens,
-              noCache: undefined,
-              cacheRead: usage?.cacheReadTokens,
-              cacheWrite: usage?.cacheWriteTokens,
-            },
-            outputTokens: {
-              total: usage?.outputTokens,
-              text: undefined,
-              reasoning: undefined,
-            },
-          },
-          providerMetadata: cost ? {
-            llmkit: cost as Record<string, undefined>,
-          } : undefined,
+          content: [{ type: 'text' as const, text: content }],
+          finishReason: mapFinishReason(finishReason),
+          usage: parseUsage(usage),
+          providerMetadata: parseCostMetadata(cost),
           warnings: [],
         };
       },
@@ -96,87 +129,38 @@ export function createLLMKit(config: LLMKitProviderConfig) {
 
         if (!res.body) throw new Error('No response body');
 
-        const upstream = res.body;
-        let partId = 0;
-
         const stream = new ReadableStream<LanguageModelV3StreamPart>({
           async start(controller) {
-            const reader = upstream.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let currentEvent = '';
+            const parts = parseSSEStream(res.body!);
             let textBlockId = '';
+            let partCounter = 0;
 
-            try {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-                const lines = buffer.split('\n');
-                buffer = lines.pop() ?? '';
-
-                for (const line of lines) {
-                  if (line.startsWith('event: ')) {
-                    currentEvent = line.slice(7).trim();
-                    continue;
-                  }
-
-                  if (!line.startsWith('data: ')) {
-                    if (line === '') currentEvent = '';
-                    continue;
-                  }
-
-                  const payload = line.slice(6).trim();
-                  if (!payload) continue;
-
-                  try {
-                    const data = JSON.parse(payload);
-
-                    if (currentEvent === 'delta' && data.text !== undefined) {
-                      if (!textBlockId) {
-                        textBlockId = String(partId++);
-                        controller.enqueue({ type: 'text-start', id: textBlockId });
-                      }
-                      controller.enqueue({ type: 'text-delta', id: textBlockId, delta: data.text });
-                    }
-
-                    if (currentEvent === 'done') {
-                      if (textBlockId) {
-                        controller.enqueue({ type: 'text-end', id: textBlockId });
-                      }
-
-                      const usage = data.usage as Record<string, number> | undefined;
-                      controller.enqueue({
-                        type: 'finish',
-                        finishReason: { unified: 'stop', raw: 'stop' },
-                        usage: {
-                          inputTokens: {
-                            total: usage?.inputTokens,
-                            noCache: undefined,
-                            cacheRead: usage?.cacheReadTokens,
-                            cacheWrite: usage?.cacheWriteTokens,
-                          },
-                          outputTokens: {
-                            total: usage?.outputTokens,
-                            text: undefined,
-                            reasoning: undefined,
-                          },
-                        },
-                        providerMetadata: data.cost ? {
-                          llmkit: data.cost as Record<string, undefined>,
-                        } : undefined,
-                      });
-                    }
-                  } catch {
-                    // partial json, skip
-                  }
+            for await (const event of parts) {
+              if (event.type === 'delta' && event.data.text !== undefined) {
+                if (!textBlockId) {
+                  textBlockId = String(partCounter++);
+                  controller.enqueue({ type: 'text-start', id: textBlockId });
                 }
+                controller.enqueue({ type: 'text-delta', id: textBlockId, delta: String(event.data.text) });
               }
-            } finally {
-              reader.releaseLock();
-              controller.close();
+
+              if (event.type === 'done') {
+                if (textBlockId) {
+                  controller.enqueue({ type: 'text-end', id: textBlockId });
+                }
+                const usage = event.data.usage as Record<string, number> | undefined;
+                const cost = event.data.cost as Record<string, unknown> | undefined;
+                const finishReason = event.data.finishReason as string | undefined;
+                controller.enqueue({
+                  type: 'finish',
+                  finishReason: mapFinishReason(finishReason),
+                  usage: parseUsage(usage),
+                  providerMetadata: parseCostMetadata(cost),
+                });
+              }
             }
+
+            controller.close();
           },
         });
 
@@ -186,6 +170,54 @@ export function createLLMKit(config: LLMKitProviderConfig) {
   }
 
   return { chat, languageModel: chat };
+}
+
+// SSE parser extracted from doStream to reduce complexity
+async function* parseSSEStream(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<{ type: string; data: Record<string, unknown> }> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let currentEvent = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+          continue;
+        }
+
+        if (!line.startsWith('data: ')) {
+          if (line === '') currentEvent = '';
+          continue;
+        }
+
+        const payload = line.slice(6).trim();
+        if (!payload) continue;
+
+        let data: Record<string, unknown>;
+        try {
+          data = JSON.parse(payload);
+        } catch {
+          console.warn('llmkit: malformed SSE payload, skipping');
+          continue;
+        }
+
+        yield { type: currentEvent, data };
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 function buildHeaders(config: LLMKitProviderConfig): Record<string, string> {
