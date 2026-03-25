@@ -15,7 +15,7 @@ import { fail, handleBudgetStatus, handleCostQuery, handleHealth, handleListKeys
 
 const HINTS = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const;
 
-const PROXY_TOOLS = [
+export const PROXY_TOOLS = [
   {
     name: 'llmkit_usage_stats',
     description: 'Get usage statistics (spend, requests, top models) for a time period',
@@ -131,7 +131,7 @@ const PROXY_TOOLS = [
   },
 ];
 
-const LOCAL_TOOLS = [
+export const LOCAL_TOOLS = [
   {
     name: 'llmkit_local_session',
     description: 'Current session cost across all detected AI coding tools (Claude Code, Cline). No API key needed.',
@@ -215,7 +215,7 @@ const LOCAL_TOOLS = [
 
 const NOTION_HINTS = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const;
 
-const NOTION_TOOLS = [
+export const NOTION_TOOLS = [
   {
     name: 'llmkit_notion_cost_snapshot',
     description: 'Sync cost data to a Notion page. Creates a formatted snapshot with spend, tokens, and model breakdown.',
@@ -288,7 +288,7 @@ type Args = Record<string, unknown> | undefined;
 type ToolResponse = ReturnType<typeof ok> | ReturnType<typeof fail>;
 type Handler = (args: Args) => Promise<ToolResponse>;
 
-const HANDLER_MAP: Record<string, Handler> = {
+export const HANDLER_MAP: Record<string, Handler> = {
   llmkit_usage_stats: handleUsageStats,
   llmkit_cost_query: handleCostQuery,
   llmkit_list_keys: () => handleListKeys(),
