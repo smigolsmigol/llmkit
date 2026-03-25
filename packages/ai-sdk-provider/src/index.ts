@@ -1,4 +1,5 @@
 import type {
+  JSONObject,
   LanguageModelV3,
   LanguageModelV3CallOptions,
   LanguageModelV3FinishReason,
@@ -6,7 +7,6 @@ import type {
   LanguageModelV3Prompt,
   LanguageModelV3StreamPart,
   LanguageModelV3StreamResult,
-  JSONObject,
 } from '@ai-sdk/provider';
 
 type ProviderName =
@@ -131,7 +131,9 @@ export function createLLMKit(config: LLMKitProviderConfig) {
 
         const stream = new ReadableStream<LanguageModelV3StreamPart>({
           async start(controller) {
-            const parts = parseSSEStream(res.body!);
+            const body = res.body;
+            if (!body) { controller.close(); return; }
+            const parts = parseSSEStream(body);
             let textBlockId = '';
             let partCounter = 0;
 
