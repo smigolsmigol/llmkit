@@ -13,14 +13,25 @@ interface ProxyTarget {
   host: string;
   provider: ProviderName;
   basePath: string;
+  tracked: boolean;
 }
 
-const OPENAI_TARGET: ProxyTarget = { host: 'api.openai.com', provider: 'openai', basePath: '' };
-const ANTHROPIC_TARGET: ProxyTarget = { host: 'api.anthropic.com', provider: 'anthropic', basePath: '' };
+const OPENAI_TARGET: ProxyTarget = { host: 'api.openai.com', provider: 'openai', basePath: '', tracked: true };
+const ANTHROPIC_TARGET: ProxyTarget = { host: 'api.anthropic.com', provider: 'anthropic', basePath: '', tracked: true };
 
-function resolveTarget(url: string): ProxyTarget | null {
+function resolveTarget(url: string, authHeader: string): ProxyTarget | null {
+  // tracked routes: cost tracking enabled
   if (url.startsWith('/v1/chat/completions')) return OPENAI_TARGET;
+  if (url.startsWith('/v1/responses')) return OPENAI_TARGET;
   if (url.startsWith('/v1/messages')) return ANTHROPIC_TARGET;
+
+  // untracked pass-through: infer provider from auth header, forward transparently
+  if (authHeader.includes('sk-ant-')) {
+    return { host: 'api.anthropic.com', provider: 'anthropic', basePath: '', tracked: false };
+  }
+  if (url.startsWith('/v1/')) {
+    return { host: 'api.openai.com', provider: 'openai', basePath: '', tracked: false };
+  }
   return null;
 }
 
@@ -34,10 +45,11 @@ export function startProxy(opts: { port: number; verbose: boolean }): Promise<Pr
   const records: RequestRecord[] = [];
 
   const server = http.createServer((clientReq, clientRes) => {
-    const target = resolveTarget(clientReq.url ?? '');
+    const authHeader = (clientReq.headers.authorization ?? clientReq.headers['x-api-key'] ?? '') as string;
+    const target = resolveTarget(clientReq.url ?? '', authHeader);
     if (!target) {
-      clientRes.writeHead(404, { 'content-type': 'text/plain' });
-      clientRes.end('not found');
+      clientRes.writeHead(400, { 'content-type': 'application/json' });
+      clientRes.end(JSON.stringify({ error: 'could not determine provider from request' }));
       return;
     }
 
@@ -84,7 +96,10 @@ export function startProxy(opts: { port: number; verbose: boolean }): Promise<Pr
           // only track 2xx responses
           const ok = (proxyRes.statusCode ?? 0) >= 200 && (proxyRes.statusCode ?? 0) < 300;
 
-          if (isStream) {
+          if (!target.tracked) {
+            // pass-through: forward without cost tracking
+            proxyRes.pipe(clientRes);
+          } else if (isStream) {
             const sseChunks: string[] = [];
             proxyRes.on('data', (chunk: Buffer) => {
               clientRes.write(chunk);
