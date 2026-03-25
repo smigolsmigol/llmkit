@@ -1,16 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import { auth } from '@clerk/nextjs/server';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { CostChart } from '@/components/charts/cost-chart';
-import { ProviderChart } from '@/components/charts/provider-chart';
-import { RequestChart } from '@/components/charts/request-chart';
-import { TokenChart } from '@/components/charts/token-chart';
-import { EcosystemPanel } from '@/components/ecosystem-panel';
-import { StatCard } from '@/components/stat-card';
 import { TimeRangeSelector } from '@/components/time-range-selector';
-import { formatCents } from '@/lib/format';
+import { AnalyticsStatus } from '@/components/analytics-status';
 import {
   getAccountPlan,
   getAdminProviderHealth,
@@ -21,24 +14,12 @@ import {
   getAdminUserBreakdown,
   getAllAccounts,
 } from '@/lib/queries';
-import { AccountTable } from './account-table';
-import { AnalyticsStatus } from '@/components/analytics-status';
-
-function timeAgo(date: string): string {
-  const ms = Date.now() - new Date(date).getTime();
-  const minutes = Math.floor(ms / 60000);
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+import { AdminTabs } from './admin-tabs';
 
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ days?: string }>;
+  searchParams: Promise<{ days?: string; tab?: string }>;
 }) {
   const { userId } = await auth();
   if (!userId) redirect('/dashboard');
@@ -64,252 +45,25 @@ export default async function AdminPage({
 
   return (
     <div className="space-y-1.5">
-      {/* header */}
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Admin</h1>
         <TimeRangeSelector />
       </div>
 
-      {/* analytics status: freshness + alerts */}
       <AnalyticsStatus />
 
-      {/* proxy metrics: row 1 */}
-      <div className="grid grid-cols-4 gap-1.5">
-        <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Platform Spend</p>
-            {trend.deltas.spend != null && (
-              <span className={`text-[10px] font-medium ${trend.deltas.spend > 0 ? 'text-emerald-400' : trend.deltas.spend < 0 ? 'text-red-400' : 'text-muted-foreground'}`}>
-                {trend.deltas.spend > 0 ? '\u2191' : trend.deltas.spend < 0 ? '\u2193' : ''}{Math.abs(trend.deltas.spend)}%
-              </span>
-            )}
-          </div>
-          <p className="mt-0.5 font-mono text-2xl font-bold text-primary">
-            {formatCents(stats.totalSpendCents)}
-          </p>
-        </div>
-        <StatCard label="Total Requests" value={stats.totalRequests.toLocaleString()} delta={trend.deltas.requests} />
-        <StatCard label="Accounts" value={String(stats.totalAccounts)} sublabel={`${activeUsers} active in period`} />
-        <StatCard
-          label="Tokens Processed"
-          value={totalTokens > 1_000_000 ? `${(totalTokens / 1_000_000).toFixed(1)}M` : totalTokens.toLocaleString()}
-          sublabel={`${stats.totalInputTokens.toLocaleString()} in / ${stats.totalOutputTokens.toLocaleString()} out`}
-          delta={trend.deltas.tokens}
-        />
-      </div>
-
-      {/* proxy metrics: row 2 */}
-      <div className="grid grid-cols-4 gap-1.5">
-        <StatCard
-          label="Active Keys (today)"
-          value={String(stats.activeKeysToday)}
-          sublabel={`${stats.activeKeysWeek} this week, ${stats.activeKeysMonth} this month`}
-        />
-        <Link href="/dashboard/admin/requests?status=error">
-          <StatCard
-            label="Error Rate"
-            value={`${stats.errorRate.toFixed(1)}%`}
-            sublabel={stats.errorRate > 5 ? 'above threshold' : 'healthy'}
-            delta={trend.deltas.errorRate}
-          />
-        </Link>
-        <StatCard
-          label="Avg Latency"
-          value={`${stats.avgLatencyMs}ms`}
-          sublabel={stats.avgTokensPerReq > 0 ? `~${stats.avgTokensPerReq.toLocaleString()} tokens/req` : 'across all providers'}
-          delta={trend.deltas.avgLatency}
-        />
-        <StatCard
-          label="p95 Latency"
-          value={`${stats.p95LatencyMs}ms`}
-          sublabel="95th percentile"
-          delta={trend.deltas.p95Latency}
-        />
-      </div>
-
-      {/* ecosystem metrics (client component, fetches from analytics API) */}
-      <EcosystemPanel accountCount={accounts.length} activeUserCount={activeUsers} />
-
-      {/* proxy charts: 2x2 grid */}
-      <div className="grid grid-cols-2 gap-1.5">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Platform Spend</h2>
-            <p className="text-[10px] text-muted-foreground">Hourly, all users</p>
-          </div>
-          <CostChart data={timeseries} />
-        </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Request Volume</h2>
-            <p className="text-[10px] text-muted-foreground">Per hour, platform-wide</p>
-          </div>
-          <RequestChart data={timeseries} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-1.5">
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Token Usage</h2>
-            <p className="text-[10px] text-muted-foreground">Input/output, platform-wide</p>
-          </div>
-          <TokenChart data={timeseries} />
-        </div>
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Spend by Provider</h2>
-            <p className="text-[10px] text-muted-foreground">Cost distribution</p>
-          </div>
-          <ProviderChart data={providerSpend} />
-        </div>
-      </div>
-
-      {/* provider health */}
-      {providerHealth.length > 0 && (
-        <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Provider Health</h2>
-          </div>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs text-muted-foreground">
-                <th className="pb-1">Provider</th>
-                <th className="pb-1 text-right">Reqs</th>
-                <th className="pb-1 text-right">Success</th>
-                <th className="pb-1 text-right">Last Error</th>
-                <th className="pb-1 text-right">Avg ms</th>
-                <th className="pb-1 text-right">p95 ms</th>
-                <th className="pb-1 text-right">Spend</th>
-              </tr>
-            </thead>
-            <tbody>
-              {providerHealth.map((p) => (
-                <tr key={p.provider} className="border-t border-[#1a1a1a]">
-                  <td className="py-1 text-xs font-medium">
-                    <Link href={`/dashboard/admin/requests?provider=${p.provider}`} className="text-primary hover:underline">
-                      {p.provider}
-                    </Link>
-                  </td>
-                  <td className="py-1 text-right text-xs">{p.requests}</td>
-                  <td className={`py-1 text-right text-xs font-mono ${p.successRate < 95 ? 'text-red-400' : 'text-emerald-400'}`}>
-                    {p.successRate < 100 ? (
-                      <Link href={`/dashboard/admin/requests?provider=${p.provider}&status=error`} className="hover:underline">
-                        {p.successRate}%
-                      </Link>
-                    ) : (
-                      <>{p.successRate}%</>
-                    )}
-                  </td>
-                  <td className="py-1 text-right text-xs text-muted-foreground">
-                    {p.lastErrorAt ? timeAgo(p.lastErrorAt) : '-'}
-                  </td>
-                  <td className="py-1 text-right text-xs text-muted-foreground">{p.avgLatencyMs.toLocaleString()}</td>
-                  <td className="py-1 text-right text-xs text-muted-foreground">{p.p95LatencyMs.toLocaleString()}</td>
-                  <td className="py-1 text-right font-mono text-xs">{formatCents(p.spendCents)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* top models + per-user */}
-      <div className="grid grid-cols-2 gap-1.5">
-        {topModels.length > 0 && (
-          <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-            <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-              <h2 className="text-xs font-medium">Top Models</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-muted-foreground">
-                    <th className="pb-1">Model</th>
-                    <th className="pb-1">Provider</th>
-                    <th className="pb-1 text-right">Reqs</th>
-                    <th className="pb-1 text-right">Spend</th>
-                    <th className="pb-1 text-right">Avg ms</th>
-                    <th className="pb-1 text-right">Tok/req</th>
-                    <th className="pb-1 text-right">$/1k tok</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topModels.slice(0, 10).map((m) => (
-                    <tr key={m.model} className="border-t border-[#1a1a1a]">
-                      <td className="py-1 font-mono text-xs">
-                        <Link href={`/dashboard/admin/requests?model=${encodeURIComponent(m.model)}`} className="text-primary hover:underline">
-                          {m.model}
-                        </Link>
-                      </td>
-                      <td className="py-1 text-xs text-muted-foreground">{m.provider}</td>
-                      <td className="py-1 text-right text-xs">{m.requests}</td>
-                      <td className="py-1 text-right font-mono text-xs">{formatCents(m.spendCents)}</td>
-                      <td className="py-1 text-right text-xs text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
-                      <td className="py-1 text-right text-xs text-muted-foreground">{m.avgTokensPerReq.toLocaleString()}</td>
-                      <td className="py-1 text-right font-mono text-xs">{formatCents(m.costPer1kTokens)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {userBreakdown.length > 0 && (
-          <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-            <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-              <h2 className="text-xs font-medium">Per-User Breakdown</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-muted-foreground">
-                    <th className="pb-1">User</th>
-                    <th className="pb-1">Plan</th>
-                    <th className="pb-1 text-right">Reqs</th>
-                    <th className="pb-1 text-right">Spend</th>
-                    <th className="pb-1 text-right">Errs</th>
-                    <th className="pb-1 text-right">Avg ms</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {userBreakdown.map((u) => (
-                    <tr key={u.userId} className="border-t border-[#1a1a1a]">
-                      <td className="py-1 font-mono text-xs" title={u.userId}>
-                        <Link href={`/dashboard/admin/requests?user=${u.userId}`} className="text-primary hover:underline">
-                          {u.note || u.userId.slice(0, 12) + '...'}
-                        </Link>
-                      </td>
-                      <td className="py-1 text-xs text-muted-foreground">{u.plan}</td>
-                      <td className="py-1 text-right text-xs">{u.requests}</td>
-                      <td className="py-1 text-right font-mono text-xs">{formatCents(u.spendCents)}</td>
-                      <td className="py-1 text-right text-xs">
-                        {u.errors > 0 ? (
-                          <Link href={`/dashboard/admin/requests?user=${u.userId}&status=error`} className="text-red-400 hover:underline">
-                            {u.errors}
-                          </Link>
-                        ) : (
-                          ''
-                        )}
-                      </td>
-                      <td className="py-1 text-right text-xs">{u.avgLatencyMs}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* accounts */}
-      <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
-        <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-          <h2 className="text-xs font-medium">Accounts ({accounts.length})</h2>
-        </div>
-        <AccountTable accounts={accounts} />
-      </div>
+      <AdminTabs
+        stats={stats}
+        deltas={trend.deltas}
+        totalTokens={totalTokens}
+        activeUsers={activeUsers}
+        timeseries={timeseries}
+        providerSpend={providerSpend}
+        providerHealth={providerHealth}
+        topModels={topModels}
+        userBreakdown={userBreakdown}
+        accounts={accounts}
+      />
     </div>
   );
 }
