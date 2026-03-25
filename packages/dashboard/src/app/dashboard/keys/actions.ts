@@ -8,6 +8,9 @@ export async function createApiKey(name: string) {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
 
+  if (!name || name.length > 100) throw new Error('Key name must be 1-100 characters');
+  if (!/^[\w\s\-.]+$/.test(name)) throw new Error('Key name contains invalid characters');
+
   const array = new Uint8Array(32);
   globalThis.crypto.getRandomValues(array);
   const raw = Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');

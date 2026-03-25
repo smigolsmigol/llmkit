@@ -189,7 +189,8 @@ export async function getRequestsPaginated(
   if (filters.status === 'error') query = query.not('error_code', 'is', null);
   if (filters.status === 'ok') query = query.is('error_code', null);
 
-  const sortCol = filters.sortBy || 'created_at';
+  const ALLOWED_SORT = ['created_at', 'cost_cents', 'latency_ms', 'provider', 'model', 'input_tokens', 'output_tokens'];
+  const sortCol = ALLOWED_SORT.includes(filters.sortBy || '') ? filters.sortBy! : 'created_at';
   const ascending = filters.sortOrder === 'asc';
   query = query.order(sortCol, { ascending });
 
@@ -1229,7 +1230,8 @@ export async function getAdminRequestsPaginated(
   if (filters.status === 'error') query = query.not('error_code', 'is', null);
   if (filters.status === 'ok') query = query.is('error_code', null);
 
-  const sortCol = filters.sortBy || 'created_at';
+  const ALLOWED_SORT = ['created_at', 'cost_cents', 'latency_ms', 'provider', 'model', 'input_tokens', 'output_tokens'];
+  const sortCol = ALLOWED_SORT.includes(filters.sortBy || '') ? filters.sortBy! : 'created_at';
   const ascending = filters.sortOrder === 'asc';
   query = query.order(sortCol, { ascending });
 

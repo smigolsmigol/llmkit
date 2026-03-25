@@ -3,8 +3,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase';
 
-const supabase = createServerClient();
-
 const TG_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TG_CHAT = process.env.TELEGRAM_CHAT_ID;
 
@@ -26,6 +24,8 @@ export async function sendSupportMessage(message: string): Promise<void> {
   if (!userId) throw new Error('Not authenticated');
   if (!message || message.length > 2000) throw new Error('Invalid message');
   if (!checkRateLimit(userId)) throw new Error('Too many messages. Please wait before sending another.');
+
+  const supabase = createServerClient();
 
   try {
     await supabase.from('support_messages').insert({

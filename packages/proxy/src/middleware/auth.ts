@@ -6,12 +6,16 @@ import type { Env } from '../env';
 export function auth() {
   return createMiddleware<Env>(async (c, next) => {
     const authHeader = c.req.header('Authorization') || '';
-    const raw = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim()
-      : c.req.query('apiKey') || '';
+    const raw = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
     if (!raw) throw new AuthError();
 
+    const devMode = c.env.DEV_MODE === 'true';
+    if (devMode && c.env.SUPABASE_URL) {
+      console.warn('[llmkit] DEV_MODE ignored: SUPABASE_URL is set, running in production mode');
+    }
+
     if (!c.env.SUPABASE_URL || !c.env.SUPABASE_KEY) {
-      if (c.env.DEV_MODE !== 'true') {
+      if (!devMode) {
         throw new Error('SUPABASE_URL/SUPABASE_KEY not set. Set DEV_MODE=true to bypass auth in development.');
       }
       console.warn('[llmkit] DEV_MODE: auth bypassed, do not use in production');

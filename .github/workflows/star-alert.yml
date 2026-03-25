@@ -4,6 +4,9 @@ on:
   watch:
     types: [started]
 
+permissions:
+  contents: read
+
 jobs:
   notify:
     runs-on: ubuntu-latest

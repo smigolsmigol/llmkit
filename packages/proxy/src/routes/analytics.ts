@@ -59,7 +59,7 @@ analyticsRouter.get('/analytics/usage', async (c) => {
   }
 
   const period = (c.req.query('period') || 'month') as string;
-  const days = period === 'today' ? 1 : period === 'week' ? 7 : 30;
+  const days = Math.min(period === 'today' ? 1 : period === 'week' ? 7 : 30, 365);
 
   const dbUrl = c.env.SUPABASE_URL;
   const dbKey = c.env.SUPABASE_KEY;
@@ -119,7 +119,7 @@ analyticsRouter.get('/analytics/costs', async (c) => {
   }
 
   const groupBy = c.req.query('groupBy') || 'provider';
-  const days = Number(c.req.query('days')) || 30;
+  const days = Math.min(Number(c.req.query('days')) || 30, 365);
   const filterProvider = c.req.query('provider');
   const filterModel = c.req.query('model');
 

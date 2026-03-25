@@ -5,6 +5,9 @@ on:
     - cron: '0 7 * * *' # 7am UTC = 8am CET
   workflow_dispatch: # manual trigger for testing
 
+permissions:
+  contents: read
+
 jobs:
   digest:
     runs-on: ubuntu-latest

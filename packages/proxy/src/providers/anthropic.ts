@@ -62,8 +62,9 @@ export class AnthropicAdapter implements ProviderAdapter {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Anthropic ${res.status}: ${err}`);
+      const detail = await res.text();
+      console.error(`provider error (${this.name} ${res.status}): ${detail}`);
+      throw new Error(`${this.name} returned ${res.status}`);
     }
 
     const data = (await res.json()) as AnthropicResponse;
@@ -93,8 +94,9 @@ export class AnthropicAdapter implements ProviderAdapter {
     });
 
     if (!res.ok) {
-      const err = await res.text();
-      throw new Error(`Anthropic ${res.status}: ${err}`);
+      const detail = await res.text();
+      console.error(`provider error (${this.name} ${res.status}): ${detail}`);
+      throw new Error(`${this.name} returned ${res.status}`);
     }
 
     if (!res.body) throw new Error('No response body for stream');
