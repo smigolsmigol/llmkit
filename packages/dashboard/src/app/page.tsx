@@ -165,7 +165,7 @@ export default function Home() {
                 14 tools for cost tracking inside your IDE. 5 work locally by reading Claude Code, Cursor, and Cline session data. No account needed.
               </p>
               <p className="mt-4 text-xs text-violet-400 group-hover:text-violet-300 transition">
-                Learn more &rarr;
+                Learn more {'->'}
               </p>
             </div>
           </Link>
@@ -181,7 +181,7 @@ export default function Home() {
                 Budget enforcement that actually blocks requests. Reservation pattern: estimate before, reject if over, settle after. Per-key and per-session limits.
               </p>
               <p className="mt-4 text-xs text-cyan-400 group-hover:text-cyan-300 transition">
-                Get started &rarr;
+                Get started {'->'}
               </p>
             </div>
           </Link>
@@ -197,7 +197,7 @@ export default function Home() {
                 Spend by model, provider, and session. Request log with full cost breakdown. API key management, budget configuration, anomaly detection.
               </p>
               <p className="mt-4 text-xs text-amber-400 group-hover:text-amber-300 transition">
-                Try it free &rarr;
+                Try it free {'->'}
               </p>
             </div>
           </Link>

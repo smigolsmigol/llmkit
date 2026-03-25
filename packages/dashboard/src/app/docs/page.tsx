@@ -72,7 +72,7 @@ export default function DocsPage() {
           </div>
           <p className="mt-3 text-xs text-zinc-500">
             That's it. Ask your AI assistant "how much did this session cost?" and it'll use the local tools.
-            <Link href="/mcp" className="ml-1 text-violet-400 hover:text-violet-300 transition">See all 14 tools &rarr;</Link>
+            <Link href="/mcp" className="ml-1 text-violet-400 hover:text-violet-300 transition">See all 14 tools {'->'}</Link>
           </p>
         </section>
 
