@@ -17,6 +17,7 @@ interface RequestRow {
   cost_cents: number;
   latency_ms: number;
   status: string;
+  tool_calls: { name: string }[] | null;
   created_at: string;
 }
 
@@ -126,7 +127,7 @@ analyticsRouter.get('/analytics/costs', async (c) => {
   if (filterProvider) requests = requests.filter(r => r.provider === filterProvider);
   if (filterModel) requests = requests.filter(r => r.model === filterModel);
 
-  const groups = new Map<string, { count: number; costCents: number; inputTokens: number; outputTokens: number }>();
+  const groups = new Map<string, { count: number; costCents: number; inputTokens: number; outputTokens: number; toolCalls: number }>();
 
   for (const req of requests) {
     let key: string;
@@ -136,11 +137,12 @@ analyticsRouter.get('/analytics/costs', async (c) => {
       case 'day': key = req.created_at.slice(0, 10); break;
       default: key = req.provider;
     }
-    const g = groups.get(key) || { count: 0, costCents: 0, inputTokens: 0, outputTokens: 0 };
+    const g = groups.get(key) || { count: 0, costCents: 0, inputTokens: 0, outputTokens: 0, toolCalls: 0 };
     g.count++;
     g.costCents += Number(req.cost_cents);
     g.inputTokens += req.input_tokens;
     g.outputTokens += req.output_tokens;
+    g.toolCalls += req.tool_calls?.length ?? 0;
     groups.set(key, g);
   }
 

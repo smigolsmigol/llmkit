@@ -21,6 +21,7 @@ export interface RequestRow {
   latency_ms: number;
   status: string;
   error_code: string | null;
+  tool_calls: { name: string }[] | null;
   created_at: string;
 }
 

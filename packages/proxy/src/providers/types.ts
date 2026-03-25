@@ -25,6 +25,7 @@ export interface ProviderResponse {
   usage: TokenUsage;
   finishReason: string;
   toolCalls?: ToolCall[];
+  providerCostUsd?: number;
 }
 
 export interface StreamEvent {
@@ -35,4 +36,5 @@ export interface StreamEvent {
   finishReason?: string;
   id?: string;
   model?: string;
+  providerCostUsd?: number;
 }

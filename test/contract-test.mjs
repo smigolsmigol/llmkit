@@ -17,28 +17,36 @@ const { PROXY_TOOLS, LOCAL_TOOLS, NOTION_TOOLS } = await import('../packages/mcp
 const serverJson = JSON.parse(readFileSync('packages/mcp-server/server.json', 'utf8'));
 const mcpPkg = JSON.parse(readFileSync('packages/mcp-server/package.json', 'utf8'));
 const readme = readFileSync('README.md', 'utf8');
-const pyPricing = readFileSync('packages/python-sdk/src/llmkit/_pricing.py', 'utf8');
+const pyPricingData = readFileSync('packages/python-sdk/src/llmkit/_pricing_data.py', 'utf8');
+const pricingJson = JSON.parse(readFileSync('packages/shared/pricing.json', 'utf8'));
 
-// pricing sync: shared vs python for key models
+// pricing sync: shared PRICING (from pricing.json) vs python generated data
 test('pricing sync: claude-opus-4-6 matches across shared and python', () => {
   const shared = PRICING.anthropic['claude-opus-4-6'];
   assert(shared, 'shared should have claude-opus-4-6');
-  assert(pyPricing.includes(`"claude-opus-4-6": TokenRates(${shared.inputPerMillion}`),
+  assert(pyPricingData.includes(`"claude-opus-4-6": (${shared.inputPerMillion}`),
     `python should have matching input price ${shared.inputPerMillion}`);
 });
 
 test('pricing sync: gpt-4o matches across shared and python', () => {
   const shared = PRICING.openai['gpt-4o'];
   assert(shared, 'shared should have gpt-4o');
-  assert(pyPricing.includes(`"gpt-4o": TokenRates(${shared.inputPerMillion}`),
+  assert(pyPricingData.includes(`"gpt-4o": (${shared.inputPerMillion}`),
     `python should have matching input price ${shared.inputPerMillion}`);
 });
 
 test('pricing sync: grok-4 matches across shared and python', () => {
   const shared = PRICING.xai['grok-4'];
   assert(shared, 'shared should have grok-4');
-  assert(pyPricing.includes(`"grok-4": TokenRates(${shared.inputPerMillion}`),
+  assert(pyPricingData.includes(`"grok-4": (${shared.inputPerMillion}`),
     `python should have matching input price ${shared.inputPerMillion}`);
+});
+
+test('pricing.json is the source of truth for shared PRICING', () => {
+  const jsonProviders = Object.keys(pricingJson.providers).length;
+  const sharedProviders = Object.keys(PRICING).length;
+  assert(jsonProviders === sharedProviders,
+    `pricing.json has ${jsonProviders} providers but shared has ${sharedProviders}`);
 });
 
 // version sync

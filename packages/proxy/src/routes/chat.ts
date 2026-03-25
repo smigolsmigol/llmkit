@@ -25,10 +25,11 @@ function wantsLLMKitFormat(c: Context<Env>): boolean {
   return c.req.header('x-llmkit-format') === 'llmkit';
 }
 
-function setCostHeaders(c: Context<Env>, cost: CostBreakdown, provider: string, latencyMs: number) {
+function setCostHeaders(c: Context<Env>, cost: CostBreakdown, provider: string, latencyMs: number, providerCostUsd?: number) {
   c.header('x-llmkit-cost', String(cost.totalCost));
   c.header('x-llmkit-provider', provider);
   c.header('x-llmkit-latency-ms', String(latencyMs));
+  if (providerCostUsd != null) c.header('x-llmkit-provider-cost', String(providerCostUsd));
   const sid = c.req.header('x-llmkit-session-id');
   if (sid) c.header('x-llmkit-session-id', sid);
   const uid = c.req.header('x-llmkit-user-id');
@@ -115,10 +116,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
       const result = await adapter.chat(req);
       const latency = Date.now() - start;
 
-      const extraUsage = result.toolCalls?.length
-        ? [{ dimension: 'tool_call' as const, quantity: result.toolCalls.length }]
-        : undefined;
-      const cost = await resolveCost(providerName, result.model, result.usage, extraUsage);
+      const cost = await resolveCost(providerName, result.model, result.usage);
 
       const meta: ResponseMeta = {
         provider: providerName,
@@ -127,6 +125,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
         usage: result.usage,
         latency,
         toolCalls: result.toolCalls,
+        providerCostUsd: result.providerCostUsd,
       };
       c.set('llmkit_response', meta);
 
@@ -146,7 +145,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
         });
       }
 
-      setCostHeaders(c, cost, providerName, latency);
+      setCostHeaders(c, cost, providerName, latency, result.providerCostUsd);
       return c.json({
         id: result.id,
         object: 'chat.completion',
@@ -197,10 +196,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
         if (!usage) return;
 
         const latency = Date.now() - start;
-        const streamExtraUsage = usage.toolCallCount > 0
-          ? [{ dimension: 'tool_call' as const, quantity: usage.toolCallCount }]
-          : undefined;
-        const cost = await resolveCost(providerName, usage.model, usage.tokens, streamExtraUsage);
+        const cost = await resolveCost(providerName, usage.model, usage.tokens);
 
         await writeStreamFinale(s, llmkitFmt, {
           id: usage.id,
@@ -216,7 +212,8 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
         await trackRequest({
           sessionId: c.req.header('x-llmkit-session-id') || undefined,
           endUserId: c.req.header('x-llmkit-user-id') || undefined,
-          toolCalls: undefined, // streaming tool calls tracked in non-streaming path
+          toolCalls: undefined,
+          providerCostUsd: usage.providerCostUsd,
           apiKey: c.get('apiKey'),
           apiKeyId: c.get('apiKeyId'),
           userId: c.get('userId'),
@@ -246,6 +243,7 @@ interface StreamResult {
   tokens: ProviderResponse['usage'];
   finishReason: string;
   toolCallCount: number;
+  providerCostUsd?: number;
   model: string;
   id: string;
   created: number;
@@ -254,8 +252,8 @@ interface StreamResult {
 
 async function consumeStream(
   s: StreamingApi,
-  gen: AsyncGenerator<{ type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string }>,
-  first: IteratorResult<{ type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string }>,
+  gen: AsyncGenerator<{ type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string; providerCostUsd?: number }>,
+  first: IteratorResult<{ type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string; providerCostUsd?: number }>,
   requestModel: string,
   llmkitFmt: boolean,
 ): Promise<StreamResult | null> {
@@ -263,6 +261,7 @@ async function consumeStream(
   let finalFinishReason = 'stop';
   let finalModel = requestModel;
   let finalId = '';
+  let finalProviderCostUsd: number | undefined;
   const created = Math.floor(Date.now() / 1000);
   const streamId = `chatcmpl-${created}`;
   let sentRole = false;
@@ -287,7 +286,7 @@ async function consumeStream(
 
   let toolCallCount = 0;
 
-  const processEvent = async (event: { type: string; text?: string; toolName?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string }) => {
+  const processEvent = async (event: { type: string; text?: string; toolName?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string; providerCostUsd?: number }) => {
     if (event.type === 'text' && event.text) await writeText(event.text);
     if (event.type === 'tool') toolCallCount++;
     if (event.type === 'end') {
@@ -295,6 +294,7 @@ async function consumeStream(
       finalFinishReason = event.finishReason || 'stop';
       finalModel = event.model || requestModel;
       finalId = event.id || '';
+      finalProviderCostUsd = event.providerCostUsd;
     }
   };
 
@@ -302,7 +302,7 @@ async function consumeStream(
   for await (const event of gen) await processEvent(event);
 
   if (!finalUsage) return null;
-  return { tokens: finalUsage, finishReason: finalFinishReason, toolCallCount, model: finalModel, id: finalId, created, streamId };
+  return { tokens: finalUsage, finishReason: finalFinishReason, toolCallCount, providerCostUsd: finalProviderCostUsd, model: finalModel, id: finalId, created, streamId };
 }
 
 async function writeStreamFinale(

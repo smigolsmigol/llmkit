@@ -52,14 +52,24 @@ export async function handleCostQuery(args: Record<string, unknown> | undefined)
   const days = (args?.days as number) || 30;
   const costs = await getCosts(groupBy, days, args?.provider as string, args?.model as string);
 
-  const breakdown = costs.breakdown.map(g => ({
-    key: g.key, costUsd: cents(g.costCents), requests: g.count, inputTokens: g.inputTokens, outputTokens: g.outputTokens,
-  }));
+  const breakdown = costs.breakdown.map(g => {
+    const entry: Record<string, unknown> = {
+      key: g.key, costUsd: cents(g.costCents), requests: g.count, inputTokens: g.inputTokens, outputTokens: g.outputTokens,
+    };
+    if (g.toolCalls) entry.toolCalls = g.toolCalls;
+    return entry;
+  });
+
+  const lines = breakdown.map(g => {
+    let line = `${g.key}: $${(g.costUsd as number).toFixed(2)} (${g.requests} reqs, ${(g.inputTokens as number).toLocaleString()} in / ${(g.outputTokens as number).toLocaleString()} out)`;
+    if (g.toolCalls) line += ` [${g.toolCalls} tool calls]`;
+    return line;
+  });
 
   return ok([
     `Cost breakdown by ${groupBy} (${days}d)`,
     '\u2500'.repeat(25),
-    ...breakdown.map(g => `${g.key}: $${g.costUsd.toFixed(2)} (${g.requests} reqs, ${g.inputTokens.toLocaleString()} in / ${g.outputTokens.toLocaleString()} out)`),
+    ...lines,
   ].join('\n'), { groupBy, days, breakdown });
 }
 

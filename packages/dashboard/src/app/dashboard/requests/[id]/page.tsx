@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { getRequestById } from '@/lib/queries';
 import { formatCents } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
-import { getModelPricing, type ProviderName } from '@f3d1/llmkit-shared';
+import { getModelPricing, type ProviderName, calculateCostFromPricing } from '@f3d1/llmkit-shared';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -32,11 +32,20 @@ export default async function RequestDetailPage({ params }: PageProps) {
   const ok = !req.error_code;
   const totalTokens = req.input_tokens + req.output_tokens;
   const pricing = getModelPricing(req.provider as ProviderName, req.model);
-  const perM = 1_000_000;
-  const inputCost = pricing ? (req.input_tokens / perM) * pricing.inputPerMillion : 0;
-  const outputCost = pricing ? (req.output_tokens / perM) * pricing.outputPerMillion : 0;
-  const cacheReadCost = pricing?.cacheReadPerMillion ? (req.cache_read_tokens / perM) * pricing.cacheReadPerMillion : 0;
-  const cacheWriteCost = pricing?.cacheWritePerMillion ? (req.cache_write_tokens / perM) * pricing.cacheWritePerMillion : 0;
+  const toolCallCount = req.tool_calls?.length ?? 0;
+  const costBreakdown = pricing
+    ? calculateCostFromPricing(pricing, {
+        inputTokens: req.input_tokens,
+        outputTokens: req.output_tokens,
+        cacheReadTokens: req.cache_read_tokens,
+        cacheWriteTokens: req.cache_write_tokens,
+        totalTokens: req.input_tokens + req.output_tokens,
+      })
+    : null;
+  const inputCost = costBreakdown?.inputCost ?? 0;
+  const outputCost = costBreakdown?.outputCost ?? 0;
+  const cacheReadCost = costBreakdown?.cacheReadCost ?? 0;
+  const cacheWriteCost = costBreakdown?.cacheWriteCost ?? 0;
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -94,12 +103,26 @@ export default async function RequestDetailPage({ params }: PageProps) {
         {cacheWriteCost > 0 && (
           <Row label="Cache Write">${cacheWriteCost.toFixed(6)}</Row>
         )}
+        {costBreakdown?.extraCosts?.map((ec) => (
+          <Row key={ec.dimension} label={`${ec.dimension.replace('_', ' ')} (${ec.quantity}x)`}>
+            ${ec.totalCost.toFixed(6)}
+          </Row>
+        ))}
         {totalTokens > 0 && (
           <Row label="Per 1k Tokens">
             ${((Number(req.cost_cents) / 100 / totalTokens) * 1000).toFixed(4)}
           </Row>
         )}
       </div>
+
+      {toolCallCount > 0 && req.tool_calls && (
+        <div className="rounded-lg border border-border bg-card p-5 space-y-1">
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">Tool Calls ({toolCallCount})</h2>
+          {req.tool_calls.map((tc, i) => (
+            <Row key={i} label={`#${i + 1}`}>{tc.name}</Row>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

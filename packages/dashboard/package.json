@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.0.0",
-    "@f3d1/llmkit-shared": "^0.0.1",
+    "@f3d1/llmkit-shared": "workspace:*",
     "@supabase/supabase-js": "^2.0.0",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",

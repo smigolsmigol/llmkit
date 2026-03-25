@@ -9,6 +9,7 @@ export interface ResponseMeta {
   model?: string;
   latency?: number;
   toolCalls?: { name: string }[];
+  providerCostUsd?: number;
 }
 
 export type Env = {

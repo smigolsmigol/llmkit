@@ -64,7 +64,7 @@ export interface UsageResponse {
 export interface CostsResponse {
   groupBy: string;
   days: number;
-  breakdown: { key: string; count: number; costCents: number; inputTokens: number; outputTokens: number }[];
+  breakdown: { key: string; count: number; costCents: number; inputTokens: number; outputTokens: number; toolCalls: number }[];
 }
 
 export interface KeysResponse {

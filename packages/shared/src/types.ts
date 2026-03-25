@@ -47,10 +47,10 @@ export interface TokenUsage {
 }
 
 export type ExtraCostDimension =
-  | 'tool_call'
-  | 'image'
-  | 'video_sec'
-  | 'voice_min'
+  | 'web_search'
+  | 'x_search'
+  | 'code_execution'
+  | 'file_attachment'
   | 'rag_search';
 
 export interface ExtraCost {

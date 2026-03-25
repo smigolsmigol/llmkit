@@ -26,6 +26,7 @@ export interface TrackParams {
   sessionId: string | undefined;
   endUserId: string | undefined;
   toolCalls: { name: string }[] | undefined;
+  providerCostUsd: number | undefined;
   apiKey: string | undefined;
   apiKeyId: string | undefined;
   userId: string | undefined;
@@ -50,12 +51,22 @@ export async function trackRequest(p: TrackParams): Promise<void> {
     latencyMs: p.latencyMs,
     usage: p.usage,
     cost: p.cost,
+    providerCostUsd: p.providerCostUsd,
   }));
 
   if (p.cost.totalCost === 0 && (p.usage.inputTokens > 0 || p.usage.outputTokens > 0)) {
     console.warn(
       `ZERO COST WARNING: ${p.provider}/${p.model} processed ${p.usage.inputTokens + p.usage.outputTokens} tokens but cost is $0. Model likely missing from pricing data.`,
     );
+  }
+
+  if (p.providerCostUsd != null && p.cost.totalCost > 0) {
+    const diff = Math.abs(p.cost.totalCost - p.providerCostUsd) / p.cost.totalCost;
+    if (diff > 0.1) {
+      console.warn(
+        `COST MISMATCH: ${p.provider}/${p.model} - ours=$${p.cost.totalCost.toFixed(6)}, provider=$${p.providerCostUsd.toFixed(6)} (diff ${(diff * 100).toFixed(1)}%)`,
+      );
+    }
   }
 
   if (p.budgetId && (p.cost.totalCost > 0 || p.budgetReservationId)) {
@@ -132,6 +143,7 @@ export function costLogger() {
       sessionId: c.req.header('x-llmkit-session-id') || undefined,
       endUserId: c.req.header('x-llmkit-user-id') || undefined,
       toolCalls: meta.toolCalls,
+      providerCostUsd: meta.providerCostUsd,
       apiKey: c.get('apiKey'),
       apiKeyId: c.get('apiKeyId'),
       userId: c.get('userId'),

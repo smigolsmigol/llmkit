@@ -79,10 +79,9 @@ jobs:
           # 6. MCP Registry listing (slash must be URL-encoded, /versions is the lookup endpoint)
           check_http "MCP Registry" "https://registry.modelcontextprotocol.io/v0/servers/io.github.smigolsmigol%2Fllmkit/versions"
 
-          # 7-8. Hetzner services: check port responds (auth handled separately)
+          # 7. Hetzner services: check port responds (auth handled separately)
           if [ -n "$HETZNER_IP" ]; then
             check_port "Analytics API" "$HETZNER_IP" 3200
-            check_port "Pricing API" "$HETZNER_IP" 3100
           fi
 
           # send result

@@ -96,8 +96,8 @@ client = OpenAI(http_client=tracked())`;
   -d '{"model":"gpt-4o","messages":[{"role":"user","content":"hello"}]}'`;
 
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-        <div className="mx-4 w-full max-w-lg rounded-lg border border-border bg-card p-6">
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto py-8 bg-black/60">
+        <div className="mx-4 w-full max-w-lg rounded-lg border border-border bg-card p-6 my-auto">
           <h2 className="text-lg font-semibold">Key Created</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Save this key now. You won&apos;t see it again.

@@ -87,6 +87,8 @@ jobs:
           node packages/proxy/test/budget-test.mjs
           node packages/proxy/test/reservation-test.mjs
           node packages/proxy/test/budget-bypass-test.mjs
+          node packages/proxy/test/xai-cost-test.mjs
+          node packages/proxy/test/openai-adapter-test.mjs
           node packages/cli/test/parser-test.mjs
           node packages/sdk/test/tracker-test.mjs
 
@@ -226,20 +228,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: verify pricing tables in sync
-        run: |
-          OPUS_SHARED=$(grep -A2 "'claude-opus-4-6'" packages/shared/src/providers.ts | grep -oP 'inputPerMillion:\s*\K[0-9.]+' | head -1 || echo "missing")
-          OPUS_PYTHON=$(grep "claude-opus-4-6" packages/python-sdk/src/llmkit/_pricing.py | grep -oP '\(\K[0-9.]+' | head -1 || echo "missing")
-          OPUS_MCP=$(grep -A1 "'claude-opus-4-6'" packages/mcp-server/src/claude-code.ts | grep -oP 'input:\s*\K[0-9.]+' | head -1 || echo "missing")
-          # normalize: strip trailing .0 for comparison (5.0 == 5)
-          SHARED_NORM=$(echo "$OPUS_SHARED" | sed 's/\.0$//')
-          PYTHON_NORM=$(echo "$OPUS_PYTHON" | sed 's/\.0$//')
-          MCP_NORM=$(echo "$OPUS_MCP" | sed 's/\.0$//')
-          echo "Opus 4-6 input pricing: shared=$OPUS_SHARED python=$OPUS_PYTHON mcp=$OPUS_MCP"
-          if [ "$SHARED_NORM" != "$PYTHON_NORM" ] || [ "$SHARED_NORM" != "$MCP_NORM" ]; then
-            echo "::error::Pricing tables out of sync for claude-opus-4-6: shared=$OPUS_SHARED python=$OPUS_PYTHON mcp=$OPUS_MCP"
-            exit 1
-          fi
-          echo "Pricing tables: IN SYNC"
+        run: node scripts/generate-pricing.mjs --check
 
       - name: verify no phantom URLs in SDK
         run: |

@@ -6,6 +6,15 @@ interface OpenAIMessage {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string; detail?: string } }>;
 }
 
+interface OpenAIUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+  completion_tokens_details?: { reasoning_tokens?: number };
+  cost_in_usd_ticks?: number;
+}
+
 interface OpenAIResponse {
   id: string;
   model: string;
@@ -13,11 +22,7 @@ interface OpenAIResponse {
     message: { role: string; content: string };
     finish_reason: string;
   }>;
-  usage: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
+  usage: OpenAIUsage;
 }
 
 interface OpenAIStreamChunk {
@@ -27,7 +32,7 @@ interface OpenAIStreamChunk {
     delta: { role?: string; content?: string };
     finish_reason: string | null;
   }>;
-  usage?: OpenAIResponse['usage'];
+  usage?: OpenAIUsage;
 }
 
 // reusable for any provider that speaks the OpenAI chat completions protocol
@@ -106,6 +111,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     const decoder = new TextDecoder();
     let buffer = '';
     let usage: TokenUsage | null = null;
+    let providerCostUsd: number | undefined;
     let finishReason = 'stop';
     let messageId = '';
     let model = req.model;
@@ -138,11 +144,8 @@ export class OpenAIAdapter implements ProviderAdapter {
             if (fr) finishReason = fr;
 
             if (parsed.usage) {
-              usage = {
-                inputTokens: parsed.usage.prompt_tokens,
-                outputTokens: parsed.usage.completion_tokens,
-                totalTokens: parsed.usage.total_tokens,
-              };
+              usage = parseUsage(parsed.usage);
+              providerCostUsd = parseProviderCost(parsed.usage);
             }
           } catch {
             // partial JSON from chunk boundary
@@ -153,8 +156,23 @@ export class OpenAIAdapter implements ProviderAdapter {
       reader.releaseLock();
     }
 
-    yield { type: 'end', usage: usage ?? undefined, finishReason, id: messageId, model };
+    yield { type: 'end', usage: usage ?? undefined, finishReason, id: messageId, model, providerCostUsd };
   }
+}
+
+function parseUsage(u: OpenAIUsage): TokenUsage {
+  return {
+    inputTokens: u.prompt_tokens,
+    outputTokens: u.completion_tokens,
+    totalTokens: u.total_tokens,
+    cacheReadTokens: u.prompt_tokens_details?.cached_tokens || undefined,
+    reasoningTokens: u.completion_tokens_details?.reasoning_tokens || undefined,
+  };
+}
+
+function parseProviderCost(u: OpenAIUsage): number | undefined {
+  if (u.cost_in_usd_ticks == null) return undefined;
+  return u.cost_in_usd_ticks / 10_000_000_000;
 }
 
 function parseResponse(data: OpenAIResponse): ProviderResponse {
@@ -166,12 +184,9 @@ function parseResponse(data: OpenAIResponse): ProviderResponse {
     id: data.id,
     content: choice?.message?.content || '',
     model: data.model,
-    usage: {
-      inputTokens: data.usage.prompt_tokens,
-      outputTokens: data.usage.completion_tokens,
-      totalTokens: data.usage.total_tokens,
-    },
+    usage: parseUsage(data.usage),
     finishReason: choice?.finish_reason || 'unknown',
+    providerCostUsd: parseProviderCost(data.usage),
     ...(toolCalls?.length && { toolCalls }),
   };
 }
