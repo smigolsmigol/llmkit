@@ -104,6 +104,7 @@ export class GeminiAdapter implements ProviderAdapter {
     const decoder = new TextDecoder();
     let buffer = '';
     let usage: TokenUsage | null = null;
+    let finishReason = 'stop';
     let modelVersion = req.model;
     let responseId = '';
 
@@ -128,6 +129,7 @@ export class GeminiAdapter implements ProviderAdapter {
             if (chunk.responseId) responseId = chunk.responseId;
 
             const candidate = chunk.candidates?.[0];
+            if (candidate?.finishReason) finishReason = candidate.finishReason;
             const text = candidate?.content?.parts?.[0]?.text;
             if (text) {
               yield { type: 'text', text };
@@ -146,7 +148,7 @@ export class GeminiAdapter implements ProviderAdapter {
       reader.releaseLock();
     }
 
-    yield { type: 'end', usage: usage ?? undefined, id: responseId, model: modelVersion };
+    yield { type: 'end', usage: usage ?? undefined, finishReason, id: responseId, model: modelVersion };
   }
 }
 

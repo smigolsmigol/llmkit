@@ -103,6 +103,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     const decoder = new TextDecoder();
     let buffer = '';
     let usage: TokenUsage | null = null;
+    let finishReason = 'stop';
     let messageId = '';
     let model = req.model;
 
@@ -135,11 +136,12 @@ export class AnthropicAdapter implements ProviderAdapter {
               yield { type: 'text', text: event.delta.text };
             }
 
-            if (event.type === 'message_delta' && event.usage) {
-              if (usage) {
+            if (event.type === 'message_delta') {
+              if (event.usage && usage) {
                 usage.outputTokens = event.usage.output_tokens;
                 usage.totalTokens = usage.inputTokens + usage.outputTokens;
               }
+              if (event.delta?.stop_reason) finishReason = event.delta.stop_reason;
             }
           } catch {
             // partial JSON from chunk boundary, next chunk will complete it
@@ -150,7 +152,7 @@ export class AnthropicAdapter implements ProviderAdapter {
       reader.releaseLock();
     }
 
-    yield { type: 'end', usage: usage ?? undefined, id: messageId, model };
+    yield { type: 'end', usage: usage ?? undefined, finishReason, id: messageId, model };
   }
 }
 

@@ -106,6 +106,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     const decoder = new TextDecoder();
     let buffer = '';
     let usage: TokenUsage | null = null;
+    let finishReason = 'stop';
     let messageId = '';
     let model = req.model;
 
@@ -133,6 +134,9 @@ export class OpenAIAdapter implements ProviderAdapter {
               yield { type: 'text', text: delta };
             }
 
+            const fr = parsed.choices[0]?.finish_reason;
+            if (fr) finishReason = fr;
+
             if (parsed.usage) {
               usage = {
                 inputTokens: parsed.usage.prompt_tokens,
@@ -149,7 +153,7 @@ export class OpenAIAdapter implements ProviderAdapter {
       reader.releaseLock();
     }
 
-    yield { type: 'end', usage: usage ?? undefined, id: messageId, model };
+    yield { type: 'end', usage: usage ?? undefined, finishReason, id: messageId, model };
   }
 }
 

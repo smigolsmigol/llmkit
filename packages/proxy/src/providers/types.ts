@@ -32,6 +32,7 @@ export interface StreamEvent {
   text?: string;
   toolName?: string;
   usage?: TokenUsage;
+  finishReason?: string;
   id?: string;
   model?: string;
 }

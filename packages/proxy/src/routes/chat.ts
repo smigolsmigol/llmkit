@@ -133,6 +133,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
           provider: providerName,
           model: result.model,
           content: result.content,
+          finishReason: result.finishReason,
           usage: result.usage,
           cost,
           latencyMs: latency,
@@ -201,6 +202,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           provider: providerName,
           tokens: usage.tokens,
           cost,
+          finishReason: usage.finishReason,
           created: usage.created,
           streamId: usage.streamId,
         });
@@ -236,6 +238,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
 
 interface StreamResult {
   tokens: ProviderResponse['usage'];
+  finishReason: string;
   model: string;
   id: string;
   created: number;
@@ -244,12 +247,13 @@ interface StreamResult {
 
 async function consumeStream(
   s: StreamingApi,
-  gen: AsyncGenerator<{ type: string; text?: string; usage?: ProviderResponse['usage']; model?: string; id?: string }>,
-  first: IteratorResult<{ type: string; text?: string; usage?: ProviderResponse['usage']; model?: string; id?: string }>,
+  gen: AsyncGenerator<{ type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string }>,
+  first: IteratorResult<{ type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string }>,
   requestModel: string,
   llmkitFmt: boolean,
 ): Promise<StreamResult | null> {
   let finalUsage: ProviderResponse['usage'] | undefined;
+  let finalFinishReason = 'stop';
   let finalModel = requestModel;
   let finalId = '';
   const created = Math.floor(Date.now() / 1000);
@@ -274,10 +278,11 @@ async function consumeStream(
     })}\n\n`));
   };
 
-  const processEvent = async (event: { type: string; text?: string; usage?: ProviderResponse['usage']; model?: string; id?: string }) => {
+  const processEvent = async (event: { type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string }) => {
     if (event.type === 'text' && event.text) await writeText(event.text);
     if (event.type === 'end') {
       finalUsage = event.usage;
+      finalFinishReason = event.finishReason || 'stop';
       finalModel = event.model || requestModel;
       finalId = event.id || '';
     }
@@ -287,17 +292,17 @@ async function consumeStream(
   for await (const event of gen) await processEvent(event);
 
   if (!finalUsage) return null;
-  return { tokens: finalUsage, model: finalModel, id: finalId, created, streamId };
+  return { tokens: finalUsage, finishReason: finalFinishReason, model: finalModel, id: finalId, created, streamId };
 }
 
 async function writeStreamFinale(
   s: StreamingApi,
   llmkitFmt: boolean,
-  p: { id: string; model: string; provider: ProviderName; tokens: TokenUsage; cost: CostBreakdown; created: number; streamId: string },
+  p: { id: string; model: string; provider: ProviderName; tokens: TokenUsage; cost: CostBreakdown; finishReason: string; created: number; streamId: string },
 ): Promise<void> {
   if (llmkitFmt) {
     await s.write(encoder.encode(`event: done\ndata: ${JSON.stringify({
-      id: p.id, model: p.model, provider: p.provider, usage: p.tokens, cost: p.cost,
+      id: p.id, model: p.model, provider: p.provider, finishReason: p.finishReason, usage: p.tokens, cost: p.cost,
     })}\n\n`));
     return;
   }
