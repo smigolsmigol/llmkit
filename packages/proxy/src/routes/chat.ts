@@ -115,7 +115,10 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
       const result = await adapter.chat(req);
       const latency = Date.now() - start;
 
-      const cost = await resolveCost(providerName, result.model, result.usage);
+      const extraUsage = result.toolCalls?.length
+        ? [{ dimension: 'tool_call' as const, quantity: result.toolCalls.length }]
+        : undefined;
+      const cost = await resolveCost(providerName, result.model, result.usage, extraUsage);
 
       const meta: ResponseMeta = {
         provider: providerName,
@@ -194,7 +197,10 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
         if (!usage) return;
 
         const latency = Date.now() - start;
-        const cost = await resolveCost(providerName, usage.model, usage.tokens);
+        const streamExtraUsage = usage.toolCallCount > 0
+          ? [{ dimension: 'tool_call' as const, quantity: usage.toolCallCount }]
+          : undefined;
+        const cost = await resolveCost(providerName, usage.model, usage.tokens, streamExtraUsage);
 
         await writeStreamFinale(s, llmkitFmt, {
           id: usage.id,
@@ -239,6 +245,7 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
 interface StreamResult {
   tokens: ProviderResponse['usage'];
   finishReason: string;
+  toolCallCount: number;
   model: string;
   id: string;
   created: number;
@@ -278,8 +285,11 @@ async function consumeStream(
     })}\n\n`));
   };
 
-  const processEvent = async (event: { type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string }) => {
+  let toolCallCount = 0;
+
+  const processEvent = async (event: { type: string; text?: string; toolName?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string }) => {
     if (event.type === 'text' && event.text) await writeText(event.text);
+    if (event.type === 'tool') toolCallCount++;
     if (event.type === 'end') {
       finalUsage = event.usage;
       finalFinishReason = event.finishReason || 'stop';
@@ -292,7 +302,7 @@ async function consumeStream(
   for await (const event of gen) await processEvent(event);
 
   if (!finalUsage) return null;
-  return { tokens: finalUsage, finishReason: finalFinishReason, model: finalModel, id: finalId, created, streamId };
+  return { tokens: finalUsage, finishReason: finalFinishReason, toolCallCount, model: finalModel, id: finalId, created, streamId };
 }
 
 async function writeStreamFinale(

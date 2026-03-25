@@ -1,5 +1,6 @@
 import {
   type CostBreakdown,
+  type ExtraCostDimension,
   calculateCostFromPricing,
   getModelPricing,
   type ModelPricing,
@@ -105,10 +106,11 @@ export async function resolveCost(
   provider: ProviderName,
   model: string,
   usage: TokenUsage,
+  extraUsage?: Array<{ dimension: ExtraCostDimension; quantity: number }>,
 ): Promise<CostBreakdown> {
   const pricing = await resolvePricing(provider, model);
   if (!pricing) {
     return { inputCost: 0, outputCost: 0, totalCost: 0, currency: 'USD' };
   }
-  return calculateCostFromPricing(pricing, usage);
+  return calculateCostFromPricing(pricing, usage, extraUsage);
 }
