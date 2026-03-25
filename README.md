@@ -36,7 +36,7 @@ Tag requests with a session ID or end-user ID to track costs per agent, per conv
 
 11 providers through one interface: Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Fallback chains with one header (`x-llmkit-fallback: anthropic,openai,gemini`).
 
-Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 45+ models priced. Open source, MIT licensed.
+Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 40+ models priced. Open source, MIT licensed.
 
 ## How it works
 
@@ -202,7 +202,7 @@ Parses the session transcript and prints cost summary (tokens, spend, models use
 | [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy: auth, budgets, routing, logging |
 | [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
 | [@f3d1/llmkit-mcp-server](packages/mcp-server) | 14 tools: proxy analytics, local costs (Claude Code + Cline + Cursor), Notion sync |
-| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 45+ models), cost calculation |
+| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
 
 ## Testing
 

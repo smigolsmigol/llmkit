@@ -5,7 +5,7 @@ import { ProviderIcon } from '@/components/provider-icons';
 
 
 const providers = [
-  { id: 'anthropic', name: 'Anthropic', models: 8, bg: 'bg-orange-500/15 text-orange-400', accent: 'border-l-orange-400' },
+  { id: 'anthropic', name: 'Anthropic', models: 9, bg: 'bg-orange-500/15 text-orange-400', accent: 'border-l-orange-400' },
   { id: 'openai', name: 'OpenAI', models: 9, bg: 'bg-emerald-500/15 text-emerald-400', accent: 'border-l-emerald-400' },
   { id: 'gemini', name: 'Google Gemini', models: 3, bg: 'bg-blue-500/15 text-blue-400', accent: 'border-l-blue-400' },
   { id: 'xai', name: 'xAI Grok', models: 9, bg: 'bg-zinc-500/15 text-zinc-300', accent: 'border-l-zinc-300' },
