@@ -97,10 +97,12 @@ jobs:
           node packages/cli/test/smoke-test.mjs
           node packages/mcp-server/test/unit-test.mjs
           node packages/ai-sdk-provider/test/unit-test.mjs
+          node packages/shared/test/exports-test.mjs
 
-      - name: test (integration)
+      - name: test (integration + contract)
         run: |
           node packages/mcp-server/test/integration-test.mjs
+          node test/contract-test.mjs
 
   check-python:
     needs: secrets-scan
