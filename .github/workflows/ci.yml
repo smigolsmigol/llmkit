@@ -80,7 +80,7 @@ jobs:
           npx publint packages/ai-sdk-provider
           npx publint packages/mcp-server
 
-      - name: test
+      - name: test (unit)
         run: |
           node packages/proxy/test/unit-test.mjs
           node packages/proxy/test/crypto-test.mjs
@@ -89,6 +89,12 @@ jobs:
           node packages/proxy/test/budget-bypass-test.mjs
           node packages/cli/test/parser-test.mjs
           node packages/sdk/test/tracker-test.mjs
+
+      - name: test (smoke)
+        run: |
+          node packages/mcp-server/test/smoke-test.mjs
+          node packages/ai-sdk-provider/test/smoke-test.mjs
+          node packages/cli/test/smoke-test.mjs
 
   check-python:
     needs: secrets-scan
