@@ -67,11 +67,11 @@ export default async function OverviewPage({
               <p className="font-medium group-hover:text-violet-400">Add a provider key</p>
               <p className="mt-1 text-xs text-muted-foreground">Paste your OpenAI, Anthropic, or other provider API key.</p>
             </Link>
-            <div className="rounded-lg border border-border bg-card p-5">
+            <Link href="/docs" className="group block rounded-lg border border-border bg-card p-5 transition hover:border-violet-500/20">
               <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-lg bg-violet-600/10 text-sm font-bold text-violet-400">3</div>
-              <p className="font-medium">Send your first request</p>
-              <p className="mt-1 text-xs text-muted-foreground">Point your SDK at the proxy and make a call. Costs appear here automatically.</p>
-            </div>
+              <p className="font-medium group-hover:text-violet-400">Send your first request</p>
+              <p className="mt-1 text-xs text-muted-foreground">See code snippets for Python, CLI, or env vars. Costs appear here automatically.</p>
+            </Link>
           </div>
           <div className="mt-6 rounded-lg border border-border bg-card p-4">
             <p className="mb-2 text-xs font-medium text-muted-foreground">Or try the local MCP tools (no proxy needed)</p>

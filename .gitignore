@@ -78,3 +78,6 @@ scripts/sync-bot-context.sh
 .github/hooks/private-patterns.txt
 
 .vercel
+
+# test artifacts
+e2e-ai-sdk-test.mjs

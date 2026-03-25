@@ -149,7 +149,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
             {result.data.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
-                  No requests found.
+                  No requests yet. <a href="/docs" className="text-violet-400 hover:underline">See how to send your first request</a>.
                 </td>
               </tr>
             )}
