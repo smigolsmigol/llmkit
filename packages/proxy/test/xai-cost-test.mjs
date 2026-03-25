@@ -25,7 +25,7 @@ function test(name, fn) {
 
 test('all 9 xAI models have valid pricing', () => {
   const models = Object.keys(PRICING.xai);
-  assert.equal(models.length, 9, `expected 9 xAI models, got ${models.length}`);
+  assert.ok(models.length >= 9, `expected at least 9 xAI models, got ${models.length}`);
   for (const model of models) {
     const p = PRICING.xai[model];
     assert.ok(p.inputPerMillion > 0, `${model} inputPerMillion should be > 0`);

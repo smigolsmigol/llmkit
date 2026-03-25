@@ -123,10 +123,10 @@ test('cost: cache tokens included', () => {
 });
 
 test('cost: model without cache pricing ignores cache tokens', () => {
-  const cost = calculateCost('openai', 'gpt-4o', 1000, 500, 2000, 500);
-  // gpt-4o has no cacheReadPerMillion/cacheWritePerMillion
+  const cost = calculateCost('openai', 'gpt-4-turbo', 1000, 500, 2000, 500);
+  // gpt-4-turbo has no cacheReadPerMillion/cacheWritePerMillion
   // should only count input + output
-  const expected = (1000 / 1_000_000) * 2.5 + (500 / 1_000_000) * 10.0;
+  const expected = (1000 / 1_000_000) * 10.0 + (500 / 1_000_000) * 30.0;
   assertClose(cost, expected, 0.00001, 'should ignore cache for models without cache pricing');
 });
 
