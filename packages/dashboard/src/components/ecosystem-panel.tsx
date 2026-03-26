@@ -7,10 +7,11 @@ import { Sparkline } from '@/components/charts/sparkline';
 interface NpmPackage {
   name: string;
   weekly: number;
+  weeklyRaw?: number;
   total: number;
   recent: number;
   recentDay: string;
-  daily: Array<{ day: string; count: number }>;
+  daily: Array<{ day: string; count: number; raw?: number; ci_noise?: number }>;
 }
 
 interface PypiStats {
@@ -126,11 +127,13 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
   }
 
   const totalNpmWeekly = data.npm.reduce((s, p) => s + p.weekly, 0);
+  const totalNpmWeeklyRaw = data.npm.reduce((s, p) => s + (p.weeklyRaw ?? p.weekly), 0);
+  const ciNoise = totalNpmWeeklyRaw - totalNpmWeekly;
   const sortedByWeekly = [...data.npm].sort((a, b) => b.weekly - a.weekly);
   const servicesUp = data.health.filter((h) => h.status === 'up').length;
   const allUp = servicesUp === data.health.length && data.health.length > 0;
 
-  // aggregate daily downloads across all npm packages
+  // aggregate daily downloads (organic) across all npm packages
   const dailyMap = new Map<string, number>();
   for (const pkg of data.npm) {
     for (const d of pkg.daily) {
@@ -144,7 +147,6 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
   // sparkline data: daily totals
   const npmSparkline = aggregatedDaily.map((d) => d.count);
 
-  // max for bar scaling in funnel
   const funnelMax = totalNpmWeekly + data.pypi.weekly;
 
   const maxWeekly = Math.max(sortedByWeekly[0]?.weekly ?? 0, data.pypi.weekly);
@@ -156,10 +158,13 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
       <div className="grid grid-cols-4 gap-1.5">
         <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">npm Weekly</p>
+            <p className="text-xs text-muted-foreground">npm Organic</p>
             <span className="text-[10px] text-muted-foreground">{data.npm.length} pkgs</span>
           </div>
           <p className="mt-0.5 font-mono text-2xl font-bold text-violet-400">{fmt(totalNpmWeekly)}</p>
+          {ciNoise > 0 && (
+            <div className="text-[10px] text-muted-foreground">{fmt(ciNoise)} CI noise stripped</div>
+          )}
           <Sparkline data={npmSparkline} color="#7c3aed" height={28} />
         </div>
 

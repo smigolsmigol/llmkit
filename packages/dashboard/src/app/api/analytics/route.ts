@@ -46,16 +46,21 @@ export async function GET() {
     const npm = Object.entries(raw.npm || {})
       .filter(([name]) => name !== 'collected_at')
       .map(([name, stats]: [string, any]) => {
-        const daily: Array<{day: string; count: number}> = stats.daily ?? [];
-        const recent = daily.length > 0 ? daily[daily.length - 1]?.count ?? 0 : 0;
-        const recentDay = daily.length > 0 ? daily[daily.length - 1]?.day ?? '' : '';
+        const daily: Array<{day: string; count: number; organic?: number; ci_noise?: number}> = stats.daily ?? [];
+        const last = daily.length > 0 ? daily[daily.length - 1] : null;
         return {
           name,
-          weekly: stats.last_week ?? 0,
-          total: stats.last_month ?? 0,
-          recent,
-          recentDay,
-          daily: daily.slice(-14),
+          weekly: stats.organic_week ?? stats.last_week ?? 0,
+          weeklyRaw: stats.last_week ?? 0,
+          total: stats.organic_month ?? stats.last_month ?? 0,
+          recent: last?.organic ?? last?.count ?? 0,
+          recentDay: last?.day ?? '',
+          daily: daily.slice(-14).map(d => ({
+            day: d.day,
+            count: d.organic ?? d.count,
+            raw: d.count,
+            ci_noise: d.ci_noise ?? 0,
+          })),
         };
       });
 
