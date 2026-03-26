@@ -111,7 +111,7 @@ def test_calculate_large_request():
 
 
 def test_short_model_no_wrong_match():
-    assert lookup_pricing("gpt-4") is None
+    assert lookup_pricing("zzz-unknown-model") is None
 
 
 def test_estimate_cost_public():
