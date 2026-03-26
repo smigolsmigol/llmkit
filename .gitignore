@@ -81,3 +81,10 @@ scripts/sync-bot-context.sh
 
 # test artifacts
 e2e-ai-sdk-test.mjs
+
+# secrets and credentials (added by keyguard)
+.env.local
+.env.production
+.env.staging
+.env.development
+.pypirc

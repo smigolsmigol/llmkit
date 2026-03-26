@@ -83,6 +83,10 @@ jobs:
           npx publint packages/ai-sdk-provider
           npx publint packages/mcp-server
 
+      - name: security (keyguard)
+        run: npx kguard scan --no-color
+        continue-on-error: true
+
       - name: test (unit)
         run: |
           node packages/proxy/test/unit-test.mjs

@@ -1,34 +1,33 @@
 # Security Policy
 
-## Reporting vulnerabilities
+## Reporting a Vulnerability
 
-If you find a security vulnerability in LLMKit, please report it responsibly:
+If you discover a security vulnerability in LLMKit, please report it responsibly.
 
-1. **Do not** open a public GitHub issue
-2. Email the maintainer through the [GitHub profile](https://github.com/smigolsmigol) or use [GitHub Security Advisories](https://github.com/smigolsmigol/llmkit/security/advisories/new)
-3. Include steps to reproduce and potential impact
+**Do not open a public issue.** Email security@llmkit.dev or DM @smigolsmigol on X.
 
-We aim to acknowledge reports within 48 hours and provide a fix timeline within 7 days.
+Include: description of the vulnerability, steps to reproduce, and impact assessment.
 
-## Security measures
+We will acknowledge receipt within 48 hours and release a fix within 7 days for critical issues.
 
-**Encryption**: Provider API keys are encrypted at rest with AES-GCM. User API keys are hashed with SHA-256 before storage.
+## How LLMKit Secures Your Keys
 
-**Authentication**: All proxy API calls require a valid API key via `Authorization: Bearer` header. Dashboard uses Clerk for user authentication.
+LLMKit is an API gateway that handles provider API keys (OpenAI, Anthropic, Google, xAI, etc.). Security is non-negotiable.
 
-**Data boundaries**: The MCP server's local tools (`llmkit_local_*`) never transmit data. Proxy tools only send request metadata (model, tokens, cost), never prompt content or completions.
+**Encryption**: Provider keys are encrypted with AES-256-GCM before storage. Each encryption uses a random 12-byte IV and AAD (Additional Authenticated Data) that binds the ciphertext to its owner and provider context, preventing ciphertext swapping between database rows.
 
-**Infrastructure**: Proxy runs on Cloudflare Workers (edge, no persistent server). Database on Supabase with Row Level Security enabled on all tables. Dashboard on Vercel with Clerk SSO.
+**Hashing**: User API keys are SHA-256 hashed before storage. The raw key is shown once at creation and never stored.
 
-**CI/CD**: Automated secret scanning (gitleaks), security linting (semgrep), and dependency auditing on every push.
+**Runtime isolation**: The proxy runs on Cloudflare Workers. Workers execute in V8 isolates with no filesystem, no .env files, no SSH keys, and no persistent storage. Even if a Worker is compromised, there is nothing on disk to exfiltrate.
 
-## Supported versions
+**Supply chain**: All CI actions are pinned to commit SHAs, not mutable version tags. Every workflow has explicit least-privilege permissions. This prevents the class of attack that compromised LiteLLM in March 2026. Security enforced by [KeyGuard](https://github.com/smigolsmigol/keyguard).
+
+**AI tool exclusion**: `.cursorignore` and `.claudeignore` prevent AI coding assistants from reading secret files in the project.
+
+**Dependency policy**: `pnpm audit` and `semgrep` run in CI. The proxy has two runtime dependencies (Hono, @f3d1/llmkit-shared). Minimal attack surface.
+
+## Supported Versions
 
 | Version | Supported |
-|---------|-----------|
-| 0.4.x   | Yes       |
-| < 0.4   | No        |
-
-## Scope
-
-This policy covers the `@f3d1/llmkit-mcp-server` npm package and the hosted proxy at `llmkit-proxy.smigolsmigol.workers.dev`.
+| ------- | --------- |
+| latest  | Yes       |

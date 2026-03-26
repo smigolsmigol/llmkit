@@ -1,0 +1,27 @@
+# KeyGuard configuration
+# https://github.com/smigolsmigol/keyguard
+
+version: 1
+secrets:
+  patterns: []
+  scan:
+    - '**/*'
+    - '!node_modules/**'
+  banned_files:
+    - .env
+    - .env.local
+    - .env.production
+    - '*.pem'
+    - '*.key'
+    - '*.p12'
+    - .npmrc
+    - .pypirc
+ci:
+  pin_actions: true
+  require_permissions: true
+  write_allowed: []
+credentials:
+  vault_provider: none
+  required_keys: []
+
+integrity: 8b439410b7103f9c437e0f361145c89d90f2c4b198bb6f3680d2254c97a3d2b8

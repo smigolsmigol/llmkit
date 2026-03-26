@@ -230,6 +230,22 @@ npx wrangler secret put ENCRYPTION_KEY
 npx wrangler deploy
 ```
 
+## Security
+
+LLMKit handles your API keys. We take that seriously.
+
+| Layer | What |
+|-------|------|
+| Encryption | Provider keys: AES-256-GCM, random IV, context-bound AAD |
+| Hashing | User API keys: SHA-256, never stored in plaintext |
+| Runtime | Cloudflare Workers: no filesystem, no .env, nothing to exfiltrate |
+| Supply chain | All CI actions pinned to commit SHAs, explicit least-privilege permissions |
+| Provenance | npm packages published with provenance attestation |
+| AI exclusion | .cursorignore + .claudeignore block AI tools from reading secrets |
+| Audit | Security enforced by [KeyGuard](https://github.com/smigolsmigol/keyguard) in CI |
+
+Full details in [SECURITY.md](SECURITY.md).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
