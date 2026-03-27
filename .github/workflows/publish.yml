@@ -39,7 +39,7 @@ jobs:
         run: pnpm turbo build --filter=@f3d1/llmkit-${{ inputs.package }}
 
       - name: pack tarball
-        run: pnpm --filter @f3d1/llmkit-${{ inputs.package }} pack --pack-destination /tmp/pkg
+        run: cd packages/${{ inputs.package }} && pnpm pack --pack-destination /tmp/pkg
 
       - name: attest artifact
         uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
