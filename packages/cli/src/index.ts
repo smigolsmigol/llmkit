@@ -1,7 +1,13 @@
 #!/usr/bin/env node
 import { spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { startProxy } from './proxy.js';
 import { printSummary } from './summary.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8')).version;
 
 const tty = process.stderr.isTTY ?? false;
 const esc = (code: string, s: string) => tty ? `\x1b[${code}m${s}\x1b[0m` : s;
@@ -42,7 +48,7 @@ function parseArgs(): CliOpts {
   const argv = process.argv.slice(2);
 
   if (argv.includes('--version') || argv.includes('-V')) {
-    process.stdout.write('0.0.7\n');
+    process.stdout.write(`${PKG_VERSION}\n`);
     process.exit(0);
   }
 
