@@ -56,8 +56,12 @@ Auto-log session costs when Claude Code exits:
 ```json
 {
   "hooks": {
-    "SessionEnd": [{"hooks": [{"type": "command",
-      "command": "npx @f3d1/llmkit-mcp-server --hook"}]}]
+    "SessionEnd": [
+      {
+        "type": "command",
+        "command": "npx @f3d1/llmkit-mcp-server --hook"
+      }
+    ]
   }
 }
 ```
