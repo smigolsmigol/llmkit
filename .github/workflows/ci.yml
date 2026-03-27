@@ -45,7 +45,7 @@ jobs:
       - name: security audit + secrets scan
         run: semgrep scan --config p/security-audit --config p/secrets --error
 
-  check-ts:
+  check-and-test:
     needs: secrets-scan
     runs-on: ubuntu-latest
     steps:
@@ -151,7 +151,7 @@ jobs:
         run: python -m pytest tests/ -v
 
   deploy:
-    needs: [secrets-scan, semgrep, check-ts, check-python]
+    needs: [secrets-scan, semgrep, check-and-test, check-python]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -268,7 +268,7 @@ jobs:
             --data-urlencode "text=<b>Post-deploy verification FAILED</b>%0A%0ASomething is broken in production.%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
 
   notify-failure:
-    needs: [secrets-scan, semgrep, check-ts, check-python, deploy]
+    needs: [secrets-scan, semgrep, check-and-test, check-python, deploy]
     if: failure()
     runs-on: ubuntu-latest
     steps:
