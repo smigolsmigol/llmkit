@@ -15,21 +15,27 @@ No code changes needed. The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` 
 ### Options
 
 ```
---port N      proxy port (default: random open port)
---verbose     log each intercepted request
---json        output cost summary as JSON
+--port <N>      proxy port (default: random)
+-v, --verbose   per-request costs as they happen
+--json          machine-readable output
+-V, --version   print version
+-h, --help      show this help
 ```
 
 ### Example output
 
 ```
-LLMKit Cost Summary
----
-Total: $0.0342 (5 requests)
+    ██╗     ██╗     ███╗   ███╗██╗  ██╗██╗████████╗
+    ██║     ██║     ████╗ ████║██║ ██╔╝██║╚══██╔══╝
+    ██║     ██║     ██╔████╔██║█████╔╝ ██║   ██║
+    ██║     ██║     ██║╚██╔╝██║██╔═██╗ ██║   ██║
+    ███████╗███████╗██║ ╚═╝ ██║██║  ██╗██║   ██║
+    ╚══════╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝
 
-By model:
-  claude-sonnet-4-6: $0.0291 (3 reqs)
-  gpt-4.1-mini: $0.0051 (2 reqs)
+    $0.0342 total  5 requests  12.8s  ~$9.62/hr
+
+    claude-sonnet-4-6  3 reqs   $0.0291  ████████████████████
+    gpt-4.1-mini       2 reqs   $0.0051  ███░░░░░░░░░░░░░░░░░
 ```
 
 ## Docs

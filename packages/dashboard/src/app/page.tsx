@@ -162,7 +162,7 @@ export default function Home() {
               </div>
               <h3 className="text-base font-semibold">MCP Server</h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                14 tools for cost tracking inside your IDE. 5 work locally by reading Claude Code, Cursor, and Cline session data. No account needed.
+                11 tools for cost tracking inside your IDE. 5 work locally by reading Claude Code, Cursor, and Cline session data. No account needed.
               </p>
               <p className="mt-4 text-xs text-violet-400 group-hover:text-violet-300 transition">
                 Learn more {'->'}

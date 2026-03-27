@@ -4,10 +4,10 @@ import { PublicFooter } from '@/components/public-footer';
 
 export const metadata: Metadata = {
   title: 'MCP Server - LLMKit',
-  description: '14 MCP tools for AI cost tracking. 5 work locally reading Claude Code, Cursor, and Cline session data without an account.',
+  description: '11 MCP tools for AI cost tracking. 5 work locally reading Claude Code, Cursor, and Cline session data without an account.',
   openGraph: {
     title: 'LLMKit MCP Server',
-    description: '14 tools for AI cost tracking inside your IDE. 5 work locally, no account needed.',
+    description: '11 tools for AI cost tracking inside your IDE. 5 work locally, no account needed.',
     url: 'https://llmkit-dashboard.vercel.app/mcp',
   },
 };
@@ -27,12 +27,6 @@ const proxyTools = [
   { name: 'llmkit_session_summary', desc: 'Recent sessions with cost, duration, models' },
   { name: 'llmkit_list_keys', desc: 'All API keys with status' },
   { name: 'llmkit_health', desc: 'Proxy health and response time' },
-];
-
-const notionTools = [
-  { name: 'llmkit_notion_cost_snapshot', desc: 'Formatted cost snapshot synced to Notion' },
-  { name: 'llmkit_notion_budget_check', desc: 'Budget status with approval workflow' },
-  { name: 'llmkit_notion_session_report', desc: 'Per-session breakdown synced to Notion' },
 ];
 
 const supportedTools = [
@@ -70,7 +64,7 @@ export default function McpPage() {
             MCP Server
           </h1>
           <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-zinc-400">
-            14 tools for cost tracking inside your IDE.
+            11 tools for cost tracking inside your IDE.
             5 work locally without an account or API key.
           </p>
         </div>
@@ -133,17 +127,6 @@ export default function McpPage() {
         </div>
         <div className="space-y-2">
           {proxyTools.map((t) => <ToolRow key={t.name} {...t} />)}
-        </div>
-      </div>
-
-      {/* notion tools */}
-      <div className="mx-auto max-w-3xl px-6 pb-12">
-        <div className="mb-4">
-          <h2 className="text-base font-semibold">Notion sync <span className="ml-2 text-xs font-normal text-amber-400">requires NOTION_TOKEN</span></h2>
-          <p className="mt-1 text-xs text-zinc-500">Push cost snapshots and session reports to Notion pages.</p>
-        </div>
-        <div className="space-y-2">
-          {notionTools.map((t) => <ToolRow key={t.name} {...t} />)}
         </div>
       </div>
 

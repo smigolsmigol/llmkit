@@ -105,7 +105,7 @@ export default async function SettingsPage() {
                 Track costs from Claude Code, Cursor, or Cline. Local tools work without an API key.
               </p>
               <a href="/mcp" className="mt-3 inline-block text-sm text-violet-400 hover:text-violet-300 transition">
-                Setup guide and all 14 tools {'\u2192'}
+                Setup guide and all 11 tools {'->'}
               </a>
             </div>
           </div>
