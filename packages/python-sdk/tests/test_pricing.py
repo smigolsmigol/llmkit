@@ -115,14 +115,18 @@ def test_short_model_no_wrong_match():
 
 
 def test_estimate_cost_public():
-    from unittest.mock import MagicMock
+    from types import SimpleNamespace
 
     from llmkit import estimate_cost
 
-    resp = MagicMock()
-    resp.model = "gpt-4o"
-    resp.usage.prompt_tokens = 100
-    resp.usage.completion_tokens = 50
+    usage = SimpleNamespace(
+        prompt_tokens=100,
+        completion_tokens=50,
+        prompt_tokens_details=None,
+        cache_read_input_tokens=None,
+        cache_creation_input_tokens=None,
+    )
+    resp = SimpleNamespace(model="gpt-4o", usage=usage)
     cost = estimate_cost(resp)
     assert cost.total_cost is not None
     assert cost.estimated is True
