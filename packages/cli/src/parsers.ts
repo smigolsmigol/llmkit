@@ -16,9 +16,9 @@ export function parseOpenAIResponse(body: string): ParsedUsage | null {
     return {
       provider: 'openai',
       model: data.model ?? 'unknown',
-      inputTokens: data.usage.prompt_tokens ?? 0,
-      outputTokens: data.usage.completion_tokens ?? 0,
-      cacheReadTokens: 0,
+      inputTokens: data.usage.prompt_tokens ?? data.usage.input_tokens ?? 0,
+      outputTokens: data.usage.completion_tokens ?? data.usage.output_tokens ?? 0,
+      cacheReadTokens: data.usage.prompt_tokens_details?.cached_tokens ?? 0,
       cacheWriteTokens: 0,
     };
   } catch {
@@ -49,6 +49,7 @@ export function parseOpenAIStream(buffer: string): ParsedUsage | null {
   let model = 'unknown';
   let inputTokens = 0;
   let outputTokens = 0;
+  let cacheReadTokens = 0;
   let found = false;
 
   for (const line of buffer.split('\n')) {
@@ -60,8 +61,9 @@ export function parseOpenAIStream(buffer: string): ParsedUsage | null {
       const chunk = JSON.parse(raw);
       if (chunk.model) model = chunk.model;
       if (chunk.usage) {
-        inputTokens = chunk.usage.prompt_tokens ?? 0;
-        outputTokens = chunk.usage.completion_tokens ?? 0;
+        inputTokens = chunk.usage.prompt_tokens ?? chunk.usage.input_tokens ?? 0;
+        outputTokens = chunk.usage.completion_tokens ?? chunk.usage.output_tokens ?? 0;
+        cacheReadTokens = chunk.usage.prompt_tokens_details?.cached_tokens ?? 0;
         found = true;
       }
     } catch {
@@ -69,7 +71,7 @@ export function parseOpenAIStream(buffer: string): ParsedUsage | null {
     }
   }
 
-  return found ? { provider: 'openai', model, inputTokens, outputTokens, cacheReadTokens: 0, cacheWriteTokens: 0 } : null;
+  return found ? { provider: 'openai', model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens: 0 } : null;
 }
 
 // Anthropic streams: message_start has input_tokens + cache tokens,

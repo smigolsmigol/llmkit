@@ -38,7 +38,7 @@ jobs:
   semgrep:
     runs-on: ubuntu-latest
     container:
-      image: semgrep/semgrep
+      image: semgrep/semgrep:1.156.0
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 

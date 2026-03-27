@@ -24,6 +24,7 @@ export interface CostEntry {
 interface OpenAILikeUsage {
   prompt_tokens: number;
   completion_tokens: number;
+  prompt_tokens_details?: { cached_tokens?: number };
 }
 
 interface AnthropicLikeUsage {
@@ -89,6 +90,7 @@ export class CostTracker {
       return this.track(provider, model, {
         inputTokens: usage.prompt_tokens,
         outputTokens: usage.completion_tokens,
+        cacheReadTokens: usage.prompt_tokens_details?.cached_tokens,
       });
     }
 

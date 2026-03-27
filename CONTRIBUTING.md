@@ -14,14 +14,14 @@ pnpm check-all        # typecheck + lint + dead code + publish validation
 Proxy local dev (needs wrangler):
 ```bash
 cd packages/proxy
-cp ../../.env .dev.vars
+cp ../../.env.example .dev.vars   # then fill in your keys
 pnpm dev
 ```
 
 Dashboard local dev:
 ```bash
 cd packages/dashboard
-cp ../../.env .env.local
+cp ../../.env.example .env.local  # then fill in your keys
 pnpm dev
 ```
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.2",
   "name": "@f3d1/llmkit-mcp-server",
-  "version": "0.4.0",
+  "version": "0.4.3",
   "description": "AI cost tracking: 14 tools for spend, budgets, local costs (Claude Code + Cline + Cursor), and Notion sync",
   "author": {
     "name": "F3d1",

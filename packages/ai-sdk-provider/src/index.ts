@@ -36,7 +36,7 @@ export function mapFinishReason(raw: string | undefined): LanguageModelV3FinishR
     case 'tool_use':
       return { unified: 'tool-calls', raw: raw };
     default:
-      return { unified: 'stop', raw: raw ?? 'unknown' };
+      return { unified: 'other', raw: raw ?? 'unknown' };
   }
 }
 

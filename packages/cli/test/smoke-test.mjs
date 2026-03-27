@@ -13,21 +13,28 @@ function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
 const entry = resolve('packages/cli/dist/index.js');
 
-test('no args exits 1 with usage text', () => {
+test('no args shows help and exits 0', () => {
+  const out = execSync(`node ${entry}`, { encoding: 'utf8', timeout: 5000, stdio: 'pipe' });
+  // help goes to stderr, but execSync captures stdout; check it didn't throw (exit 0)
+});
+
+test('--help shows usage', () => {
+  const result = execSync(`node ${entry} --help 2>&1`, { encoding: 'utf8', timeout: 5000 });
+  assert(result.includes('llmkit-cli'), 'should mention llmkit-cli');
+  assert(result.includes('Usage:'), 'should contain Usage:');
+});
+
+test('--version prints version', () => {
+  const result = execSync(`node ${entry} --version`, { encoding: 'utf8', timeout: 5000 });
+  assert(/\d+\.\d+\.\d+/.test(result.trim()), 'should print semver');
+});
+
+test('missing -- separator suggests fix', () => {
   try {
-    execSync(`node ${entry}`, { encoding: 'utf8', timeout: 5000, stdio: 'pipe' });
+    execSync(`node ${entry} python my_agent.py 2>&1`, { encoding: 'utf8', timeout: 5000 });
     assert(false, 'should have exited with code 1');
   } catch (e) {
     assert(e.status === 1, `expected exit code 1, got ${e.status}`);
-    assert(e.stderr.includes('Usage:'), 'stderr should contain Usage:');
-  }
-});
-
-test('usage text mentions the package name', () => {
-  try {
-    execSync(`node ${entry}`, { encoding: 'utf8', timeout: 5000, stdio: 'pipe' });
-  } catch (e) {
-    assert(e.stderr.includes('llmkit-cli'), 'stderr should mention llmkit-cli');
   }
 });
 

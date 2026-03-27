@@ -37,9 +37,9 @@ test('mapFinishReason: tool_calls', () => {
   assert(r.unified === 'tool-calls', `expected tool-calls, got ${r.unified}`);
 });
 
-test('mapFinishReason: undefined defaults to stop', () => {
+test('mapFinishReason: undefined defaults to other', () => {
   const r = mapFinishReason(undefined);
-  assert(r.unified === 'stop', 'undefined should default to stop');
+  assert(r.unified === 'other', 'undefined should default to other, not stop');
   assert(r.raw === 'unknown', 'raw should be unknown');
 });
 

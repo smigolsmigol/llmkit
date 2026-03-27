@@ -40,14 +40,44 @@ interface CliOpts {
 
 function parseArgs(): CliOpts {
   const argv = process.argv.slice(2);
+
+  if (argv.includes('--version') || argv.includes('-V')) {
+    process.stdout.write('0.0.6\n');
+    process.exit(0);
+  }
+
+  if (argv.includes('--help') || argv.includes('-h') || argv.length === 0) {
+    process.stderr.write(
+      `${bold('llmkit-cli')} - zero-code AI cost tracking\n\n` +
+      `${bold('Usage:')} npx @f3d1/llmkit-cli [options] -- <command> [args...]\n\n` +
+      `${bold('Options:')}\n` +
+      `  --port <N>    proxy port (default: random)\n` +
+      `  -v, --verbose per-request costs as they happen\n` +
+      `  --json        machine-readable output\n` +
+      `  -V, --version print version\n` +
+      `  -h, --help    show this help\n\n` +
+      `${bold('Example:')}\n` +
+      `  npx @f3d1/llmkit-cli -- python my_agent.py\n` +
+      `  npx @f3d1/llmkit-cli -v -- node agent.js\n`,
+    );
+    process.exit(0);
+  }
+
   const dashIdx = argv.indexOf('--');
 
   if (dashIdx === -1 || dashIdx === argv.length - 1) {
-    process.stderr.write(
-      'Usage: npx @f3d1/llmkit-cli [--port N] [--verbose] [--json] -- <command> [args...]\n' +
-      '\nWraps any command, intercepts OpenAI/Anthropic API calls, prints cost summary.\n' +
-      '\nExample: npx @f3d1/llmkit-cli -- python my_agent.py\n',
-    );
+    const hasCommand = argv.some(a => !a.startsWith('-'));
+    if (hasCommand) {
+      process.stderr.write(
+        `Missing ${bold('--')} separator before command.\n\n` +
+        `  npx @f3d1/llmkit-cli -- ${argv.filter(a => !a.startsWith('-')).join(' ')}\n`,
+      );
+    } else {
+      process.stderr.write(
+        `Usage: npx @f3d1/llmkit-cli [options] -- <command> [args...]\n` +
+        `Try --help for more info.\n`,
+      );
+    }
     process.exit(1);
   }
 
