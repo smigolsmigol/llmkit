@@ -5,7 +5,8 @@
   "description": "Shared types, pricing data, and constants for LLMKit packages",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smigolsmigol/llmkit.git"
+    "url": "git+https://github.com/smigolsmigol/llmkit.git",
+    "directory": "packages/shared"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -16,12 +17,30 @@
       "import": "./dist/index.js"
     }
   },
-  "keywords": ["llm", "ai", "openai", "anthropic", "pricing", "cost-tracking", "token-usage"],
-  "files": ["dist"],
+  "keywords": [
+    "llm",
+    "ai",
+    "openai",
+    "anthropic",
+    "pricing",
+    "cost-tracking",
+    "token-usage"
+  ],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
+  },
+  "homepage": "https://github.com/smigolsmigol/llmkit/tree/main/packages/shared",
+  "bugs": {
+    "url": "https://github.com/smigolsmigol/llmkit/issues"
+  },
+  "author": {
+    "name": "f3d1",
+    "url": "https://github.com/smigolsmigol"
   }
 }

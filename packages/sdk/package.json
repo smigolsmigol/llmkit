@@ -5,7 +5,8 @@
   "description": "Client SDK for LLMKit - cost tracking, provider routing, budget enforcement",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smigolsmigol/llmkit.git"
+    "url": "git+https://github.com/smigolsmigol/llmkit.git",
+    "directory": "packages/sdk"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -39,5 +40,13 @@
   },
   "dependencies": {
     "@f3d1/llmkit-shared": "workspace:*"
+  },
+  "homepage": "https://github.com/smigolsmigol/llmkit/tree/main/packages/sdk",
+  "bugs": {
+    "url": "https://github.com/smigolsmigol/llmkit/issues"
+  },
+  "author": {
+    "name": "f3d1",
+    "url": "https://github.com/smigolsmigol"
   }
 }

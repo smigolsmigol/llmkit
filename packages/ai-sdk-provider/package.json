@@ -5,7 +5,8 @@
   "description": "Vercel AI SDK v6 custom provider for LLMKit proxy",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smigolsmigol/llmkit.git"
+    "url": "git+https://github.com/smigolsmigol/llmkit.git",
+    "directory": "packages/ai-sdk-provider"
   },
   "type": "module",
   "main": "./dist/index.js",
@@ -16,8 +17,19 @@
       "import": "./dist/index.js"
     }
   },
-  "keywords": ["vercel-ai-sdk", "ai-sdk", "llm", "openai", "anthropic", "provider", "ai-gateway", "cost-tracking"],
-  "files": ["dist"],
+  "keywords": [
+    "vercel-ai-sdk",
+    "ai-sdk",
+    "llm",
+    "openai",
+    "anthropic",
+    "provider",
+    "ai-gateway",
+    "cost-tracking"
+  ],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
@@ -30,9 +42,19 @@
     "ai": ">=6.0.0"
   },
   "peerDependenciesMeta": {
-    "ai": { "optional": true }
+    "ai": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "typescript": "^5.7.0"
+  },
+  "homepage": "https://github.com/smigolsmigol/llmkit/tree/main/packages/ai-sdk-provider",
+  "bugs": {
+    "url": "https://github.com/smigolsmigol/llmkit/issues"
+  },
+  "author": {
+    "name": "f3d1",
+    "url": "https://github.com/smigolsmigol"
   }
 }

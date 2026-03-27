@@ -5,7 +5,8 @@
   "description": "AI cost tracking: 11 tools for spend, budgets, and Claude Code costs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/smigolsmigol/llmkit.git"
+    "url": "git+https://github.com/smigolsmigol/llmkit.git",
+    "directory": "packages/mcp-server"
   },
   "type": "module",
   "bin": {
@@ -44,5 +45,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0"
+  },
+  "homepage": "https://github.com/smigolsmigol/llmkit/tree/main/packages/mcp-server",
+  "bugs": {
+    "url": "https://github.com/smigolsmigol/llmkit/issues"
+  },
+  "author": {
+    "name": "f3d1",
+    "url": "https://github.com/smigolsmigol"
   }
 }
