@@ -1,6 +1,6 @@
 {
   "name": "@f3d1/llmkit-sdk",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "license": "MIT",
   "description": "Client SDK for LLMKit - cost tracking, provider routing, budget enforcement",
   "repository": {
@@ -16,8 +16,21 @@
       "import": "./dist/index.js"
     }
   },
-  "keywords": ["llm", "ai", "openai", "anthropic", "sdk", "api-gateway", "cost-tracking", "budget", "ai-agents", "typescript"],
-  "files": ["dist"],
+  "keywords": [
+    "llm",
+    "ai",
+    "openai",
+    "anthropic",
+    "sdk",
+    "api-gateway",
+    "cost-tracking",
+    "budget",
+    "ai-agents",
+    "typescript"
+  ],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",

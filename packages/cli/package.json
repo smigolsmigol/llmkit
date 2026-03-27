@@ -1,6 +1,6 @@
 {
   "name": "@f3d1/llmkit-cli",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "license": "MIT",
   "type": "module",
   "description": "Zero-code AI cost tracking. Wraps any command, intercepts API calls, prints cost summary.",
@@ -12,7 +12,18 @@
     "llmkit": "dist/index.js"
   },
   "main": "./dist/index.js",
-  "keywords": ["llm", "ai", "cli", "openai", "anthropic", "cost-tracking", "python", "proxy", "ai-agents", "budget"],
+  "keywords": [
+    "llm",
+    "ai",
+    "cli",
+    "openai",
+    "anthropic",
+    "cost-tracking",
+    "python",
+    "proxy",
+    "ai-agents",
+    "budget"
+  ],
   "files": [
     "dist"
   ],

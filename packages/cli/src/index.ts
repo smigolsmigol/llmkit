@@ -42,7 +42,7 @@ function parseArgs(): CliOpts {
   const argv = process.argv.slice(2);
 
   if (argv.includes('--version') || argv.includes('-V')) {
-    process.stdout.write('0.0.6\n');
+    process.stdout.write('0.0.7\n');
     process.exit(0);
   }
 
