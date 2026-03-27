@@ -2,21 +2,13 @@ import { auth } from '@clerk/nextjs/server';
 import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
 import { SupportWidget } from '@/components/support-widget';
-import { ensureAccount, getAccountPlan } from '@/lib/queries';
+import { ensureAccount } from '@/lib/queries';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { userId } = await auth();
 
-  if (userId) {
-    try {
-      await ensureAccount(userId);
-    } catch {
-      // supabase might be down - don't block the dashboard
-    }
-  }
-
-  const plan = userId ? await getAccountPlan(userId) : null;
-  const isAdmin = plan === 'admin';
+  const account = userId ? await ensureAccount(userId).catch(() => null) : null;
+  const isAdmin = account?.plan === 'admin';
 
   return (
     <div className="noise-overlay flex min-h-screen">

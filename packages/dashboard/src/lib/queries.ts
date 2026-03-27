@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createServerClient } from './supabase';
 
 export async function getAccountPlan(userId: string): Promise<string | null> {
@@ -53,15 +54,7 @@ interface ProviderStats {
   totalCostCents: number;
 }
 
-interface DailySpend {
-  date: string;
-  costCents: number;
-  requests: number;
-  inputTokens: number;
-  outputTokens: number;
-}
-
-export async function getRecentRequests(userId: string, limit = 20): Promise<RequestRow[]> {
+export const getRecentRequests = cache(async function getRecentRequests(userId: string, limit = 20): Promise<RequestRow[]> {
   const db = createServerClient();
   const { data: keys } = await db
     .from('api_keys')
@@ -80,7 +73,7 @@ export async function getRecentRequests(userId: string, limit = 20): Promise<Req
     .limit(limit);
 
   return (data as RequestRow[]) || [];
-}
+});
 
 export async function getSpendByProvider(userId: string, days = 30): Promise<ProviderStats[]> {
   const requests = filterByDays(await getRecentRequests(userId, 1000), days);
@@ -97,29 +90,6 @@ export async function getSpendByProvider(userId: string, days = 30): Promise<Pro
     provider,
     ...stats,
   }));
-}
-
-export async function getDailySpend(userId: string, days = 30): Promise<DailySpend[]> {
-  const requests = await getRecentRequests(userId, 10000);
-
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-
-  const byDay = new Map<string, { costCents: number; requests: number; inputTokens: number; outputTokens: number }>();
-  for (const req of requests) {
-    const date = req.created_at.slice(0, 10);
-    if (new Date(date) < cutoff) continue;
-    const d = byDay.get(date) || { costCents: 0, requests: 0, inputTokens: 0, outputTokens: 0 };
-    d.costCents += Number(req.cost_cents);
-    d.requests++;
-    d.inputTokens += req.input_tokens;
-    d.outputTokens += req.output_tokens;
-    byDay.set(date, d);
-  }
-
-  return Array.from(byDay.entries())
-    .map(([date, d]) => ({ date, ...d }))
-    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export async function getTotalSpend(userId: string, days?: number): Promise<{ today: number; week: number; month: number; range: number }> {
@@ -244,87 +214,6 @@ export async function getDistinctModels(userId: string): Promise<string[]> {
 
 // ---- Cache analytics ----
 
-export interface CacheStats {
-  totalCacheReadTokens: number;
-  totalCacheWriteTokens: number;
-  totalInputTokens: number;
-  cacheHitRate: number;
-  estimatedSavingsCents: number;
-}
-
-export async function getCacheStats(userId: string, days = 30): Promise<CacheStats> {
-  const requests = await getRecentRequests(userId, 10000);
-
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-
-  let totalCacheRead = 0;
-  let totalCacheWrite = 0;
-  let totalInput = 0;
-  let savingsCents = 0;
-
-  for (const req of requests) {
-    if (new Date(req.created_at) < cutoff) continue;
-
-    totalInput += req.input_tokens;
-    totalCacheRead += req.cache_read_tokens;
-    totalCacheWrite += req.cache_write_tokens;
-
-    // savings = what cache reads would have cost at full input price minus what they actually cost
-    if (req.cache_read_tokens > 0) {
-      const fullCostPerToken = Number(req.cost_cents) / Math.max(1, req.input_tokens + req.output_tokens);
-      savingsCents += req.cache_read_tokens * fullCostPerToken * 0.9;
-    }
-  }
-
-  const denominator = totalCacheRead + totalInput;
-  const cacheHitRate = denominator > 0 ? (totalCacheRead / denominator) * 100 : 0;
-
-  return {
-    totalCacheReadTokens: totalCacheRead,
-    totalCacheWriteTokens: totalCacheWrite,
-    totalInputTokens: totalInput,
-    cacheHitRate: +cacheHitRate.toFixed(1),
-    estimatedSavingsCents: +savingsCents.toFixed(2),
-  };
-}
-
-export interface DailyCacheBreakdown {
-  date: string;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
-  regularInputTokens: number;
-}
-
-export async function getDailyCacheBreakdown(userId: string, days = 30): Promise<DailyCacheBreakdown[]> {
-  const requests = await getRecentRequests(userId, 10000);
-
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-
-  const byDay = new Map<string, { cacheRead: number; cacheWrite: number; regular: number }>();
-
-  for (const req of requests) {
-    const date = req.created_at.slice(0, 10);
-    if (new Date(date) < cutoff) continue;
-
-    const day = byDay.get(date) || { cacheRead: 0, cacheWrite: 0, regular: 0 };
-    day.cacheRead += req.cache_read_tokens;
-    day.cacheWrite += req.cache_write_tokens;
-    day.regular += req.input_tokens;
-    byDay.set(date, day);
-  }
-
-  return Array.from(byDay.entries())
-    .map(([date, d]) => ({
-      date,
-      cacheReadTokens: d.cacheRead,
-      cacheWriteTokens: d.cacheWrite,
-      regularInputTokens: d.regular,
-    }))
-    .sort((a, b) => a.date.localeCompare(b.date));
-}
-
 // ---- Timeseries (raw per-request data for interactive charts) ----
 
 export interface TimeseriesPoint {
@@ -427,7 +316,7 @@ interface AdminRequest {
   created_at: string;
 }
 
-async function getAllRequests(): Promise<AdminRequest[]> {
+const getAllRequests = cache(async function getAllRequests(): Promise<AdminRequest[]> {
   const db = createServerClient();
   const { data } = await db
     .from('requests')
@@ -436,7 +325,7 @@ async function getAllRequests(): Promise<AdminRequest[]> {
     .order('created_at', { ascending: false })
     .limit(50000);
   return (data as AdminRequest[]) || [];
-}
+});
 
 function filterByDays<T extends { created_at: string }>(rows: T[], days: number): T[] {
   if (days <= 0) return rows;
@@ -478,88 +367,6 @@ export interface ModelBreakdown {
   avgLatencyMs: number;
   avgTokensPerReq: number;
   costPer1kTokens: number;
-}
-
-export interface DailyAdminStats {
-  date: string;
-  costCents: number;
-  requests: number;
-  errors: number;
-  inputTokens: number;
-  outputTokens: number;
-}
-
-export async function getAdminStats(days = 0): Promise<AdminStats> {
-  const db = createServerClient();
-  const { count: totalAccounts } = await db
-    .from('accounts')
-    .select('*', { count: 'exact', head: true });
-
-  const rows = filterByDays(await getAllRequests(), days);
-
-  const now = Date.now();
-  const dayAgo = now - 86400000;
-  const weekAgo = now - 7 * 86400000;
-  const monthAgo = now - 30 * 86400000;
-
-  const keysToday = new Set<string>();
-  const keysWeek = new Set<string>();
-  const keysMonth = new Set<string>();
-  let errors = 0;
-  let totalLatency = 0;
-  let totalInput = 0;
-  let totalOutput = 0;
-  const latencies: number[] = [];
-
-  for (const r of rows) {
-    const ts = new Date(r.created_at).getTime();
-    if (ts >= dayAgo) keysToday.add(r.api_key_id);
-    if (ts >= weekAgo) keysWeek.add(r.api_key_id);
-    if (ts >= monthAgo) keysMonth.add(r.api_key_id);
-    if (r.error_code) errors++;
-    totalLatency += r.latency_ms;
-    latencies.push(r.latency_ms);
-    totalInput += r.input_tokens;
-    totalOutput += r.output_tokens;
-  }
-
-  latencies.sort((a, b) => a - b);
-  const p95Idx = Math.floor(latencies.length * 0.95);
-
-  return {
-    totalRequests: rows.length,
-    totalSpendCents: rows.reduce((s, r) => s + Number(r.cost_cents), 0),
-    totalAccounts: totalAccounts || 0,
-    activeKeysToday: keysToday.size,
-    activeKeysWeek: keysWeek.size,
-    activeKeysMonth: keysMonth.size,
-    errorRate: rows.length > 0 ? (errors / rows.length) * 100 : 0,
-    avgLatencyMs: rows.length > 0 ? Math.round(totalLatency / rows.length) : 0,
-    p95LatencyMs: latencies.length > 0 ? latencies[p95Idx] : 0,
-    totalInputTokens: totalInput,
-    totalOutputTokens: totalOutput,
-    avgTokensPerReq: rows.length > 0 ? Math.round((totalInput + totalOutput) / rows.length) : 0,
-  };
-}
-
-export async function getAdminDailyStats(days = 0): Promise<DailyAdminStats[]> {
-  const rows = filterByDays(await getAllRequests(), days);
-
-  const byDay = new Map<string, { costCents: number; requests: number; errors: number; inputTokens: number; outputTokens: number }>();
-  for (const r of rows) {
-    const date = r.created_at.slice(0, 10);
-    const d = byDay.get(date) || { costCents: 0, requests: 0, errors: 0, inputTokens: 0, outputTokens: 0 };
-    d.costCents += Number(r.cost_cents);
-    d.requests++;
-    d.inputTokens += r.input_tokens;
-    d.outputTokens += r.output_tokens;
-    if (r.error_code) d.errors++;
-    byDay.set(date, d);
-  }
-
-  return Array.from(byDay.entries())
-    .map(([date, d]) => ({ date, ...d }))
-    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export async function getAdminUserBreakdown(days = 0): Promise<UserBreakdown[]> {

@@ -83,6 +83,8 @@ export class BudgetDO extends DurableObject {
     const root = await this.ctx.storage.get<BudgetState>('root');
     if (!root) return { usedCents: 0, limitCents: 0 };
 
+    await this.resetPeriodIfDue(root);
+
     const reservedAmount = await this.settleReservation(input.reservationId);
     const { key, target } = await this.resolveRecordTarget(root, input.sessionId);
 
@@ -147,10 +149,14 @@ export class BudgetDO extends DurableObject {
     }
 
     let staleReserved = 0;
+    const staleBySession: Record<string, number> = {};
     for (const [key, val] of reservations) {
       if (val && typeof val === 'object' && val.createdAt < reservationCutoff) {
         staleReserved += val.amount;
         toDelete.push(key);
+        if (val.sessionId) {
+          staleBySession[val.sessionId] = (staleBySession[val.sessionId] || 0) + val.amount;
+        }
       }
     }
 
@@ -161,6 +167,14 @@ export class BudgetDO extends DurableObject {
       if (root) {
         root.reservedCents = Math.max(0, (root.reservedCents || 0) - staleReserved);
         await this.ctx.storage.put('root', root);
+      }
+
+      for (const [sessionId, amount] of Object.entries(staleBySession)) {
+        const session = await this.ctx.storage.get<BudgetState>(`s:${sessionId}`);
+        if (session) {
+          session.reservedCents = Math.max(0, (session.reservedCents || 0) - amount);
+          await this.ctx.storage.put(`s:${sessionId}`, session);
+        }
       }
     }
 
@@ -279,7 +293,9 @@ export class BudgetDO extends DurableObject {
     let alert: RecordResult['alert'];
 
     if (webhookUrl?.startsWith('https://') && pct >= threshold) {
-      const alreadyAlerted = target.lastAlertAt && target.resetAt > 0 && target.lastAlertAt > (target.resetAt - periodMs(target.period));
+      const alreadyAlerted = target.period === 'total'
+        ? !!target.lastAlertAt
+        : target.lastAlertAt && target.resetAt > 0 && target.lastAlertAt > (target.resetAt - periodMs(target.period));
       if (!alreadyAlerted) {
         target.lastAlertAt = Date.now();
         await this.ctx.storage.put(key, target);

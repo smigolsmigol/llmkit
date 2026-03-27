@@ -70,7 +70,7 @@ function costForTokens(model: string, usage: TokenUsage): number {
   );
 }
 
-function extractUsage(line: string): TokenUsage | null {
+function extractUsage(line: string): (TokenUsage & { messageId: string }) | null {
   try {
     const msg = JSON.parse(line);
     if (msg?.type !== 'assistant' || !msg?.message?.usage) return null;
@@ -78,6 +78,7 @@ function extractUsage(line: string): TokenUsage | null {
     if (!model || model.startsWith('<')) return null;
     const u = msg.message.usage;
     return {
+      messageId: msg.message.id ?? '',
       model,
       input: u.input_tokens ?? 0,
       output: u.output_tokens ?? 0,
@@ -158,6 +159,7 @@ async function parseSessionJsonl(filePath: string): Promise<SessionCost> {
 
   const stream = createReadStream(filePath, { encoding: 'utf-8' });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
+  const seen = new Set<string>();
 
   for await (const line of rl) {
     // fast check before JSON.parse
@@ -165,6 +167,11 @@ async function parseSessionJsonl(filePath: string): Promise<SessionCost> {
 
     const usage = extractUsage(line);
     if (!usage) continue;
+
+    // Claude Code writes one JSONL line per content block within a message.
+    // Each line carries the same usage, so deduplicate by message ID.
+    if (usage.messageId && seen.has(usage.messageId)) continue;
+    if (usage.messageId) seen.add(usage.messageId);
 
     result.messages++;
     const cost = costForTokens(usage.model, usage);
@@ -208,11 +215,15 @@ async function parseOneAgent(subagentDir: string, filename: string): Promise<Age
 
   const stream = createReadStream(join(subagentDir, filename), { encoding: 'utf-8' });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
+  const seen = new Set<string>();
 
   for await (const line of rl) {
     if (!line.includes('"assistant"') || !line.includes('"usage"')) continue;
     const usage = extractUsage(line);
     if (!usage) continue;
+
+    if (usage.messageId && seen.has(usage.messageId)) continue;
+    if (usage.messageId) seen.add(usage.messageId);
 
     messages++;
     totalCost += costForTokens(usage.model, usage);

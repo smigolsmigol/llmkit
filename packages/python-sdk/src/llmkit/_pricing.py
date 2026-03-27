@@ -30,14 +30,6 @@ def _strip_date_suffix(model: str) -> str:
     return re.sub(r"-\d{4}-?\d{2}-?\d{2}$", "", model)
 
 
-def _infer_provider(model: str) -> str | None:
-    lower = model.lower()
-    for prefix, provider in _PREFIXES:
-        if lower.startswith(prefix):
-            return provider
-    return None
-
-
 def lookup_pricing(model: str) -> TokenRates | None:
     """Look up pricing for a model. Returns None for unknown models."""
     if model in _FLAT:

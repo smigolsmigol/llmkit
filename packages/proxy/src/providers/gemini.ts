@@ -204,8 +204,19 @@ function mapUsage(raw: GeminiUsage): TokenUsage {
 }
 
 function parseResponse(data: GeminiResponse, requestModel: string): ProviderResponse {
-  const candidate = data.candidates[0];
-  const text = candidate?.content?.parts
+  const candidate = data.candidates?.[0];
+
+  if (!candidate) {
+    return {
+      id: data.responseId || '',
+      content: '',
+      model: data.modelVersion || requestModel,
+      usage: mapUsage(data.usageMetadata),
+      finishReason: 'content_filter',
+    };
+  }
+
+  const text = candidate.content?.parts
     ?.filter((p) => p.text)
     .map((p) => p.text)
     .join('') || '';
@@ -215,6 +226,6 @@ function parseResponse(data: GeminiResponse, requestModel: string): ProviderResp
     content: text,
     model: data.modelVersion || requestModel,
     usage: mapUsage(data.usageMetadata),
-    finishReason: candidate?.finishReason || 'STOP',
+    finishReason: candidate.finishReason || 'stop',
   };
 }

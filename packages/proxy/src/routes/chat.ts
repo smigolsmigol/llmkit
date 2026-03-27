@@ -192,41 +192,47 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
       const llmkitFmt = wantsLLMKitFormat(c);
 
       return stream(c, async (s) => {
-        const usage = await consumeStream(s, gen, first, req.model, llmkitFmt);
-        if (!usage) return;
+        let tracked = false;
+        try {
+          const usage = await consumeStream(s, gen, first, req.model, llmkitFmt);
+          if (!usage) return;
 
-        const latency = Date.now() - start;
-        const cost = await resolveCost(providerName, usage.model, usage.tokens);
+          const latency = Date.now() - start;
+          const cost = await resolveCost(providerName, usage.model, usage.tokens);
 
-        await writeStreamFinale(s, llmkitFmt, {
-          id: usage.id,
-          model: usage.model,
-          provider: providerName,
-          tokens: usage.tokens,
-          cost,
-          finishReason: usage.finishReason,
-          created: usage.created,
-          streamId: usage.streamId,
-        });
+          await writeStreamFinale(s, llmkitFmt, {
+            id: usage.id,
+            model: usage.model,
+            provider: providerName,
+            tokens: usage.tokens,
+            cost,
+            finishReason: usage.finishReason,
+            created: usage.created,
+            streamId: usage.streamId,
+          });
 
-        await trackRequest({
-          sessionId: c.req.header('x-llmkit-session-id') || undefined,
-          endUserId: c.req.header('x-llmkit-user-id') || undefined,
-          toolCalls: undefined,
-          providerCostUsd: usage.providerCostUsd,
-          apiKey: c.get('apiKey'),
-          apiKeyId: c.get('apiKeyId'),
-          userId: c.get('userId'),
-          budgetId: c.get('budgetId'),
-          budgetReservationId: c.get('budgetReservationId'),
-          provider: providerName,
-          model: usage.model,
-          usage: usage.tokens,
-          cost,
-          latencyMs: latency,
-          env: c.env,
-          ctx: c.executionCtx,
-        });
+          await trackRequest({
+            sessionId: c.req.header('x-llmkit-session-id') || undefined,
+            endUserId: c.req.header('x-llmkit-user-id') || undefined,
+            toolCalls: undefined,
+            providerCostUsd: usage.providerCostUsd,
+            apiKey: c.get('apiKey'),
+            apiKeyId: c.get('apiKeyId'),
+            userId: c.get('userId'),
+            budgetId: c.get('budgetId'),
+            budgetReservationId: c.get('budgetReservationId'),
+            provider: providerName,
+            model: usage.model,
+            usage: usage.tokens,
+            cost,
+            latencyMs: latency,
+            env: c.env,
+            ctx: c.executionCtx,
+          });
+          tracked = true;
+        } finally {
+          if (!tracked) await releaseReservation(c).catch(() => {});
+        }
       });
     } catch (err) {
       if (err instanceof ValidationError) throw err;
