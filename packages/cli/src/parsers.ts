@@ -13,12 +13,14 @@ export function parseOpenAIResponse(body: string): ParsedUsage | null {
   try {
     const data = JSON.parse(body);
     if (!data.usage) return null;
+    const cached = data.usage.prompt_tokens_details?.cached_tokens ?? 0;
+    const rawInput = data.usage.prompt_tokens ?? data.usage.input_tokens ?? 0;
     return {
       provider: 'openai',
       model: data.model ?? 'unknown',
-      inputTokens: data.usage.prompt_tokens ?? data.usage.input_tokens ?? 0,
+      inputTokens: cached ? rawInput - cached : rawInput,
       outputTokens: data.usage.completion_tokens ?? data.usage.output_tokens ?? 0,
-      cacheReadTokens: data.usage.prompt_tokens_details?.cached_tokens ?? 0,
+      cacheReadTokens: cached,
       cacheWriteTokens: 0,
     };
   } catch {
@@ -61,9 +63,10 @@ export function parseOpenAIStream(buffer: string): ParsedUsage | null {
       const chunk = JSON.parse(raw);
       if (chunk.model) model = chunk.model;
       if (chunk.usage) {
-        inputTokens = chunk.usage.prompt_tokens ?? chunk.usage.input_tokens ?? 0;
-        outputTokens = chunk.usage.completion_tokens ?? chunk.usage.output_tokens ?? 0;
+        const rawIn = chunk.usage.prompt_tokens ?? chunk.usage.input_tokens ?? 0;
         cacheReadTokens = chunk.usage.prompt_tokens_details?.cached_tokens ?? 0;
+        inputTokens = cacheReadTokens ? rawIn - cacheReadTokens : rawIn;
+        outputTokens = chunk.usage.completion_tokens ?? chunk.usage.output_tokens ?? 0;
         found = true;
       }
     } catch {

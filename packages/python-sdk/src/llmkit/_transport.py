@@ -26,7 +26,7 @@ def _extract_cost_from_json(body: bytes) -> CostInfo | None:
 
     # OpenAI: prompt_tokens includes cached_tokens as subset
     # Anthropic: input_tokens is separate from cache_read_input_tokens
-    openai_cached = usage.get("prompt_tokens_details", {}).get("cached_tokens") or 0
+    openai_cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
     anthropic_cached = usage.get("cache_read_input_tokens") or 0
 
     if usage.get("prompt_tokens") is not None:

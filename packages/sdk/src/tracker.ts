@@ -87,10 +87,11 @@ export class CostTracker {
     const { model, usage } = response;
 
     if ('prompt_tokens' in usage) {
+      const cached = usage.prompt_tokens_details?.cached_tokens ?? 0;
       return this.track(provider, model, {
-        inputTokens: usage.prompt_tokens,
+        inputTokens: cached ? usage.prompt_tokens - cached : usage.prompt_tokens,
         outputTokens: usage.completion_tokens,
-        cacheReadTokens: usage.prompt_tokens_details?.cached_tokens,
+        cacheReadTokens: cached,
       });
     }
 
