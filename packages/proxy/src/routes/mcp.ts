@@ -299,6 +299,9 @@ mcp.post('/', async (c) => {
 
   // handle batch requests
   if (Array.isArray(body)) {
+    if (body.length > 20) {
+      return c.json(jsonrpcError(null, -32600, 'batch too large (max 20)'), 400);
+    }
     const results = await Promise.all(
       body.map((msg: { method: string; params?: Record<string, unknown>; id?: unknown }) =>
         handleCall(msg.method, msg.params || {}, msg.id, supabaseUrl, supabaseKey, userId)

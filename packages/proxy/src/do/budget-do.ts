@@ -201,6 +201,7 @@ export class BudgetDO extends DurableObject {
       root.lastAlertAt = undefined;
       await this.ctx.storage.put('root', root);
       await this.clearReservations();
+      await this.clearSessions();
     }
   }
 
@@ -318,6 +319,11 @@ export class BudgetDO extends DurableObject {
   private async clearReservations(): Promise<void> {
     const reservations = await this.ctx.storage.list({ prefix: 'r:' });
     if (reservations.size > 0) await this.ctx.storage.delete([...reservations.keys()]);
+  }
+
+  private async clearSessions(): Promise<void> {
+    const sessions = await this.ctx.storage.list({ prefix: 's:' });
+    if (sessions.size > 0) await this.ctx.storage.delete([...sessions.keys()]);
   }
 }
 
