@@ -238,7 +238,7 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
     renderDashboard(data);
   }
 
-  function esc(s) { var el = document.createElement('span'); el.textContent = s; return el.innerHTML; }
+  function esc(s) { var el = document.createElement('span'); el.textContent = s; return el.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 
   function renderDashboard(d) {
     var models = d.models || [];
