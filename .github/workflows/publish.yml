@@ -47,6 +47,9 @@ jobs:
           subject-path: /tmp/pkg/*.tgz
 
       - name: publish with provenance
-        run: cd packages/${{ inputs.package }} && pnpm publish --provenance --access public --no-git-checks
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > packages/${{ inputs.package }}/.npmrc
+          cd packages/${{ inputs.package }} && pnpm publish --provenance --access public --no-git-checks
+          rm -f .npmrc
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
