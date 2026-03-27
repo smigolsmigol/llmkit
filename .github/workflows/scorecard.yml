@@ -22,12 +22,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: ossf/scorecard-action@05b42c624433fc40578a4c6e070e2b32d68d33f5 # v2.4.1
+      - uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
         with:
           results_file: results.sarif
           results_format: sarif
           publish_results: true
 
-      - uses: github/codeql-action/upload-sarif@45775bd8235c68ba998cffa5171256f094ddf9f8 # v3
+      - uses: github/codeql-action/upload-sarif@ebcb5b36ded6beda4ceefea6a8bc4cc885255bb3 # v3
         with:
           sarif_file: results.sarif
