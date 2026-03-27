@@ -47,6 +47,6 @@ jobs:
           subject-path: /tmp/pkg/*.tgz
 
       - name: publish with provenance
-        run: pnpm --filter @f3d1/llmkit-${{ inputs.package }} publish --provenance --access public --no-git-checks
+        run: cd packages/${{ inputs.package }} && pnpm publish --provenance --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
