@@ -17,6 +17,7 @@ on:
 permissions:
   contents: read
   id-token: write # required for npm provenance (Sigstore OIDC)
+  attestations: write # required for GitHub artifact attestation
 
 jobs:
   publish:
@@ -36,6 +37,14 @@ jobs:
 
       - name: build
         run: pnpm turbo build --filter=@f3d1/llmkit-${{ inputs.package }}
+
+      - name: pack tarball
+        run: pnpm --filter @f3d1/llmkit-${{ inputs.package }} pack --pack-destination /tmp/pkg
+
+      - name: attest artifact
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: /tmp/pkg/*.tgz
 
       - name: publish with provenance
         run: pnpm --filter @f3d1/llmkit-${{ inputs.package }} publish --provenance --access public --no-git-checks

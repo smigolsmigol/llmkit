@@ -130,7 +130,7 @@ jobs:
       - name: install
         run: |
           pip install -e ".[dev]" 2>/dev/null || pip install -e .
-          pip install pytest ruff mypy bandit pip-audit
+          pip install pytest==8.4.1 ruff==0.15.2 mypy==1.7.1 bandit==1.9.4 pip-audit==2.10.0
 
       - name: ruff check
         run: ruff check src/ tests/

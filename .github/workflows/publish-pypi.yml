@@ -22,7 +22,7 @@ jobs:
           python-version: '3.12'
 
       - name: install build tools
-        run: pip install build
+        run: pip install build==1.2.2.post1
 
       - name: build
         run: python -m build
