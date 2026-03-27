@@ -193,11 +193,13 @@ function toGeminiFormat(messages: Array<{ role: string; content: string | Array<
 }
 
 function mapUsage(raw: GeminiUsage): TokenUsage {
+  const cached = raw.cachedContentTokenCount || 0;
   return {
-    inputTokens: raw.promptTokenCount,
+    // Gemini's promptTokenCount includes cachedContentTokenCount - subtract to avoid double-counting
+    inputTokens: cached ? raw.promptTokenCount - cached : raw.promptTokenCount,
     outputTokens: raw.candidatesTokenCount,
     totalTokens: raw.totalTokenCount,
-    cacheReadTokens: raw.cachedContentTokenCount || undefined,
+    cacheReadTokens: cached || undefined,
   };
 }
 

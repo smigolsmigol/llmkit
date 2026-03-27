@@ -24,12 +24,18 @@ const { getModelPricing } = await import('../../shared/dist/providers.js');
 // --- re-implement pure functions from budget.ts + budget-do.ts ---
 // (these can't be imported directly since they use CF Workers types)
 
+// conservative fallback for unpriced models (mirrors pricing.ts UNPRICED_FALLBACK)
+const UNPRICED_FALLBACK = { inputPerMillion: 10, outputPerMillion: 30 };
+
+function resolvePricingSync(provider, model) {
+  return getModelPricing(provider, model) || UNPRICED_FALLBACK;
+}
+
 function estimateCost(body, provider) {
   const model = body.model;
   if (!model) return 0;
 
-  const pricing = getModelPricing(provider, model);
-  if (!pricing) return 0;
+  const pricing = resolvePricingSync(provider, model);
 
   const messages = body.messages;
   const inputChars = messages
@@ -49,8 +55,8 @@ function affordableMaxTokens(remainingCents, body, provider) {
   const model = body.model;
   if (!model) return undefined;
 
-  const pricing = getModelPricing(provider, model);
-  if (!pricing || pricing.outputPerMillion === 0) return undefined;
+  const pricing = resolvePricingSync(provider, model);
+  if (pricing.outputPerMillion === 0) return undefined;
 
   const messages = body.messages;
   const inputChars = messages
@@ -136,10 +142,14 @@ test('estimateCost: no model -> 0', () => {
   assert(cents === 0, `expected 0, got ${cents}`);
 });
 
-test('estimateCost: unknown model -> 0', () => {
-  const body = { model: 'gpt-99', messages: [{ role: 'user', content: 'hi' }] };
+test('estimateCost: unknown model uses fallback pricing', () => {
+  const body = { model: 'gpt-99', messages: [{ role: 'user', content: 'hi' }], max_tokens: 1024 };
   const cents = estimateCost(body, 'openai');
-  assert(cents === 0, `expected 0 for unknown model, got ${cents}`);
+  // fallback: $10/$30 per 1M tokens
+  // input: ceil(2/4)=1 token, 1/1M * 10 = tiny
+  // output: 1024/1M * 30 = 0.03072 USD = 3.072 cents -> ceil = 4
+  assert(cents > 0, `expected positive cost for unknown model (fallback pricing), got ${cents}`);
+  assert(cents === 4, `expected 4 cents with fallback pricing, got ${cents}`);
 });
 
 test('estimateCost: defaults to 1024 max_tokens if not specified', () => {
@@ -214,9 +224,14 @@ test('affordableMaxTokens: no model -> undefined', () => {
   assert(result === undefined, `expected undefined for no model, got ${result}`);
 });
 
-test('affordableMaxTokens: unknown model -> undefined', () => {
-  const result = affordableMaxTokens(100, { model: 'gpt-99', messages: [] }, 'openai');
-  assert(result === undefined, `expected undefined for unknown model, got ${result}`);
+test('affordableMaxTokens: unknown model uses fallback pricing', () => {
+  const body = { model: 'gpt-99', messages: [], max_tokens: 100000 };
+  const result = affordableMaxTokens(100, body, 'openai');
+  // fallback output: $30/1M. 100 cents = $1. affordable = floor(1/30 * 1M) = 33333
+  // 33333 < 100000 so it should clamp
+  assert(typeof result === 'number', `expected number for unknown model (fallback), got ${typeof result}`);
+  assert(result > 0, `expected positive affordable tokens, got ${result}`);
+  assertClose(result, 33333, 5, 'affordable tokens with fallback');
 });
 
 // ============================

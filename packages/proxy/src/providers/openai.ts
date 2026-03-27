@@ -163,11 +163,13 @@ export class OpenAIAdapter implements ProviderAdapter {
 }
 
 function parseUsage(u: OpenAIUsage): TokenUsage {
+  const cached = u.prompt_tokens_details?.cached_tokens || 0;
   return {
-    inputTokens: u.prompt_tokens,
+    // OpenAI's prompt_tokens includes cached_tokens as a subset - subtract to avoid double-counting
+    inputTokens: cached ? u.prompt_tokens - cached : u.prompt_tokens,
     outputTokens: u.completion_tokens,
     totalTokens: u.total_tokens,
-    cacheReadTokens: u.prompt_tokens_details?.cached_tokens || undefined,
+    cacheReadTokens: cached || undefined,
     reasoningTokens: u.completion_tokens_details?.reasoning_tokens || undefined,
   };
 }

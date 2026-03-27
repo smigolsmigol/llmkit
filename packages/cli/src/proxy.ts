@@ -2,6 +2,7 @@ import http from 'node:http';
 import https from 'node:https';
 import { calculateCost, type ProviderName } from '@f3d1/llmkit-shared';
 import {
+  type ParsedUsage,
   parseAnthropicResponse,
   parseAnthropicStream,
   parseOpenAIResponse,
@@ -159,15 +160,6 @@ export function startProxy(opts: { port: number; verbose: boolean }): Promise<Pr
       });
     });
   });
-}
-
-interface ParsedUsage {
-  provider: ProviderName;
-  model: string;
-  inputTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheWriteTokens: number;
 }
 
 function trackUsage(records: RequestRecord[], usage: ParsedUsage, latencyMs: number, verbose: boolean): void {

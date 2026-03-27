@@ -238,6 +238,8 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
     renderDashboard(data);
   }
 
+  function esc(s) { var el = document.createElement('span'); el.textContent = s; return el.innerHTML; }
+
   function renderDashboard(d) {
     var models = d.models || [];
     var maxCost = Math.max.apply(null, models.map(function(m) { return m.costUsd || 0; }).concat([0.0001]));
@@ -285,7 +287,7 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
         var w = pct(m.costUsd || 0, maxCost);
         var label = (m.model || '').replace('claude-', '').replace(/-\\d{8}$/, '');
         html += '<div class="bar-row">';
-        html += '<div class="bar-label" title="' + (m.model || '') + '">' + label + '</div>';
+        html += '<div class="bar-label" title="' + esc(m.model || '') + '">' + esc(label) + '</div>';
         html += '<div class="bar-track"><div class="bar-fill cost" style="width:' + w + '%"></div></div>';
         html += '<div class="bar-amount">' + usd(m.costUsd || 0) + '</div>';
         html += '</div>';
@@ -306,7 +308,7 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
         var wOut = pct(out, maxTokens);
         var lbl = (m2.model || '').replace('claude-', '').replace(/-\\d{8}$/, '');
         html += '<div class="bar-row">';
-        html += '<div class="bar-label" title="' + (m2.model || '') + '">' + lbl + '</div>';
+        html += '<div class="bar-label" title="' + esc(m2.model || '') + '">' + esc(lbl) + '</div>';
         html += '<div class="bar-track">';
         html += '<div class="bar-fill input" style="width:' + wIn + '%; display:inline-block; vertical-align:top;"></div>';
         html += '<div class="bar-fill output" style="width:' + wOut + '%; display:inline-block; vertical-align:top;"></div>';
@@ -323,7 +325,7 @@ export const DASHBOARD_HTML = /* html */ `<!DOCTYPE html>
 
     // footer
     html += '<div class="footer">';
-    html += '<div class="note">Session ' + ((d.sessionId || '').slice(0, 12)) + '... - estimated at API rates</div>';
+    html += '<div class="note">Session ' + esc((d.sessionId || '').slice(0, 12)) + '... - estimated at API rates</div>';
     html += '<a href="__DASHBOARD_URL__" target="_blank">View full history &#8594;</a>';
     html += '</div>';
 

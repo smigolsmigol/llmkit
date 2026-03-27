@@ -3,12 +3,13 @@
 // Usage: npx @f3d1/llmkit-mcp-server --hook
 
 import { homedir } from 'node:os';
+import { resolve } from 'node:path';
 import { getSessionCost } from './claude-code.js';
 
 function isValidTranscriptPath(p: string): boolean {
-  const claudeDir = `${homedir()}/.claude/`;
-  const norm = p.replace(/\\/g, '/');
-  return norm.startsWith(claudeDir.replace(/\\/g, '/')) && norm.endsWith('.jsonl');
+  const claudeDir = resolve(homedir(), '.claude').replace(/\\/g, '/') + '/';
+  const norm = resolve(p).replace(/\\/g, '/');
+  return norm.startsWith(claudeDir) && norm.endsWith('.jsonl');
 }
 
 export async function runHook(): Promise<void> {

@@ -39,7 +39,15 @@ def _cost_from_usage(model: str | None, usage: Any) -> CostInfo:
         return CostInfo()
     input_t = getattr(usage, "prompt_tokens", 0) or 0
     output_t = getattr(usage, "completion_tokens", 0) or 0
-    estimated = calculate_cost(model, input_t, output_t)
+
+    # openai: cache read in prompt_tokens_details.cached_tokens
+    details = getattr(usage, "prompt_tokens_details", None)
+    cache_read = getattr(details, "cached_tokens", 0) or 0 if details else 0
+    # anthropic: cache fields at top level
+    cache_read += getattr(usage, "cache_read_input_tokens", 0) or 0
+    cache_write = getattr(usage, "cache_creation_input_tokens", 0) or 0
+
+    estimated = calculate_cost(model, input_t, output_t, cache_read, cache_write)
     return CostInfo(total_cost=estimated, estimated=True)
 
 

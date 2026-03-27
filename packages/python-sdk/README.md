@@ -8,7 +8,43 @@ Python SDK for [LLMKit](https://github.com/smigolsmigol/llmkit), the AI API gate
 pip install llmkit-sdk
 ```
 
-## Quick start
+## Local cost tracking (no proxy)
+
+Drop-in cost tracking for any OpenAI-compatible SDK. No account, no proxy, no config:
+
+```python
+from llmkit import tracked
+from openai import OpenAI
+
+client = OpenAI(http_client=tracked())
+response = client.chat.completions.create(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "hello"}],
+)
+# costs estimated locally from bundled pricing table
+```
+
+Collect costs with a callback:
+
+```python
+costs = []
+client = OpenAI(http_client=tracked(on_cost=costs.append))
+# ... make requests ...
+total = sum(c.total_cost for c in costs if c.total_cost)
+```
+
+Or estimate from any existing response:
+
+```python
+from llmkit import estimate_cost
+
+cost = estimate_cost(response)
+print(f"~${cost.total_cost:.6f}")
+```
+
+Works with OpenAI, Anthropic, Groq, Together, Cohere, and Mistral SDKs.
+
+## Quick start (proxy mode)
 
 ```python
 from llmkit import LLMKit
@@ -48,6 +84,21 @@ client = LLMKit(
     provider_key="sk-...",
 )
 ```
+
+## Streaming with cost tracking
+
+```python
+stream = client.chat_stream(
+    model="gpt-4o",
+    messages=[{"role": "user", "content": "hello"}],
+)
+for chunk in stream:
+    print(chunk.choices[0].delta.content or "", end="")
+
+print(f"\nCost: ${stream.cost.total_cost:.6f}")
+```
+
+Cost is captured from the final stream chunk's usage data. Cumulative totals are available on `client.stats`.
 
 ## Escape hatch
 

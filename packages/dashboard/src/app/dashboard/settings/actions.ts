@@ -4,6 +4,10 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 
+const VALID_PERIODS = ['daily', 'weekly', 'monthly'] as const;
+const VALID_SCOPES = ['key', 'session'] as const;
+const NAME_PATTERN = /^[a-zA-Z0-9 -]+$/;
+
 export async function createBudget(
   name: string,
   limitCents: number,
@@ -13,6 +17,27 @@ export async function createBudget(
 ) {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
+
+  if (!name || name.length > 100 || !NAME_PATTERN.test(name)) {
+    throw new Error('Invalid budget name');
+  }
+  if (!VALID_PERIODS.includes(period as (typeof VALID_PERIODS)[number])) {
+    throw new Error('Invalid period');
+  }
+  if (!VALID_SCOPES.includes(scope as (typeof VALID_SCOPES)[number])) {
+    throw new Error('Invalid scope');
+  }
+  if (typeof limitCents !== 'number' || limitCents <= 0 || !Number.isFinite(limitCents)) {
+    throw new Error('Invalid limit');
+  }
+  if (alertWebhookUrl) {
+    try {
+      const url = new URL(alertWebhookUrl);
+      if (url.protocol !== 'https:') throw new Error();
+    } catch {
+      throw new Error('Webhook URL must be a valid https:// URL');
+    }
+  }
 
   const db = createServerClient();
   const { error } = await db.from('budgets').insert({

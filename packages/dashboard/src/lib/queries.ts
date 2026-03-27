@@ -122,17 +122,19 @@ export async function getDailySpend(userId: string, days = 30): Promise<DailySpe
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
-export async function getTotalSpend(userId: string): Promise<{ today: number; week: number; month: number }> {
+export async function getTotalSpend(userId: string, days?: number): Promise<{ today: number; week: number; month: number; range: number }> {
   const requests = await getRecentRequests(userId, 10000);
 
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
   const weekAgo = new Date(now.getTime() - 7 * 86400000);
   const monthAgo = new Date(now.getTime() - 30 * 86400000);
+  const rangeAgo = days ? new Date(now.getTime() - days * 86400000) : null;
 
   let today = 0;
   let week = 0;
   let month = 0;
+  let range = 0;
 
   for (const req of requests) {
     const cost = Number(req.cost_cents);
@@ -140,9 +142,10 @@ export async function getTotalSpend(userId: string): Promise<{ today: number; we
     if (req.created_at.startsWith(todayStr)) today += cost;
     if (date >= weekAgo) week += cost;
     if (date >= monthAgo) month += cost;
+    if (!rangeAgo || date >= rangeAgo) range += cost;
   }
 
-  return { today, week, month };
+  return { today, week, month, range };
 }
 
 export interface PaginatedResult {

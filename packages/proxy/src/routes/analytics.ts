@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import type { Env } from '../env';
 
-const postgrest = (url: string, key: string, path: string) =>
+const postgrest = (url: string, key: string, path: string, extra?: HeadersInit) =>
   fetch(`${url}/rest/v1/${path}`, {
-    headers: { apikey: key, Authorization: `Bearer ${key}` },
+    headers: { apikey: key, Authorization: `Bearer ${key}`, ...extra },
   });
 
 interface RequestRow {
@@ -21,6 +21,8 @@ interface RequestRow {
   created_at: string;
 }
 
+const PAGE_SIZE = 1000;
+
 async function getUserRequests(
   url: string, key: string, userId: string, days: number, source = 'proxy',
 ): Promise<RequestRow[]> {
@@ -32,22 +34,27 @@ async function getUserRequests(
   const cutoff = new Date(Date.now() - days * 86400000).toISOString();
   const keyFilter = `api_key_id=in.(${keys.map(k => encodeURIComponent(k.id)).join(',')})&created_at=gte.${cutoff}&source=eq.${encodeURIComponent(source)}&order=created_at.desc`;
 
-  // paginated fetch (Supabase caps at 1000 per page)
-  const all: RequestRow[] = [];
-  const batch: Promise<RequestRow[]>[] = [];
-  // fire 100 parallel page requests, collect what comes back
-  for (let off = 0; off < 100000; off += 1000) {
-    batch.push(
-      postgrest(url, key, `requests?${keyFilter}&select=*&offset=${off}&limit=1000`)
-        .then(r => r.ok ? r.json() as Promise<RequestRow[]> : Promise.resolve([] as RequestRow[]))
-        .catch(() => [] as RequestRow[])
-    );
-  }
-  const pages = await Promise.all(batch);
-  for (const page of pages) {
-    if (page.length > 0) all.push(...page);
-  }
-  return all;
+  // get total count first, then fetch only the pages we need
+  const countRes = await postgrest(
+    url, key,
+    `requests?${keyFilter}&select=id&limit=0`,
+    { Prefer: 'count=exact' },
+  );
+  if (!countRes.ok) return [];
+
+  const rangeHeader = countRes.headers.get('content-range');
+  const total = rangeHeader ? Number(rangeHeader.split('/')[1]) : 0;
+  if (!total || Number.isNaN(total)) return [];
+
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const batch = Array.from({ length: pages }, (_, i) =>
+    postgrest(url, key, `requests?${keyFilter}&select=*&offset=${i * PAGE_SIZE}&limit=${PAGE_SIZE}`)
+      .then(r => r.ok ? r.json() as Promise<RequestRow[]> : Promise.resolve([] as RequestRow[]))
+      .catch(() => [] as RequestRow[]),
+  );
+
+  const results = await Promise.all(batch);
+  return results.flat();
 }
 
 export const analyticsRouter = new Hono<Env>();

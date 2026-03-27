@@ -9,6 +9,15 @@ import {
   type TokenUsage,
 } from '@f3d1/llmkit-shared';
 
+// conservative fallback for models with no pricing data.
+// sits between cheap (gpt-4o-mini: $0.15/$0.60) and expensive (opus: $15/$75).
+// $10/$30 per million is roughly gpt-4-turbo tier - high enough to prevent
+// budget bypass, low enough not to reject legitimate cheap-model requests.
+export const UNPRICED_FALLBACK: ModelPricing = {
+  inputPerMillion: 10,
+  outputPerMillion: 30,
+};
+
 interface LiteLLMEntry {
   input_cost_per_token?: number;
   output_cost_per_token?: number;
@@ -90,7 +99,7 @@ function lookupLiteLLM(
 export async function resolvePricing(
   provider: ProviderName,
   model: string,
-): Promise<ModelPricing | undefined> {
+): Promise<ModelPricing> {
   const staticMatch = getModelPricing(provider, model);
   if (staticMatch) return staticMatch;
 
@@ -98,8 +107,8 @@ export async function resolvePricing(
   const litellmMatch = lookupLiteLLM(db, provider, model);
   if (litellmMatch) return litellmMatch;
 
-  console.warn(`MISSING PRICING: ${provider}/${model} not found in static table or litellm`);
-  return undefined;
+  console.warn(`MISSING PRICING: ${provider}/${model} not found in static table or litellm, using conservative fallback ($${UNPRICED_FALLBACK.inputPerMillion}/$${UNPRICED_FALLBACK.outputPerMillion} per 1M tokens)`);
+  return UNPRICED_FALLBACK;
 }
 
 export async function resolveCost(
@@ -109,8 +118,5 @@ export async function resolveCost(
   extraUsage?: Array<{ dimension: ExtraCostDimension; quantity: number }>,
 ): Promise<CostBreakdown> {
   const pricing = await resolvePricing(provider, model);
-  if (!pricing) {
-    return { inputCost: 0, outputCost: 0, totalCost: 0, currency: 'USD' };
-  }
   return calculateCostFromPricing(pricing, usage, extraUsage);
 }

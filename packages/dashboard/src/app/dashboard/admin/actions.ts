@@ -11,6 +11,8 @@ async function assertAdmin(userId: string | null) {
   if (data?.plan !== 'admin') throw new Error('Unauthorized');
 }
 
+const VALID_PLANS = ['free', 'beta', 'pro', 'enterprise', 'admin'] as const;
+
 export async function updateAccount(
   targetUserId: string,
   plan: string,
@@ -19,6 +21,10 @@ export async function updateAccount(
 ) {
   const { userId } = await auth();
   await assertAdmin(userId);
+
+  if (!VALID_PLANS.includes(plan as (typeof VALID_PLANS)[number])) {
+    throw new Error('Invalid plan');
+  }
 
   const db = createServerClient();
   const { error } = await db

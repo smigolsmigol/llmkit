@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from typing import NamedTuple
 
-from llmkit._pricing_data import PREFIXES as _RAW_PREFIXES
-from llmkit._pricing_data import PRICING as _RAW_PRICING
+from ._pricing_data import PREFIXES as _RAW_PREFIXES
+from ._pricing_data import PRICING as _RAW_PRICING
 
 
 class TokenRates(NamedTuple):

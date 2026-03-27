@@ -324,7 +324,7 @@ export function registerTools(server: Server): void {
 
   server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     if (request.params.uri === RESOURCE_URI) {
-      const html = DASHBOARD_HTML.replace('__DASHBOARD_URL__', DASHBOARD_URL);
+      const html = DASHBOARD_HTML.replace('__DASHBOARD_URL__', () => DASHBOARD_URL);
       return { contents: [{ uri: RESOURCE_URI, mimeType: RESOURCE_MIME, text: html }] };
     }
     throw new Error(`Unknown resource: ${request.params.uri}`);

@@ -24,7 +24,7 @@ export default async function OverviewPage({
   const days = params.days !== undefined ? Number(params.days) : 30;
 
   const [spend, providers, timeseries, recent, models, summary, sessions, trend, budgetUsage] = await Promise.all([
-    getTotalSpend(userId),
+    getTotalSpend(userId, days),
     getSpendByProvider(userId, days),
     getRequestTimeseries(userId, days || 365),
     getRecentRequests(userId, 10),
@@ -93,7 +93,7 @@ export default async function OverviewPage({
               )}
             </div>
             <p className="text-gradient-violet mt-0.5 font-mono text-2xl font-bold">
-              {formatCents(spend.month)}
+              {formatCents(spend.range)}
             </p>
           </div>
         </div>

@@ -21,14 +21,22 @@ def _extract_cost_from_json(body: bytes) -> CostInfo | None:
     if not model or not usage:
         return None
 
-    input_t = usage.get("prompt_tokens") or usage.get("input_tokens") or 0
     output_t = usage.get("completion_tokens") or usage.get("output_tokens") or 0
-    cache_read = (
-        usage.get("cache_read_input_tokens")
-        or usage.get("prompt_tokens_details", {}).get("cached_tokens")
-        or 0
-    )
     cache_write = usage.get("cache_creation_input_tokens") or 0
+
+    # OpenAI: prompt_tokens includes cached_tokens as subset
+    # Anthropic: input_tokens is separate from cache_read_input_tokens
+    openai_cached = usage.get("prompt_tokens_details", {}).get("cached_tokens") or 0
+    anthropic_cached = usage.get("cache_read_input_tokens") or 0
+
+    if usage.get("prompt_tokens") is not None:
+        raw_input = usage["prompt_tokens"]
+        cache_read = openai_cached
+        input_t = raw_input - cache_read if cache_read else raw_input
+    else:
+        input_t = usage.get("input_tokens") or 0
+        cache_read = anthropic_cached
+
     total = calculate_cost(model, input_t, output_t, cache_read, cache_write)
     return CostInfo(total_cost=total, estimated=True)
 
@@ -77,18 +85,17 @@ class _SSEScanner:
             if isinstance(msg, dict) and msg.get("model"):
                 self.model = msg["model"]
 
-            # openai: usage in final chunk
+            # openai: usage in final chunk (prompt_tokens includes cached_tokens)
             usage = data.get("usage")
             if isinstance(usage, dict):
                 self.has_usage = True
-                self.input_tokens += (
-                    usage.get("prompt_tokens") or usage.get("input_tokens") or 0
-                )
+                cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
+                raw_input = usage.get("prompt_tokens") or usage.get("input_tokens") or 0
+                self.input_tokens += raw_input - cached if cached else raw_input
                 self.output_tokens += (
                     usage.get("completion_tokens") or usage.get("output_tokens") or 0
                 )
-                cached = usage.get("prompt_tokens_details", {})
-                self.cache_read_tokens += cached.get("cached_tokens") or 0
+                self.cache_read_tokens += cached
 
             # anthropic: usage split across message_start and message_delta
             msg_usage = msg.get("usage") if isinstance(msg, dict) else None

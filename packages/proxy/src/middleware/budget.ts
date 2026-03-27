@@ -147,7 +147,6 @@ export async function estimateCost(body: Record<string, unknown>, provider: Prov
   if (!model) return 0;
 
   const pricing = await resolvePricing(provider, model);
-  if (!pricing) return 0;
 
   const inputChars = countInputChars(body.messages as Array<{ content: string | Array<{ type: string; text?: string }> }> | undefined);
   const inputTokens = Math.ceil(inputChars / 4);
@@ -169,7 +168,7 @@ export async function affordableMaxTokens(
   if (!model) return undefined;
 
   const pricing = await resolvePricing(provider, model);
-  if (!pricing || pricing.outputPerMillion === 0) return undefined;
+  if (pricing.outputPerMillion === 0) return undefined;
 
   const inputChars = countInputChars(body.messages as Array<{ content: string | Array<{ type: string; text?: string }> }> | undefined);
   const inputTokens = Math.ceil(inputChars / 4);

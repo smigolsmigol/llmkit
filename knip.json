@@ -16,8 +16,7 @@
       "ignoreDependencies": ["class-variance-authority"],
       "ignore": [
         "src/components/skeletons.tsx",
-        "src/components/ui/card.tsx",
-        "src/app/dashboard/settings/create-budget-form.tsx"
+        "src/components/ui/card.tsx"
       ]
     }
   }
