@@ -5,9 +5,11 @@
 ```bash
 git clone https://github.com/smigolsmigol/llmkit.git
 cd llmkit
-pnpm install
+pnpm install          # installs deps + activates pre-commit hooks
 pnpm check-all        # typecheck + lint + dead code + publish validation
 ```
+
+`pnpm install` runs the `prepare` script which sets `core.hooksPath` to `.github/hooks/`. The pre-commit hook scans staged files for secrets and credential patterns before every commit.
 
 Proxy local dev (needs wrangler):
 ```bash
@@ -43,9 +45,18 @@ Every PR must pass:
 - `biome check` (lint + format)
 - `knip` (no dead exports or unused deps)
 - `publint` (package.json correctness for published packages)
-- All test suites (200+ tests across 9 packages)
+- 270+ tests across TS and Python (unit, smoke, integration, contract)
+- Security: gitleaks, semgrep, keyguard, pnpm audit, pip-audit, bandit
 
-Run everything at once: `pnpm check-all`
+Run the TS quality gate locally: `pnpm check-all`
+
+## Security
+
+The pre-commit hook blocks credential files and 19 secret patterns automatically. If you have [gitleaks](https://github.com/gitleaks/gitleaks) installed locally, the hook also runs a staged file scan.
+
+CI enforces the full security pipeline: secrets scan, semgrep static analysis, dependency audits, and keyguard project scan. Deploy is gated behind all security jobs. See [SECURITY.md](SECURITY.md) for details.
+
+Do not commit `.env` files, API keys, PEM files, or tokens. The hook will catch most of these, but review your diff before pushing.
 
 ## Code style
 
@@ -66,13 +77,14 @@ Run everything at once: `pnpm check-all`
 
 ```
 packages/
-  shared/       types, constants, pricing (published to npm)
-  proxy/        CF Workers API gateway (private, deployed)
-  sdk/          TypeScript client + CostTracker (published)
-  ai-sdk-provider/  Vercel AI SDK v6 provider (published)
-  cli/          Forward proxy for Python/Go/Rust (published)
-  mcp-server/   MCP tools for Claude Code (published)
-  dashboard/    Next.js 15 admin UI (private, deployed)
+  shared/           types, constants, pricing data (published to npm)
+  proxy/            CF Workers API gateway (private, deployed)
+  sdk/              TypeScript client + CostTracker (published to npm)
+  python-sdk/       Python SDK: tracked(), cost estimation (published to PyPI)
+  ai-sdk-provider/  Vercel AI SDK v6 provider (published to npm)
+  cli/              forward proxy for Python/Go/Rust (published to npm)
+  mcp-server/       MCP tools for Claude Code, Cline, Cursor (published to npm)
+  dashboard/        Next.js 15 admin UI (private, deployed)
 ```
 
 ## Need help?

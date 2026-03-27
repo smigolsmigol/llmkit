@@ -31,6 +31,8 @@ done <<< "$STAGED"
 PATTERNS=(
   'sk-[a-zA-Z0-9]{20,}'           # OpenAI / Stripe secret keys
   'sk-ant-[a-zA-Z0-9-]{20,}'      # Anthropic keys
+  'xai-[a-zA-Z0-9]{20,}'          # xAI keys
+  'AIza[a-zA-Z0-9_-]{35}'         # Google AI keys
   'AKIA[0-9A-Z]{16}'              # AWS access key IDs
   'ghp_[a-zA-Z0-9]{36}'           # GitHub personal access tokens
   'gho_[a-zA-Z0-9]{36}'           # GitHub OAuth tokens
@@ -84,6 +86,14 @@ if [ "$BLOCKED" -ne 0 ]; then
   echo "Commit blocked by secret scanner. If this is a false positive,"
   echo "review carefully and use --no-verify (only if you're certain)."
   exit 1
+fi
+
+# 4. Run gitleaks on staged changes if installed
+if command -v gitleaks &>/dev/null; then
+  if ! gitleaks protect --staged --no-banner 2>/dev/null; then
+    echo "BLOCKED: gitleaks found secrets in staged files."
+    exit 1
+  fi
 fi
 
 exit 0

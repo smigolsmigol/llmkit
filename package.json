@@ -3,6 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
+    "prepare": "git config core.hooksPath .github/hooks",
     "build": "turbo build",
     "dev": "turbo dev",
     "lint": "turbo lint",

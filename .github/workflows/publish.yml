@@ -1,0 +1,43 @@
+name: Publish Package
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: 'Package to publish (e.g. shared, sdk, cli, mcp-server, ai-sdk-provider)'
+        required: true
+        type: choice
+        options:
+          - shared
+          - sdk
+          - cli
+          - mcp-server
+          - ai-sdk-provider
+
+permissions:
+  contents: read
+  id-token: write # required for npm provenance (Sigstore OIDC)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 20
+          registry-url: https://registry.npmjs.org
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: build
+        run: pnpm turbo build --filter=@f3d1/llmkit-${{ inputs.package }}
+
+      - name: publish with provenance
+        run: pnpm --filter @f3d1/llmkit-${{ inputs.package }} publish --provenance --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

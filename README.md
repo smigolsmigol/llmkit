@@ -36,7 +36,7 @@ Tag requests with a session ID or end-user ID to track costs per agent, per conv
 
 11 providers through one interface: Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Fallback chains with one header (`x-llmkit-fallback: anthropic,openai,gemini`).
 
-Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 40+ models priced. Open source, MIT licensed.
+Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 700+ models priced across all providers. Open source, MIT licensed.
 
 ## How it works
 
@@ -202,11 +202,11 @@ Parses the session transcript and prints cost summary (tokens, spend, models use
 | [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy: auth, budgets, routing, logging |
 | [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
 | [@f3d1/llmkit-mcp-server](packages/mcp-server) | 14 tools: proxy analytics, local costs (Claude Code + Cline + Cursor), Notion sync |
-| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 40+ models), cost calculation |
+| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 700+ models), cost calculation |
 
 ## Testing
 
-60+ tests covering cost calculation, pricing accuracy, client behavior, transport hooks, type validation, and the full Python SDK. CI runs on every push. See [SECURITY.md](SECURITY.md) for the security audit methodology.
+270+ tests across TypeScript and Python: cost calculation, budget enforcement, crypto, reservations, pricing accuracy, streaming, transport hooks, contract tests, and integration tests. CI runs on every push with a 6-stage security pipeline. See [SECURITY.md](SECURITY.md) for details.
 
 ## Self-host
 
@@ -240,9 +240,10 @@ LLMKit handles your API keys. We take that seriously.
 | Hashing | User API keys: SHA-256, never stored in plaintext |
 | Runtime | Cloudflare Workers: no filesystem, no .env, nothing to exfiltrate |
 | Supply chain | All CI actions pinned to commit SHAs, explicit least-privilege permissions |
-| Provenance | npm packages published with provenance attestation |
+| Provenance | npm packages published with [Sigstore provenance](https://docs.npmjs.com/generating-provenance-statements) via GitHub Actions OIDC |
+| Pre-commit | 19 secret patterns + credential file blocking + gitleaks (auto-installed via `pnpm install`) |
+| CI pipeline | gitleaks, semgrep, pnpm audit, pip-audit, bandit, [KeyGuard](https://github.com/smigolsmigol/keyguard) |
 | AI exclusion | .cursorignore + .claudeignore block AI tools from reading secrets |
-| Audit | Security enforced by [KeyGuard](https://github.com/smigolsmigol/keyguard) in CI |
 
 Full details in [SECURITY.md](SECURITY.md).
 
