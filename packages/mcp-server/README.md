@@ -1,6 +1,6 @@
 # @f3d1/llmkit-mcp-server
 
-AI cost tracking for Claude Code, Cline, Cursor, and Claude Desktop. 14 tools for spend queries, budgets, local session costs, Notion sync, and agent attribution across 11 LLM providers.
+AI cost tracking for Claude Code, Cline, Cursor, and Claude Desktop. 11 tools for spend queries, budgets, local session costs, and agent attribution across 11 LLM providers.
 
 Part of [LLMKit](https://github.com/smigolsmigol/llmkit), an open-source API gateway with cost tracking and budget enforcement.
 
@@ -15,9 +15,7 @@ Add to your `.mcp.json` (Claude Code) or `.cursor/mcp.json` (Cursor):
       "command": "npx",
       "args": ["@f3d1/llmkit-mcp-server"],
       "env": {
-        "LLMKIT_API_KEY": "llmk_your_key_here",
-        "NOTION_TOKEN": "",
-        "NOTION_PAGE_ID": ""
+        "LLMKIT_API_KEY": "llmk_your_key_here"
       }
     }
   }
@@ -51,14 +49,6 @@ Auto-detect installed AI coding tools and aggregate data from all of them.
 | `llmkit_local_forecast` | Monthly projection vs Max subscription |
 | `llmkit_local_agents` | Subagent cost attribution (Claude Code) |
 
-### Notion tools (need NOTION_TOKEN + NOTION_PAGE_ID)
-
-| Tool | What it does |
-|------|-------------|
-| `llmkit_notion_cost_snapshot` | Sync cost data to a Notion page |
-| `llmkit_notion_budget_check` | Budget status with approval workflow |
-| `llmkit_notion_session_report` | Session report synced to Notion |
-
 ### SessionEnd hook
 
 Auto-log session costs when Claude Code exits:
@@ -78,8 +68,6 @@ Auto-log session costs when Claude Code exits:
 |----------|----------|-------------|
 | `LLMKIT_API_KEY` | No | API key for proxy tools. Local tools work without it. |
 | `LLMKIT_PROXY_URL` | No | Proxy URL (defaults to hosted service) |
-| `NOTION_TOKEN` | No | Notion integration token for Notion tools |
-| `NOTION_PAGE_ID` | No | Parent page ID for Notion sync |
 | `LLMKIT_CLINE_DIR` | No | Override Cline data directory path |
 
 ## Supported tools

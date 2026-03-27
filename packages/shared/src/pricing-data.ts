@@ -42,7 +42,7 @@ export const PRICING_DATA: Record<string, Record<string, { input: number; output
     'o4-mini': { input: 1.1, output: 4.4, cacheRead: 0.275 },
     'gpt-4o': { input: 2.5, output: 10, cacheRead: 1.25 },
     'gpt-4o-mini': { input: 0.15, output: 0.6, cacheRead: 0.075 },
-    'o3': { input: 2, output: 8 },
+    'o3': { input: 2, output: 8, cacheRead: 0.5 },
     'o3-mini': { input: 1.1, output: 4.4, cacheRead: 0.55 },
     'gpt-4-turbo': { input: 10, output: 30 },
     'ada': { input: 0.4, output: 0.4 },
@@ -645,7 +645,7 @@ export const PRICING_DATA: Record<string, Record<string, { input: number; output
     'deepseek-coder': { input: 0.14, output: 0.28 },
     'deepseek-r1': { input: 0.55, output: 2.19 },
     'deepseek-v3': { input: 0.27, output: 1.1, cacheRead: 0.07 },
-    'deepseek-v3.2': { input: 0.28, output: 0.4 },
+    'deepseek-v3.2': { input: 0.28, output: 0.42, cacheRead: 0.028 },
   },
   'mistral': {
     'mistral-large-latest': { input: 2, output: 6 },

@@ -149,7 +149,7 @@ Streaming, CostTracker (local cost tracking without the proxy), and Vercel AI SD
   <img width="380" height="200" src="https://glama.ai/mcp/servers/smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
 </a>
 
-Query AI costs from Claude Code, Cline, or Cursor. Local tools auto-detect installed tools and work without an API key. Notion tools sync cost data to your workspace.
+Query AI costs from Claude Code, Cline, or Cursor. Local tools auto-detect installed tools and work without an API key.
 
 ```json
 {
@@ -158,22 +158,18 @@ Query AI costs from Claude Code, Cline, or Cursor. Local tools auto-detect insta
       "command": "npx",
       "args": ["@f3d1/llmkit-mcp-server"],
       "env": {
-        "LLMKIT_API_KEY": "llmk_your_key_here",
-        "NOTION_TOKEN": "",
-        "NOTION_PAGE_ID": ""
+        "LLMKIT_API_KEY": "llmk_your_key_here"
       }
     }
   }
 }
 ```
 
-**14 tools** across 3 domains:
+**11 tools** across 2 domains:
 
 **Proxy** (need `LLMKIT_API_KEY`): `llmkit_usage_stats`, `llmkit_cost_query`, `llmkit_budget_status`, `llmkit_session_summary`, `llmkit_list_keys`, `llmkit_health`
 
 **Local** (no key needed, works with Claude Code + Cline + Cursor): `llmkit_local_session`, `llmkit_local_projects`, `llmkit_local_cache`, `llmkit_local_forecast`, `llmkit_local_agents`
-
-**Notion** (need `NOTION_TOKEN` + `NOTION_PAGE_ID`): `llmkit_notion_cost_snapshot`, `llmkit_notion_budget_check`, `llmkit_notion_session_report`
 
 **Audit logging**: per-request logging with timestamps, model attribution, cost tracking, per-end-user attribution (`x-llmkit-user-id`), tool invocation logging, CSV export with sha256 integrity hash. This data can support record-keeping requirements but does not constitute regulatory compliance.
 
@@ -201,7 +197,7 @@ Parses the session transcript and prints cost summary (tokens, spend, models use
 | [@f3d1/llmkit-cli](packages/cli) | `npx @f3d1/llmkit-cli -- <cmd>`: zero-code cost tracking for any language |
 | [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy: auth, budgets, routing, logging |
 | [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
-| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 14 tools: proxy analytics, local costs (Claude Code + Cline + Cursor), Notion sync |
+| [@f3d1/llmkit-mcp-server](packages/mcp-server) | 11 tools: proxy analytics, local costs (Claude Code + Cline + Cursor) |
 | [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 700+ models), cost calculation |
 
 ## Testing

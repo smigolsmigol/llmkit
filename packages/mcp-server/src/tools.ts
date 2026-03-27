@@ -7,8 +7,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { DASHBOARD_HTML, DASHBOARD_URL, RESOURCE_MIME, RESOURCE_URI } from './app.js';
 import { handleLocalAgents, handleLocalCache, handleLocalForecast, handleLocalProjects, handleLocalSession } from './local-handlers.js';
-import { loadNotionConfig } from './notion.js';
-import { handleNotionBudgetCheck, handleNotionCostSnapshot, handleNotionSessionReport } from './notion-handlers.js';
 import { fail, handleBudgetStatus, handleCostQuery, handleHealth, handleListKeys, handleSessionSummary, handleUsageStats, type ok } from './proxy-handlers.js';
 
 // --- Tool schemas ---
@@ -213,75 +211,6 @@ export const LOCAL_TOOLS = [
   },
 ];
 
-const NOTION_HINTS = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const;
-
-export const NOTION_TOOLS = [
-  {
-    name: 'llmkit_notion_cost_snapshot',
-    description: 'Sync cost data to a Notion page. Creates a formatted snapshot with spend, tokens, and model breakdown.',
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        period: { type: 'string', enum: ['today', 'week', 'month'], description: 'Time period', default: 'month' },
-      },
-    },
-    outputSchema: {
-      type: 'object' as const,
-      properties: {
-        notionUrl: { type: 'string' },
-        period: { type: 'string' },
-        spendUsd: { type: 'number' },
-        requests: { type: 'number' },
-      },
-      required: ['notionUrl', 'period', 'spendUsd'],
-    },
-    annotations: { title: 'Notion: Cost Snapshot', ...NOTION_HINTS },
-  },
-  {
-    name: 'llmkit_notion_budget_check',
-    description: 'Sync budget status to Notion with approval workflow. Creates a page with budget limits, usage, and a checkbox for human approval.',
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        budgetId: { type: 'string', description: 'Specific budget ID, or omit for all' },
-      },
-    },
-    outputSchema: {
-      type: 'object' as const,
-      properties: {
-        notionUrl: { type: 'string' },
-        budgetCount: { type: 'number' },
-        warnings: { type: 'number' },
-      },
-      required: ['notionUrl', 'budgetCount'],
-    },
-    annotations: { title: 'Notion: Budget Check', ...NOTION_HINTS },
-  },
-  {
-    name: 'llmkit_notion_session_report',
-    description: 'Sync session cost report to Notion. Creates a page with per-session breakdown, duration, and model usage.',
-    inputSchema: {
-      type: 'object' as const,
-      properties: {
-        source: { type: 'string', enum: ['proxy', 'local'], description: 'Data source: proxy API or local Claude Code data', default: 'proxy' },
-        sessionId: { type: 'string', description: 'Specific session ID (proxy only)' },
-        limit: { type: 'number', description: 'Max sessions to include (default 10)' },
-      },
-    },
-    outputSchema: {
-      type: 'object' as const,
-      properties: {
-        notionUrl: { type: 'string' },
-        source: { type: 'string' },
-        sessionCount: { type: 'number' },
-        totalCostUsd: { type: 'number' },
-      },
-      required: ['notionUrl', 'source', 'sessionCount'],
-    },
-    annotations: { title: 'Notion: Session Report', ...NOTION_HINTS },
-  },
-];
-
 // --- Routing ---
 
 type Args = Record<string, unknown> | undefined;
@@ -300,9 +229,6 @@ export const HANDLER_MAP: Record<string, Handler> = {
   llmkit_local_cache: () => handleLocalCache(),
   llmkit_local_forecast: () => handleLocalForecast(),
   llmkit_local_agents: () => handleLocalAgents(),
-  llmkit_notion_cost_snapshot: handleNotionCostSnapshot,
-  llmkit_notion_budget_check: handleNotionBudgetCheck,
-  llmkit_notion_session_report: handleNotionSessionReport,
 };
 
 export function registerTools(server: Server): void {
@@ -313,7 +239,6 @@ export function registerTools(server: Server): void {
     const tools = [
       ...PROXY_TOOLS,
       ...(isDesktop ? [] : LOCAL_TOOLS),
-      ...(loadNotionConfig() ? NOTION_TOOLS : []),
     ];
     return { tools };
   });

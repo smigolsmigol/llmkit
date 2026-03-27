@@ -2,7 +2,7 @@
   "manifest_version": "0.2",
   "name": "@f3d1/llmkit-mcp-server",
   "version": "0.4.3",
-  "description": "AI cost tracking: 14 tools for spend, budgets, local costs (Claude Code + Cline + Cursor), and Notion sync",
+  "description": "AI cost tracking: 11 tools for spend, budgets, and local costs (Claude Code + Cline + Cursor)",
   "author": {
     "name": "F3d1",
     "url": "https://github.com/smigolsmigol"
@@ -16,9 +16,7 @@
         "${__dirname}/./dist/index.js"
       ],
       "env": {
-        "LLMKIT_API_KEY": "",
-        "NOTION_TOKEN": "",
-        "NOTION_PAGE_ID": ""
+        "LLMKIT_API_KEY": ""
       }
     }
   },

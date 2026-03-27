@@ -42,7 +42,7 @@ PRICING: dict[str, dict[str, tuple[float, ...]]] = {
         "o4-mini": (1.1, 4.4, 0.275),
         "gpt-4o": (2.5, 10, 1.25),
         "gpt-4o-mini": (0.15, 0.6, 0.075),
-        "o3": (2, 8),
+        "o3": (2, 8, 0.5),
         "o3-mini": (1.1, 4.4, 0.55),
         "gpt-4-turbo": (10, 30),
         "ada": (0.4, 0.4),
@@ -645,7 +645,7 @@ PRICING: dict[str, dict[str, tuple[float, ...]]] = {
         "deepseek-coder": (0.14, 0.28),
         "deepseek-r1": (0.55, 2.19),
         "deepseek-v3": (0.27, 1.1, 0.07),
-        "deepseek-v3.2": (0.28, 0.4),
+        "deepseek-v3.2": (0.28, 0.42, 0.028),
     },
     "mistral": {
         "mistral-large-latest": (2, 6),

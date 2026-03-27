@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.smigolsmigol/llmkit",
-  "description": "AI cost tracking: 14 tools for spend, budgets, Claude Code + Cursor + Cline costs, Notion sync",
+  "description": "AI cost tracking: 11 tools for spend, budgets, and Claude Code + Cursor + Cline costs",
   "repository": {
     "url": "https://github.com/smigolsmigol/llmkit",
     "source": "github"
@@ -26,20 +26,6 @@
         {
           "name": "LLMKIT_PROXY_URL",
           "description": "LLMKit proxy URL (defaults to hosted service)",
-          "isRequired": false,
-          "format": "string",
-          "isSecret": false
-        },
-        {
-          "name": "NOTION_TOKEN",
-          "description": "Notion integration token for Notion sync tools",
-          "isRequired": false,
-          "format": "string",
-          "isSecret": true
-        },
-        {
-          "name": "NOTION_PAGE_ID",
-          "description": "Parent Notion page ID for sync",
           "isRequired": false,
           "format": "string",
           "isSecret": false

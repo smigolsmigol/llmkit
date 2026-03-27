@@ -19,11 +19,10 @@ test('--help exits 0 and shows server name', () => {
   assert(out.includes('LLMKit MCP Server'), 'should contain "LLMKit MCP Server"');
 });
 
-test('--help lists all 3 tool groups', () => {
+test('--help lists both tool groups', () => {
   const out = execSync(`node ${entry} --help 2>&1`, { encoding: 'utf8', timeout: 5000 });
   assert(out.includes('5 local tools'), 'should mention 5 local tools');
   assert(out.includes('6 proxy tools'), 'should mention 6 proxy tools');
-  assert(out.includes('3 Notion tools'), 'should mention 3 Notion tools');
 });
 
 test('--help shows config JSON snippet', () => {

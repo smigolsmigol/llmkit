@@ -2,7 +2,7 @@
   "name": "@f3d1/llmkit-mcp-server",
   "version": "0.4.3",
   "license": "MIT",
-  "description": "AI cost tracking: 14 tools for spend, budgets, Claude Code costs, and Notion sync",
+  "description": "AI cost tracking: 11 tools for spend, budgets, and Claude Code costs",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/smigolsmigol/llmkit.git"
@@ -20,7 +20,7 @@
     }
   },
   "mcpName": "io.github.smigolsmigol/llmkit",
-  "keywords": ["mcp", "model-context-protocol", "claude-code", "cursor", "llm", "ai", "cost-tracking", "ai-agents", "notion"],
+  "keywords": ["mcp", "model-context-protocol", "claude-code", "cursor", "llm", "ai", "cost-tracking", "ai-agents"],
   "files": [
     "dist"
   ],

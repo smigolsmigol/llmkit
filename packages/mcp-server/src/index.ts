@@ -71,9 +71,6 @@ function printUsage(): void {
   6 proxy tools (needs LLMKIT_API_KEY):
     usage stats, cost query, budget status, session summary, API keys, health check
 
-  3 Notion tools (needs NOTION_TOKEN):
-    cost snapshot, budget check, session report
-
   Then ask your AI assistant: ${dim('"how much did this session cost?"')}
 
   ${dim('Docs: https://llmkit-dashboard.vercel.app/mcp')}

@@ -12,7 +12,7 @@ function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
 // load pricing tables
 const { PRICING } = await import('../packages/shared/dist/providers.js');
-const { PROXY_TOOLS, LOCAL_TOOLS, NOTION_TOOLS } = await import('../packages/mcp-server/dist/tools.js');
+const { PROXY_TOOLS, LOCAL_TOOLS } = await import('../packages/mcp-server/dist/tools.js');
 
 const serverJson = JSON.parse(readFileSync('packages/mcp-server/server.json', 'utf8'));
 const mcpPkg = JSON.parse(readFileSync('packages/mcp-server/package.json', 'utf8'));
@@ -59,10 +59,10 @@ test('server.json version matches package.json version', () => {
 });
 
 // README claims
-test('README claims 14 tools, actual is 14', () => {
-  const total = PROXY_TOOLS.length + LOCAL_TOOLS.length + NOTION_TOOLS.length;
-  assert(total === 14, `actual tool count is ${total}`);
-  assert(readme.includes('14'), 'README should mention 14');
+test('README claims 11 tools, actual is 11', () => {
+  const total = PROXY_TOOLS.length + LOCAL_TOOLS.length;
+  assert(total === 11, `actual tool count is ${total}`);
+  assert(readme.includes('11 tools'), 'README should mention 11 tools');
 });
 
 test('README claims 11 providers, pricing has 11', () => {
