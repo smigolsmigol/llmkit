@@ -26,6 +26,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Topic :: Internet :: WWW/HTTP",
     "Typing :: Typed",
+    "Operating System :: OS Independent",
 ]
 keywords = [
     "llm",
@@ -37,17 +38,24 @@ keywords = [
     "anthropic",
     "gemini",
     "claude",
+    "gpt",
     "token-usage",
+    "token-cost",
+    "llm-cost",
+    "multi-provider",
+    "openai-compatible",
     "observability",
     "proxy",
     "sdk",
     "ai-agents",
-    "langchain",
+    "mistral",
+    "groq",
+    "deepseek",
 ]
 
 [project.urls]
-Homepage = "https://github.com/smigolsmigol/llmkit"
-Documentation = "https://github.com/smigolsmigol/llmkit"
+Homepage = "https://github.com/smigolsmigol/llmkit/tree/main/packages/python-sdk"
+Documentation = "https://github.com/smigolsmigol/llmkit#python"
 Repository = "https://github.com/smigolsmigol/llmkit"
 Issues = "https://github.com/smigolsmigol/llmkit/issues"
 Changelog = "https://github.com/smigolsmigol/llmkit/releases"
