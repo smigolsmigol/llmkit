@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { CostChart } from '@/components/charts/cost-chart';
 import { ProviderChart } from '@/components/charts/provider-chart';
 import { RequestChart } from '@/components/charts/request-chart';
@@ -95,21 +95,23 @@ interface AdminTabsProps {
 export function AdminTabs(props: AdminTabsProps) {
   const { stats, deltas, totalTokens, activeUsers, timeseries, providerSpend, providerHealth, topModels, userBreakdown, accounts } = props;
   const searchParams = useSearchParams();
-  const router = useRouter();
-  const activeTab = (searchParams.get('tab') as TabId) || 'overview';
+  const [activeTab, setActiveTab] = useState<TabId>(
+    (searchParams.get('tab') as TabId) || 'overview'
+  );
 
   useEffect(() => {
     window.dispatchEvent(new Event('resize'));
   }, [activeTab]);
 
   function setTab(id: TabId) {
+    setActiveTab(id);
     const params = new URLSearchParams(searchParams.toString());
     if (id === 'overview') {
       params.delete('tab');
     } else {
       params.set('tab', id);
     }
-    router.push(`?${params.toString()}`, { scroll: false });
+    window.history.replaceState(null, '', `?${params.toString()}`);
   }
 
   return (

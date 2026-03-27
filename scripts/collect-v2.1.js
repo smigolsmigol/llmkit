@@ -46,15 +46,18 @@ async function collectCIRuns() {
   if (!GITHUB_TOKEN) return {};
   try {
     var since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
-    var data = await fetchJson(
-      "https://api.github.com/repos/smigolsmigol/llmkit/actions/runs?per_page=100&created=>" + since,
-      { Authorization: "Bearer " + GITHUB_TOKEN }
-    );
-    var runs = data.workflow_runs || [];
     var byDay = {};
-    for (var i = 0; i < runs.length; i++) {
-      var day = runs[i].created_at.slice(0, 10);
-      byDay[day] = (byDay[day] || 0) + 1;
+    // paginate through all runs (100 per page)
+    for (var page = 1; page <= 10; page++) {
+      var url = "https://api.github.com/repos/smigolsmigol/llmkit/actions/runs?per_page=100&page=" + page + "&created=>" + since;
+      var data = await fetchJson(url, { Authorization: "Bearer " + GITHUB_TOKEN });
+      var runs = data.workflow_runs || [];
+      if (runs.length === 0) break;
+      for (var i = 0; i < runs.length; i++) {
+        var day = runs[i].created_at.slice(0, 10);
+        byDay[day] = (byDay[day] || 0) + 1;
+      }
+      if (runs.length < 100) break;
     }
     return byDay;
   } catch (e) {
