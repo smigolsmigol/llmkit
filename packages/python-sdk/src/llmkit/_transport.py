@@ -89,7 +89,9 @@ class _SSEScanner:
             usage = data.get("usage")
             if isinstance(usage, dict):
                 self.has_usage = True
-                cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
+                cached = (usage.get("prompt_tokens_details") or {}).get(
+                    "cached_tokens"
+                ) or 0
                 raw_input = usage.get("prompt_tokens") or usage.get("input_tokens") or 0
                 self.input_tokens += raw_input - cached if cached else raw_input
                 self.output_tokens += (
