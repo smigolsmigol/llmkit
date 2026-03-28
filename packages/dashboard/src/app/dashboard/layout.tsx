@@ -13,9 +13,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <div className="noise-overlay flex min-h-screen">
       <Sidebar isAdmin={isAdmin} />
-      <div className="ml-56 flex flex-1 flex-col">
+      <div className="ml-0 md:ml-56 flex flex-1 flex-col">
         <Header />
-        <main className="relative flex-1 px-3 py-2">
+        <main className="relative flex-1 px-3 py-2 pt-14 md:pt-2">
           <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[400px] w-[700px] bg-[radial-gradient(ellipse,_rgba(124,58,237,0.05),_transparent_70%)]" />
           <div className="relative">{children}</div>
         </main>

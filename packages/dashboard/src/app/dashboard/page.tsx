@@ -80,7 +80,7 @@ export default async function OverviewPage({
         </div>
       )}
 
-      {totalRequests > 0 && <div className="grid grid-cols-4 gap-1.5">
+      {totalRequests > 0 && <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
         <div className="group relative">
           <div className="absolute -inset-px rounded-lg bg-gradient-to-b from-white/[0.06] to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
           <div className="relative glow-hover rounded-lg border border-border bg-card p-3">
@@ -131,7 +131,7 @@ export default async function OverviewPage({
       )}
 
       {totalRequests > 0 && (
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           <StatCard
             label="Avg Cost / Request"
             value={formatCents(summary.avgCostCents)}
@@ -204,7 +204,7 @@ export default async function OverviewPage({
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Cost by Model</h2>
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-muted-foreground">
                     <th className="pb-1 font-medium">Model</th>
@@ -225,7 +225,7 @@ export default async function OverviewPage({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
 
             <div className="rounded-lg border border-border bg-card p-2">
@@ -235,7 +235,7 @@ export default async function OverviewPage({
               {sessions.length === 0 ? (
                 <p className="py-4 text-center text-sm text-muted-foreground/60">Pass x-llmkit-session-id header to group requests.</p>
               ) : (
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto"><table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-muted-foreground">
                       <th className="pb-1 font-medium">Session</th>
@@ -262,7 +262,7 @@ export default async function OverviewPage({
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </div>
           </div>

@@ -266,7 +266,7 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
           <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Package Breakdown</h2>
           </div>
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto"><table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs text-muted-foreground">
                 <th className="pb-1">Package</th>
@@ -308,7 +308,7 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
                 <td className="py-1 text-right font-mono text-[11px] text-muted-foreground">{fmt(data.pypi.total)}</td>
               </tr>
             </tbody>
-          </table>
+          </table></div>
           <div className="mt-1 flex justify-between border-t border-[#2a2a2a] pt-1 text-[10px]">
             <span className="font-medium">Total</span>
             <span className="font-mono text-muted-foreground">{fmt(grandTotal)} all time</span>

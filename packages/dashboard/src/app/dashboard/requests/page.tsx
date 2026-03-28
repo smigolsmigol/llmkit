@@ -79,7 +79,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="rounded-lg border border-border bg-card px-4 py-3">
           <p className="text-xs text-muted-foreground">Total Spend</p>
           <p className="mt-0.5 font-mono text-lg font-semibold">{formatCents(summary.totalSpendCents)}</p>
@@ -105,7 +105,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-muted-foreground">
               <th className="px-4 py-2.5 font-medium">Time</th>
@@ -154,7 +154,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {result.total > 0 && (

@@ -87,7 +87,7 @@ export default async function AdminRequestsPage({ searchParams }: PageProps) {
       )}
 
       <div className="overflow-x-auto rounded-lg border border-[#2a2a2a]">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto"><table className="w-full text-sm">
           <thead>
             <tr className="border-b border-[#2a2a2a] text-left text-muted-foreground">
               <th className="px-4 py-2.5 font-medium">Time</th>
@@ -146,7 +146,7 @@ export default async function AdminRequestsPage({ searchParams }: PageProps) {
               </tr>
             )}
           </tbody>
-        </table>
+        </table></div>
       </div>
 
       {result.total > 0 && (

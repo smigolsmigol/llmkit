@@ -282,7 +282,7 @@ export function ProviderGrid({
           <h2 className="mb-3 text-sm font-medium text-muted-foreground">
             Available ({inactiveProviders.length})
           </h2>
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {inactiveProviders.map((p) => (
               <InactiveProviderCard key={p.id} provider={p} />
             ))}

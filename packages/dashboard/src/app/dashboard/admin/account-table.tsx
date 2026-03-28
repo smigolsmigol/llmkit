@@ -98,7 +98,7 @@ export function AccountTable({ accounts }: { accounts: AccountRow[] }) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto"><table className="w-full text-sm">
         <thead>
           <tr className="bg-secondary text-left text-xs text-muted-foreground">
             <th className="px-3 py-2">User ID</th>
@@ -114,7 +114,7 @@ export function AccountTable({ accounts }: { accounts: AccountRow[] }) {
             <AccountRow key={acc.user_id} account={acc} />
           ))}
         </tbody>
-      </table>
+      </table></div>
     </div>
   );
 }

@@ -138,7 +138,7 @@ export function AdminTabs(props: AdminTabsProps) {
       <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}>
         <div className="space-y-1.5">
           {/* stat cards row 1 */}
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             <div className="glow-hover rounded-lg border border-border bg-card p-3">
               <div className="flex items-center justify-between">
                 <p className="text-xs text-muted-foreground">Platform Spend</p>
@@ -161,7 +161,7 @@ export function AdminTabs(props: AdminTabsProps) {
           </div>
 
           {/* stat cards row 2 */}
-          <div className="grid grid-cols-4 gap-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             <StatCard
               label="Active Keys (today)"
               value={String(stats.activeKeysToday)}
@@ -239,7 +239,7 @@ export function AdminTabs(props: AdminTabsProps) {
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Provider Health</h2>
               </div>
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto"><table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-xs text-muted-foreground">
                     <th className="pb-1">Provider</th>
@@ -270,7 +270,7 @@ export function AdminTabs(props: AdminTabsProps) {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </div>
           )}
 
@@ -280,7 +280,7 @@ export function AdminTabs(props: AdminTabsProps) {
                 <h2 className="text-xs font-medium">Top Models</h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto"><table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-muted-foreground">
                       <th className="pb-1">Model</th>
@@ -307,7 +307,7 @@ export function AdminTabs(props: AdminTabsProps) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             </div>
           )}
@@ -328,7 +328,7 @@ export function AdminTabs(props: AdminTabsProps) {
                 <h2 className="text-xs font-medium">Per-User Breakdown</h2>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <div className="overflow-x-auto"><table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-muted-foreground">
                       <th className="pb-1">User</th>
@@ -359,7 +359,7 @@ export function AdminTabs(props: AdminTabsProps) {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               </div>
             </div>
           )}
