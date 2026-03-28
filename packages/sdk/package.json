@@ -1,6 +1,6 @@
 {
   "name": "@f3d1/llmkit-sdk",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "license": "MIT",
   "description": "Client SDK for LLMKit - cost tracking, provider routing, budget enforcement",
   "repository": {
@@ -14,7 +14,8 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
   "keywords": [

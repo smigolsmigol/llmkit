@@ -117,7 +117,7 @@ Streaming, CostTracker, and [Vercel AI SDK provider](packages/ai-sdk-provider) a
   <img width="380" height="200" src="https://glama.ai/mcp/servers/smigolsmigol/llmkit-mcp-server/badge" alt="llmkit-mcp-server MCP server" />
 </a>
 
-Query AI costs from Claude Code, Cline, or Cursor):
+Query AI costs from Claude Code, Cline, or Cursor:
 
 ```json
 {
