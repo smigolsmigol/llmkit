@@ -89,6 +89,9 @@ providerRouter.post('/chat/completions', async (c) => {
     temperature: body.temperature as number | undefined,
     maxTokens: effectiveMaxTokens,
     apiKey: providerKey,
+    tools: body.tools as unknown[] | undefined,
+    toolChoice: body.tool_choice,
+    responseFormat: body.response_format,
   };
 
   if (wantStream) {
@@ -142,7 +145,17 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
           cached: false,
           sessionId: c.req.header('x-llmkit-session-id') || undefined,
           endUserId: c.req.header('x-llmkit-user-id') || undefined,
+          ...(result.toolCalls?.length && { toolCalls: result.toolCalls }),
         });
+      }
+
+      const message: Record<string, unknown> = { role: 'assistant', content: result.content };
+      if (result.toolCalls?.length) {
+        message.tool_calls = result.toolCalls.map(tc => ({
+          id: tc.id,
+          type: 'function',
+          function: { name: tc.name, arguments: tc.arguments },
+        }));
       }
 
       setCostHeaders(c, cost, providerName, latency, result.providerCostUsd);
@@ -153,7 +166,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
         model: result.model,
         choices: [{
           index: 0,
-          message: { role: 'assistant', content: result.content },
+          message,
           finish_reason: toOpenAIFinishReason(result.finishReason),
         }],
         usage: {

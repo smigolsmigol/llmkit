@@ -15,11 +15,18 @@ interface OpenAIUsage {
   cost_in_usd_ticks?: number;
 }
 
+interface OpenAIToolCall {
+  id: string;
+  type: 'function';
+  function: { name: string; arguments: string };
+  index?: number;
+}
+
 interface OpenAIResponse {
   id: string;
   model: string;
   choices: Array<{
-    message: { role: string; content: string };
+    message: { role: string; content: string; tool_calls?: OpenAIToolCall[] };
     finish_reason: string;
   }>;
   usage: OpenAIUsage;
@@ -29,7 +36,7 @@ interface OpenAIStreamChunk {
   id: string;
   model: string;
   choices: Array<{
-    delta: { role?: string; content?: string };
+    delta: { role?: string; content?: string; tool_calls?: Array<{ index: number; id?: string; function?: { name?: string; arguments?: string } }> };
     finish_reason: string | null;
   }>;
   usage?: OpenAIUsage;
@@ -57,6 +64,9 @@ export class OpenAIAdapter implements ProviderAdapter {
     };
     if (req.maxTokens) body.max_tokens = req.maxTokens;
     if (req.temperature !== undefined) body.temperature = req.temperature;
+    if (req.tools?.length) body.tools = req.tools;
+    if (req.toolChoice !== undefined) body.tool_choice = req.toolChoice;
+    if (req.responseFormat) body.response_format = req.responseFormat;
 
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -91,6 +101,9 @@ export class OpenAIAdapter implements ProviderAdapter {
     };
     if (req.maxTokens) body.max_tokens = req.maxTokens;
     if (req.temperature !== undefined) body.temperature = req.temperature;
+    if (req.tools?.length) body.tools = req.tools;
+    if (req.toolChoice !== undefined) body.tool_choice = req.toolChoice;
+    if (req.responseFormat) body.response_format = req.responseFormat;
 
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -137,12 +150,25 @@ export class OpenAIAdapter implements ProviderAdapter {
             messageId = parsed.id;
             model = parsed.model;
 
-            const delta = parsed.choices[0]?.delta?.content;
+            const choice = parsed.choices[0];
+            const delta = choice?.delta?.content;
             if (delta) {
-              yield { type: 'text', text: delta };
+              yield { type: 'text' as const, text: delta };
             }
 
-            const fr = parsed.choices[0]?.finish_reason;
+            if (choice?.delta?.tool_calls) {
+              for (const tc of choice.delta.tool_calls) {
+                yield {
+                  type: 'tool' as const,
+                  toolCallId: tc.id,
+                  toolName: tc.function?.name,
+                  toolArguments: tc.function?.arguments,
+                  toolIndex: tc.index,
+                };
+              }
+            }
+
+            const fr = choice?.finish_reason;
             if (fr) finishReason = fr;
 
             if (parsed.usage) {
@@ -181,8 +207,12 @@ function parseProviderCost(u: OpenAIUsage): number | undefined {
 
 function parseResponse(data: OpenAIResponse): ProviderResponse {
   const choice = data.choices[0];
-  const rawTools = (choice?.message as { tool_calls?: { function?: { name?: string } }[] })?.tool_calls;
-  const toolCalls = rawTools?.map(t => ({ name: t.function?.name ?? 'unknown' }));
+  const rawTools = choice?.message?.tool_calls;
+  const toolCalls = rawTools?.map(t => ({
+    id: t.id,
+    name: t.function.name,
+    arguments: t.function.arguments,
+  }));
 
   return {
     id: data.id,

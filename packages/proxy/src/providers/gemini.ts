@@ -18,7 +18,7 @@ interface GeminiUsage {
 }
 
 interface GeminiCandidate {
-  content: { role: string; parts: Array<{ text?: string }> };
+  content: { role: string; parts: Array<{ text?: string; functionCall?: { name: string; args: unknown } }> };
   finishReason?: string;
   index: number;
 }
@@ -52,7 +52,18 @@ export class GeminiAdapter implements ProviderAdapter {
     const genConfig: Record<string, unknown> = {};
     if (req.maxTokens) genConfig.maxOutputTokens = req.maxTokens;
     if (req.temperature !== undefined) genConfig.temperature = req.temperature;
+    if (req.responseFormat && (req.responseFormat as { type?: string }).type === 'json_object') {
+      genConfig.responseMimeType = 'application/json';
+    }
     if (Object.keys(genConfig).length) body.generationConfig = genConfig;
+
+    if (req.tools?.length) {
+      body.tools = [{ functionDeclarations: (req.tools as Array<{ function?: { name?: string; description?: string; parameters?: unknown } }>).map(t => ({
+        name: t.function?.name,
+        description: t.function?.description,
+        parameters: t.function?.parameters,
+      })) }];
+    }
 
     const res = await fetch(`${BASE_URL}/${req.model}:generateContent`, {
       method: 'POST',
@@ -221,11 +232,20 @@ function parseResponse(data: GeminiResponse, requestModel: string): ProviderResp
     .map((p) => p.text)
     .join('') || '';
 
+  const toolCalls = candidate.content?.parts
+    ?.filter((p): p is { functionCall: { name: string; args: unknown } } => !!p.functionCall)
+    .map((p, i) => ({
+      id: `call_${i}`,
+      name: p.functionCall.name,
+      arguments: JSON.stringify(p.functionCall.args),
+    }));
+
   return {
     id: data.responseId || '',
     content: text,
     model: data.modelVersion || requestModel,
     usage: mapUsage(data.usageMetadata),
     finishReason: candidate.finishReason || 'stop',
+    ...(toolCalls?.length && { toolCalls }),
   };
 }

@@ -12,10 +12,15 @@ export interface ProviderRequest {
   temperature?: number;
   maxTokens?: number;
   apiKey: string;
+  tools?: unknown[];
+  toolChoice?: unknown;
+  responseFormat?: unknown;
 }
 
 export interface ToolCall {
+  id: string;
   name: string;
+  arguments: string;
 }
 
 export interface ProviderResponse {
@@ -32,6 +37,9 @@ export interface StreamEvent {
   type: 'text' | 'tool' | 'end';
   text?: string;
   toolName?: string;
+  toolCallId?: string;
+  toolArguments?: string;
+  toolIndex?: number;
   usage?: TokenUsage;
   finishReason?: string;
   id?: string;

@@ -50,6 +50,19 @@ export class AnthropicAdapter implements ProviderAdapter {
     };
     if (system) body.system = system;
     if (req.temperature !== undefined) body.temperature = req.temperature;
+    if (req.tools?.length) {
+      body.tools = (req.tools as Array<{ function?: { name?: string; description?: string; parameters?: unknown } }>).map(t => ({
+        name: t.function?.name,
+        description: t.function?.description,
+        input_schema: t.function?.parameters,
+      }));
+    }
+    if (req.toolChoice) {
+      const tc = req.toolChoice as { type?: string; function?: { name?: string } };
+      if (tc.type === 'none') body.tool_choice = { type: 'none' };
+      else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
+      else body.tool_choice = { type: 'auto' };
+    }
 
     const res = await fetch(`${BASE_URL}/messages`, {
       method: 'POST',
@@ -82,6 +95,19 @@ export class AnthropicAdapter implements ProviderAdapter {
     };
     if (system) body.system = system;
     if (req.temperature !== undefined) body.temperature = req.temperature;
+    if (req.tools?.length) {
+      body.tools = (req.tools as Array<{ function?: { name?: string; description?: string; parameters?: unknown } }>).map(t => ({
+        name: t.function?.name,
+        description: t.function?.description,
+        input_schema: t.function?.parameters,
+      }));
+    }
+    if (req.toolChoice) {
+      const tc = req.toolChoice as { type?: string; function?: { name?: string } };
+      if (tc.type === 'none') body.tool_choice = { type: 'none' };
+      else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
+      else body.tool_choice = { type: 'auto' };
+    }
 
     const res = await fetch(`${BASE_URL}/messages`, {
       method: 'POST',
@@ -215,7 +241,7 @@ function parseResponse(data: AnthropicResponse): ProviderResponse {
 
   const toolCalls = data.content
     .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
-    .map((b) => ({ name: b.name }));
+    .map((b) => ({ id: b.id, name: b.name, arguments: JSON.stringify(b.input) }));
 
   return {
     id: data.id,
