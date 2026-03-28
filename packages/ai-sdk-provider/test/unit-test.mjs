@@ -75,7 +75,15 @@ test('flattenPrompt: system message', () => {
   assert(result[0].content === 'you are helpful', 'content should match');
 });
 
-test('flattenPrompt: user text parts concatenated', () => {
+test('flattenPrompt: single user text part collapsed to string', () => {
+  const result = flattenPrompt([{
+    role: 'user',
+    content: [{ type: 'text', text: 'hello world' }],
+  }]);
+  assert(result[0].content === 'hello world', `expected "hello world", got "${result[0].content}"`);
+});
+
+test('flattenPrompt: multiple user text parts kept as array', () => {
   const result = flattenPrompt([{
     role: 'user',
     content: [
@@ -83,7 +91,10 @@ test('flattenPrompt: user text parts concatenated', () => {
       { type: 'text', text: 'world' },
     ],
   }]);
-  assert(result[0].content === 'hello world', `expected "hello world", got "${result[0].content}"`);
+  assert(Array.isArray(result[0].content), 'multi-part content stays as array');
+  assert(result[0].content.length === 2, 'should have 2 parts');
+  assert(result[0].content[0].text === 'hello ', 'first part text');
+  assert(result[0].content[1].text === 'world', 'second part text');
 });
 
 test('flattenPrompt: assistant message', () => {
@@ -95,13 +106,23 @@ test('flattenPrompt: assistant message', () => {
   assert(result[0].content === 'hi there', 'content');
 });
 
-test('flattenPrompt: tool message stringified', () => {
+test('flattenPrompt: tool message with output array', () => {
   const result = flattenPrompt([{
     role: 'tool',
-    content: [{ type: 'tool-result', toolCallId: 'x', result: { data: 1 } }],
+    content: [{ type: 'tool-result', toolCallId: 'x', output: [{ type: 'text', text: 'result data' }] }],
   }]);
   assert(result[0].role === 'tool', 'role');
-  assert(result[0].content.includes('tool-result'), 'should be JSON stringified');
+  assert(result[0].tool_call_id === 'x', 'tool_call_id');
+  assert(result[0].content === 'result data', `expected "result data", got "${result[0].content}"`);
+});
+
+test('flattenPrompt: tool message without output defaults to {}', () => {
+  const result = flattenPrompt([{
+    role: 'tool',
+    content: [{ type: 'tool-result', toolCallId: 'y' }],
+  }]);
+  assert(result[0].role === 'tool', 'role');
+  assert(result[0].content === '{}', 'empty output defaults to {}');
 });
 
 // buildHeaders
