@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { auth } from '@clerk/nextjs/server';
 import { PublicNav } from '@/components/public-nav';
 import { PublicFooter } from '@/components/public-footer';
 import { ProviderIcon } from '@/components/provider-icons';
@@ -18,7 +19,10 @@ const providers = [
   { id: 'openrouter', name: 'OpenRouter', models: 0, bg: 'bg-purple-500/15 text-purple-400', accent: 'border-l-purple-400', tag: 'meta-gateway' },
 ];
 
-export default function Home() {
+export default async function Home() {
+  const { userId } = await auth();
+  const ctaHref = userId ? '/dashboard' : '/sign-up';
+  const ctaLabel = userId ? 'Go to dashboard' : 'Get started free';
   return (
     <div className="relative min-h-screen bg-[#0a0a0a] text-white selection:bg-violet-500/30">
       <div
@@ -53,10 +57,10 @@ export default function Home() {
 
               <div className="mt-8 flex items-center gap-3">
                 <Link
-                  href="/sign-up"
+                  href={ctaHref}
                   className="rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-500 transition"
                 >
-                  Get started free
+                  {ctaLabel}
                 </Link>
                 <a
                   href="https://github.com/smigolsmigol/llmkit"
@@ -187,7 +191,7 @@ export default function Home() {
           </Link>
 
           {/* Dashboard */}
-          <Link href="/sign-up" className="group">
+          <Link href={ctaHref} className="group">
             <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition hover:border-amber-500/20 hover:bg-white/[0.04]">
               <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
@@ -259,10 +263,10 @@ export default function Home() {
         <p className="mb-4 text-sm text-zinc-500">Free while in beta. No credit card.</p>
         <div className="flex items-center justify-center gap-3">
           <Link
-            href="/sign-up"
+            href={ctaHref}
             className="rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-500 transition"
           >
-            Try the dashboard
+            {userId ? 'Open dashboard' : 'Try the dashboard'}
           </Link>
           <a
             href="https://github.com/smigolsmigol/llmkit"
