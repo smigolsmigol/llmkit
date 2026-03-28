@@ -400,6 +400,13 @@ export async function getAdminUserBreakdown(days = 0): Promise<UserBreakdown[]> 
 
   const acctMap = new Map((accounts || []).map((a) => [a.user_id, a]));
 
+  // include all accounts, even those with 0 requests
+  for (const acct of accounts || []) {
+    if (!users.has(acct.user_id)) {
+      users.set(acct.user_id, { requests: 0, spendCents: 0, errors: 0, totalLatency: 0, lastActive: '' });
+    }
+  }
+
   return Array.from(users.entries())
     .map(([userId, u]) => ({
       userId,
