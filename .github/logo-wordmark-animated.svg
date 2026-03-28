@@ -12,39 +12,19 @@
   </defs>
 
   <style>
-    /* 12s cycle: 0-5s draw, 5-9.5s hold, 9.5-10.5s fade out, 10.5-12s blank */
-    @keyframes d {
-      0% { stroke-dashoffset: var(--l); opacity: 0; }
-      2% { opacity: 1; }
-      42% { stroke-dashoffset: 0; }
-      79% { stroke-dashoffset: 0; opacity: 1; }
-      88% { opacity: 0; }
-      100% { stroke-dashoffset: var(--l); opacity: 0; }
-    }
-    @keyframes f {
-      0% { opacity: 0; }
-      42% { opacity: 1; }
-      79% { opacity: 1; }
-      88% { opacity: 0; }
-      100% { opacity: 0; }
-    }
-    @keyframes p {
-      0%, 100% { opacity: 0.7; }
-      50% { opacity: 1; }
-    }
-    @keyframes breathe {
+    @keyframes logo-draw { to { stroke-dashoffset: 0 } }
+    @keyframes logo-fade { to { opacity: 1 } }
+    @keyframes logo-breathe {
       0%, 100% { filter: drop-shadow(0 0 4px rgba(192,132,252,0.25)) drop-shadow(0 0 10px rgba(34,211,238,0.06)); }
       50% { filter: drop-shadow(0 0 6px rgba(192,132,252,0.35)) drop-shadow(0 0 14px rgba(34,211,238,0.1)); }
     }
-    svg { animation: breathe 4s ease-in-out infinite; }
-    .s {
-      fill: none; stroke: #c084fc; stroke-linecap: square; opacity: 0;
-      stroke-dasharray: var(--l); stroke-dashoffset: var(--l);
-      animation: d 12s ease-in-out infinite;
+    @keyframes logo-pulse {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
     }
-    .n {
-      fill: #22d3ee; opacity: 0;
-      animation: f 12s ease-in-out infinite, p 3s ease-in-out infinite;
+    svg {
+      filter: drop-shadow(0 0 4px rgba(192,132,252,0.25)) drop-shadow(0 0 10px rgba(34,211,238,0.06));
+      animation: logo-breathe 4s ease-in-out infinite;
     }
   </style>
 
@@ -52,37 +32,60 @@
 
   <g filter="url(#neon)">
     <!-- L1 -->
-    <path class="s" d="M15 15 L15 78" stroke-width="5.5" style="--l:63;animation-delay:0s"/>
-    <path class="s" d="M15 78 L8 86" stroke-width="5.5" style="--l:11;animation-delay:0.7s"/>
-    <path class="s" d="M15 78 L38 78" stroke-width="5.5" style="--l:23;animation-delay:0.7s"/>
-    <circle class="n" cx="8" cy="86" r="1.8" style="animation-delay:0.9s,0.9s"/>
+    <path d="M15 15 L15 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:63;stroke-dashoffset:63;animation:logo-draw 0.8s ease-out 0s forwards"/>
+    <path d="M15 78 L8 86" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:11;stroke-dashoffset:11;animation:logo-draw 0.3s ease-out 0.7s forwards"/>
+    <path d="M15 78 L38 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:23;stroke-dashoffset:23;animation:logo-draw 0.4s ease-out 0.7s forwards"/>
+    <circle cx="8" cy="86" r="1.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.3s ease-out 0.9s forwards,logo-pulse 3s ease-in-out 1.5s infinite"/>
 
     <!-- L2 -->
-    <path class="s" d="M38 15 L38 78" stroke-width="5.5" style="--l:63;animation-delay:0.2s"/>
-    <path class="s" d="M38 78 L31 86" stroke-width="5.5" style="--l:11;animation-delay:0.9s"/>
-    <path class="s" d="M38 78 L62 78" stroke-width="5.5" style="--l:24;animation-delay:0.9s"/>
-    <circle class="n" cx="31" cy="86" r="1.8" style="animation-delay:1.1s,1.1s"/>
+    <path d="M38 15 L38 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:63;stroke-dashoffset:63;animation:logo-draw 0.8s ease-out 0.2s forwards"/>
+    <path d="M38 78 L31 86" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:11;stroke-dashoffset:11;animation:logo-draw 0.3s ease-out 0.9s forwards"/>
+    <path d="M38 78 L62 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:24;stroke-dashoffset:24;animation:logo-draw 0.4s ease-out 0.9s forwards"/>
+    <circle cx="31" cy="86" r="1.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.3s ease-out 1.1s forwards,logo-pulse 3s ease-in-out 1.7s infinite"/>
 
     <!-- M -->
-    <path class="s" d="M72 82 L72 15 L92 48 L112 15 L112 82" stroke-width="5.5" stroke-linejoin="miter" style="--l:212;animation-delay:1.3s"/>
-    <path class="s" d="M72 82 L66 90" stroke-width="5.5" style="--l:10;animation-delay:2.3s"/>
-    <path class="s" d="M112 82 L118 90" stroke-width="5.5" style="--l:10;animation-delay:2.3s"/>
-    <circle class="n" cx="66" cy="90" r="1.8" style="animation-delay:2.5s,2.5s"/>
-    <circle class="n" cx="118" cy="90" r="1.8" style="animation-delay:2.5s,2.5s"/>
+    <path d="M72 82 L72 15 L92 48 L112 15 L112 82" stroke="#c084fc" stroke-width="5.5"
+      stroke-linecap="square" stroke-linejoin="miter" fill="none"
+      style="stroke-dasharray:212;stroke-dashoffset:212;animation:logo-draw 1.2s ease-out 1.3s forwards"/>
+    <path d="M72 82 L66 90" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:10;stroke-dashoffset:10;animation:logo-draw 0.3s ease-out 2.3s forwards"/>
+    <path d="M112 82 L118 90" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:10;stroke-dashoffset:10;animation:logo-draw 0.3s ease-out 2.3s forwards"/>
+    <circle cx="66" cy="90" r="1.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.3s ease-out 2.5s forwards,logo-pulse 3s ease-in-out 3s infinite"/>
+    <circle cx="118" cy="90" r="1.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.3s ease-out 2.5s forwards,logo-pulse 3s ease-in-out 3s infinite"/>
 
     <!-- K -->
-    <path class="s" d="M140 8 L140 92" stroke-width="7.5" style="--l:84;animation-delay:2.6s"/>
-    <path class="s" d="M140 50 L128 50" stroke-width="4" style="--l:12;animation-delay:3s"/>
-    <circle class="n" cx="126" cy="50" r="2.8" style="animation-delay:3.2s,3.2s"/>
-    <path class="s" d="M140 50 L182 5" stroke-width="7.5" style="--l:62;animation-delay:3.2s"/>
-    <path class="s" d="M140 50 L185 95" stroke-width="7.5" style="--l:64;animation-delay:3.2s"/>
+    <path d="M140 8 L140 92" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"
+      style="stroke-dasharray:84;stroke-dashoffset:84;animation:logo-draw 0.9s ease-out 2.6s forwards"/>
+    <path d="M140 50 L128 50" stroke="#c084fc" stroke-width="4" stroke-linecap="square"
+      style="stroke-dasharray:12;stroke-dashoffset:12;animation:logo-draw 0.3s ease-out 3s forwards"/>
+    <circle cx="126" cy="50" r="2.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.3s ease-out 3.2s forwards,logo-pulse 3s ease-in-out 3.8s infinite"/>
+    <path d="M140 50 L182 5" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"
+      style="stroke-dasharray:62;stroke-dashoffset:62;animation:logo-draw 0.7s ease-out 3.2s forwards"/>
+    <path d="M140 50 L185 95" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"
+      style="stroke-dasharray:64;stroke-dashoffset:64;animation:logo-draw 0.7s ease-out 3.2s forwards"/>
 
     <!-- it -->
     <g transform="rotate(-45, 210, 70)">
-      <rect class="n" x="196" y="23.5" width="4" height="4" rx="1" style="animation-delay:4s,4s"/>
-      <path class="s" d="M198 35 L198 70" stroke-width="4.5" style="--l:35;animation-delay:4.1s"/>
-      <path class="s" d="M218 17 L218 70" stroke-width="4.5" style="--l:53;animation-delay:4.3s"/>
-      <path class="s" d="M207 33 L229 33" stroke-width="4.5" style="--l:22;animation-delay:4.5s"/>
+      <rect x="196" y="23.5" width="4" height="4" rx="1" fill="#22d3ee"
+        style="opacity:0;animation:logo-fade 0.3s ease-out 4s forwards,logo-pulse 3s ease-in-out 4.6s infinite"/>
+      <path d="M198 35 L198 70" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"
+        style="stroke-dasharray:35;stroke-dashoffset:35;animation:logo-draw 0.5s ease-out 4.1s forwards"/>
+      <path d="M218 17 L218 70" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"
+        style="stroke-dasharray:53;stroke-dashoffset:53;animation:logo-draw 0.6s ease-out 4.3s forwards"/>
+      <path d="M207 33 L229 33" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"
+        style="stroke-dasharray:22;stroke-dashoffset:22;animation:logo-draw 0.3s ease-out 4.5s forwards"/>
     </g>
   </g>
 </svg>
