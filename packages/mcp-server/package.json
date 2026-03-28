@@ -1,6 +1,6 @@
 {
   "name": "@f3d1/llmkit-mcp-server",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "license": "MIT",
   "description": "AI cost tracking: 11 tools for spend, budgets, and Claude Code costs",
   "repository": {
