@@ -274,14 +274,7 @@ export default async function OverviewPage({
             <RequestFeed requests={recent} />
           </div>
         </>
-      ) : (
-        <div className="rounded-lg border border-border bg-card p-2">
-          <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Recent Requests</h2>
-          </div>
-          <RequestFeed requests={recent} />
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -6,15 +6,15 @@ import { ProviderIcon } from '@/components/provider-icons';
 
 
 const providers = [
-  { id: 'anthropic', name: 'Anthropic', models: 9, bg: 'bg-orange-500/15 text-orange-400', accent: 'border-l-orange-400' },
-  { id: 'openai', name: 'OpenAI', models: 9, bg: 'bg-emerald-500/15 text-emerald-400', accent: 'border-l-emerald-400' },
-  { id: 'gemini', name: 'Google Gemini', models: 3, bg: 'bg-blue-500/15 text-blue-400', accent: 'border-l-blue-400' },
-  { id: 'xai', name: 'xAI Grok', models: 9, bg: 'bg-zinc-500/15 text-zinc-300', accent: 'border-l-zinc-300' },
-  { id: 'deepseek', name: 'DeepSeek', models: 2, bg: 'bg-sky-500/15 text-sky-400', accent: 'border-l-sky-400' },
-  { id: 'groq', name: 'Groq', models: 3, bg: 'bg-orange-500/15 text-orange-300', accent: 'border-l-orange-300' },
-  { id: 'mistral', name: 'Mistral', models: 3, bg: 'bg-amber-500/15 text-amber-400', accent: 'border-l-amber-400' },
-  { id: 'together', name: 'Together', models: 4, bg: 'bg-violet-500/15 text-violet-400', accent: 'border-l-violet-400' },
-  { id: 'fireworks', name: 'Fireworks', models: 2, bg: 'bg-red-500/15 text-red-400', accent: 'border-l-red-400' },
+  { id: 'anthropic', name: 'Anthropic', models: 29, bg: 'bg-orange-500/15 text-orange-400', accent: 'border-l-orange-400' },
+  { id: 'openai', name: 'OpenAI', models: 145, bg: 'bg-emerald-500/15 text-emerald-400', accent: 'border-l-emerald-400' },
+  { id: 'gemini', name: 'Google Gemini', models: 50, bg: 'bg-blue-500/15 text-blue-400', accent: 'border-l-blue-400' },
+  { id: 'xai', name: 'xAI Grok', models: 39, bg: 'bg-zinc-500/15 text-zinc-300', accent: 'border-l-zinc-300' },
+  { id: 'deepseek', name: 'DeepSeek', models: 6, bg: 'bg-sky-500/15 text-sky-400', accent: 'border-l-sky-400' },
+  { id: 'groq', name: 'Groq', models: 37, bg: 'bg-orange-500/15 text-orange-300', accent: 'border-l-orange-300' },
+  { id: 'mistral', name: 'Mistral', models: 63, bg: 'bg-amber-500/15 text-amber-400', accent: 'border-l-amber-400' },
+  { id: 'together', name: 'Together', models: 105, bg: 'bg-violet-500/15 text-violet-400', accent: 'border-l-violet-400' },
+  { id: 'fireworks', name: 'Fireworks', models: 257, bg: 'bg-red-500/15 text-red-400', accent: 'border-l-red-400' },
   { id: 'ollama', name: 'Ollama', models: 0, bg: 'bg-zinc-500/15 text-zinc-400', accent: 'border-l-zinc-500', tag: 'local' },
   { id: 'openrouter', name: 'OpenRouter', models: 0, bg: 'bg-purple-500/15 text-purple-400', accent: 'border-l-purple-400', tag: 'meta-gateway' },
 ];
@@ -211,7 +211,7 @@ export default async function Home() {
       {/* providers */}
       <div className="mx-auto max-w-5xl px-6 pb-10">
         <p className="mb-5 text-center text-sm text-zinc-500">
-          11 providers. 45+ models. Cache-aware pricing that tracks read and write tokens separately.
+          11 providers. 730+ models priced. Cache-aware pricing that tracks read and write tokens separately.
         </p>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
           {providers.map((p) => (
