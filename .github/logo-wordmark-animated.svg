@@ -14,20 +14,18 @@
   <style>
     @keyframes logo-draw { to { stroke-dashoffset: 0 } }
     @keyframes logo-fade { to { opacity: 1 } }
-    @keyframes logo-surge {
-      0% { filter: drop-shadow(0 0 2px rgba(192,132,252,0.15)); }
-      30% { filter: drop-shadow(0 0 8px rgba(192,132,252,0.5)) drop-shadow(0 0 18px rgba(34,211,238,0.2)); }
-      100% { filter: drop-shadow(0 0 4px rgba(192,132,252,0.25)) drop-shadow(0 0 10px rgba(34,211,238,0.06)); }
-    }
     @keyframes logo-breathe {
       0%, 100% { filter: drop-shadow(0 0 4px rgba(192,132,252,0.25)) drop-shadow(0 0 10px rgba(34,211,238,0.06)); }
       50% { filter: drop-shadow(0 0 6px rgba(192,132,252,0.35)) drop-shadow(0 0 14px rgba(34,211,238,0.1)); }
     }
     @keyframes logo-pulse {
-      0%, 100% { opacity: 0.8; }
+      0%, 100% { opacity: 0.7; }
       50% { opacity: 1; }
     }
-    svg { filter: drop-shadow(0 0 0px rgba(192,132,252,0)); animation: logo-surge 0.8s ease-out 1.9s forwards, logo-breathe 4s ease-in-out 3.5s infinite; }
+    svg {
+      filter: drop-shadow(0 0 4px rgba(192,132,252,0.25)) drop-shadow(0 0 10px rgba(34,211,238,0.06));
+      animation: logo-breathe 4s ease-in-out infinite;
+    }
   </style>
 
   <rect x="-5" y="0" width="300" height="115" rx="8" fill="#0a0a0a"/>
