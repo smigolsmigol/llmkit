@@ -77,6 +77,10 @@ providerRouter.post('/chat/completions', async (c) => {
     }
   }
 
+  if (!providerKey) {
+    throw new ValidationError(`no ${provider} API key found. add one in the dashboard Providers tab or pass x-llmkit-provider-key header.`);
+  }
+
   const userMaxTokens = body.max_tokens ?? body.maxTokens;
   const budgetMaxTokens: number | undefined = c.get('budgetMaxTokens');
   const effectiveMaxTokens = budgetMaxTokens
