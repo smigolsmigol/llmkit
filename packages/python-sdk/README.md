@@ -5,7 +5,7 @@ Python SDK for [LLMKit](https://github.com/smigolsmigol/llmkit), the AI API gate
 ## Install
 
 ```bash
-pip install llmkit-sdk
+pip install llmkit-sdk  # import as: from llmkit import ...
 ```
 
 ## Local cost tracking (no proxy)
@@ -39,7 +39,9 @@ Or estimate from any existing response:
 from llmkit import estimate_cost
 
 cost = estimate_cost(response)
-print(f"~${cost.total_cost:.6f}")
+if cost.total_cost is not None:
+    print(f"~${cost.total_cost:.6f}")
+
 ```
 
 Works with OpenAI, Anthropic, Groq, Together, Cohere, and Mistral SDKs.
