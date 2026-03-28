@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 290 115" fill="none">
+  <defs>
+    <filter id="neon" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur1"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="4" result="blur2"/>
+      <feMerge>
+        <feMergeNode in="blur2"/>
+        <feMergeNode in="blur1"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <style>
+    @keyframes logo-draw { to { stroke-dashoffset: 0 } }
+    @keyframes logo-fade { to { opacity: 1 } }
+    @keyframes logo-surge {
+      0% { filter: drop-shadow(0 0 2px rgba(192,132,252,0.15)); }
+      30% { filter: drop-shadow(0 0 8px rgba(192,132,252,0.5)) drop-shadow(0 0 18px rgba(34,211,238,0.2)); }
+      100% { filter: drop-shadow(0 0 4px rgba(192,132,252,0.25)) drop-shadow(0 0 10px rgba(34,211,238,0.06)); }
+    }
+    @keyframes logo-breathe {
+      0%, 100% { filter: drop-shadow(0 0 4px rgba(192,132,252,0.25)) drop-shadow(0 0 10px rgba(34,211,238,0.06)); }
+      50% { filter: drop-shadow(0 0 6px rgba(192,132,252,0.35)) drop-shadow(0 0 14px rgba(34,211,238,0.1)); }
+    }
+    @keyframes logo-pulse {
+      0%, 100% { opacity: 0.8; }
+      50% { opacity: 1; }
+    }
+    svg { filter: drop-shadow(0 0 0px rgba(192,132,252,0)); animation: logo-surge 0.8s ease-out 1.9s forwards, logo-breathe 4s ease-in-out 3.5s infinite; }
+  </style>
+
+  <rect x="-5" y="0" width="300" height="115" rx="8" fill="#0a0a0a"/>
+
+  <g filter="url(#neon)">
+    <!-- L1 -->
+    <path d="M15 15 L15 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:63;stroke-dashoffset:63;animation:logo-draw 0.4s ease-out 0s forwards"/>
+    <path d="M15 78 L8 86" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:11;stroke-dashoffset:11;animation:logo-draw 0.15s ease-out 0.35s forwards"/>
+    <path d="M15 78 L38 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:23;stroke-dashoffset:23;animation:logo-draw 0.2s ease-out 0.35s forwards"/>
+    <circle cx="8" cy="86" r="1.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.15s ease-out 0.45s forwards,logo-pulse 3s ease-in-out 1.25s infinite"/>
+
+    <!-- L2 -->
+    <path d="M38 15 L38 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:63;stroke-dashoffset:63;animation:logo-draw 0.4s ease-out 0.1s forwards"/>
+    <path d="M38 78 L31 86" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:11;stroke-dashoffset:11;animation:logo-draw 0.15s ease-out 0.45s forwards"/>
+    <path d="M38 78 L62 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:24;stroke-dashoffset:24;animation:logo-draw 0.2s ease-out 0.45s forwards"/>
+    <circle cx="31" cy="86" r="1.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.15s ease-out 0.55s forwards,logo-pulse 3s ease-in-out 1.35s infinite"/>
+
+    <!-- M -->
+    <path d="M72 82 L72 15 L92 48 L112 15 L112 82" stroke="#c084fc" stroke-width="5.5"
+      stroke-linecap="square" stroke-linejoin="miter" fill="none"
+      style="stroke-dasharray:212;stroke-dashoffset:212;animation:logo-draw 0.6s ease-out 0.65s forwards"/>
+    <path d="M72 82 L66 90" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:10;stroke-dashoffset:10;animation:logo-draw 0.15s ease-out 1.15s forwards"/>
+    <path d="M112 82 L118 90" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"
+      style="stroke-dasharray:10;stroke-dashoffset:10;animation:logo-draw 0.15s ease-out 1.15s forwards"/>
+    <circle cx="66" cy="90" r="1.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.15s ease-out 1.25s forwards,logo-pulse 3s ease-in-out 2.05s infinite"/>
+    <circle cx="118" cy="90" r="1.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.15s ease-out 1.25s forwards,logo-pulse 3s ease-in-out 2.05s infinite"/>
+
+    <!-- K -->
+    <path d="M140 8 L140 92" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"
+      style="stroke-dasharray:84;stroke-dashoffset:84;animation:logo-draw 0.45s ease-out 1.3s forwards"/>
+    <path d="M140 50 L128 50" stroke="#c084fc" stroke-width="4" stroke-linecap="square"
+      style="stroke-dasharray:12;stroke-dashoffset:12;animation:logo-draw 0.15s ease-out 1.5s forwards"/>
+    <circle cx="126" cy="50" r="2.8" fill="#22d3ee"
+      style="opacity:0;animation:logo-fade 0.15s ease-out 1.6s forwards,logo-pulse 3s ease-in-out 2.4s infinite"/>
+    <path d="M140 50 L182 5" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"
+      style="stroke-dasharray:62;stroke-dashoffset:62;animation:logo-draw 0.35s ease-out 1.6s forwards"/>
+    <path d="M140 50 L185 95" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"
+      style="stroke-dasharray:64;stroke-dashoffset:64;animation:logo-draw 0.35s ease-out 1.6s forwards"/>
+
+    <!-- it -->
+    <g transform="rotate(-45, 210, 70)">
+      <rect x="196" y="23.5" width="4" height="4" rx="1" fill="#22d3ee"
+        style="opacity:0;animation:logo-fade 0.15s ease-out 2.0s forwards,logo-pulse 3s ease-in-out 2.8s infinite"/>
+      <path d="M198 35 L198 70" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"
+        style="stroke-dasharray:35;stroke-dashoffset:35;animation:logo-draw 0.25s ease-out 2.05s forwards"/>
+      <path d="M218 17 L218 70" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"
+        style="stroke-dasharray:53;stroke-dashoffset:53;animation:logo-draw 0.3s ease-out 2.15s forwards"/>
+      <path d="M207 33 L229 33" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"
+        style="stroke-dasharray:22;stroke-dashoffset:22;animation:logo-draw 0.15s ease-out 2.25s forwards"/>
+    </g>
+  </g>
+</svg>

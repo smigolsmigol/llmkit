@@ -16,27 +16,27 @@
     <path d="M15 15 L15 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"/>
     <path d="M15 78 L8 86" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"/>
     <path d="M15 78 L38 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"/>
-    <circle cx="8" cy="86" r="2.5" fill="#22d3ee"/>
+    <circle cx="8" cy="86" r="1.8" fill="#22d3ee"/>
     <!-- L2 -->
     <path d="M38 15 L38 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"/>
     <path d="M38 78 L31 86" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"/>
     <path d="M38 78 L62 78" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"/>
-    <circle cx="31" cy="86" r="2.5" fill="#22d3ee"/>
+    <circle cx="31" cy="86" r="1.8" fill="#22d3ee"/>
     <!-- M -->
     <path d="M72 82 L72 15 L92 48 L112 15 L112 82" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square" stroke-linejoin="miter" fill="none"/>
     <path d="M72 82 L66 90" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"/>
     <path d="M112 82 L118 90" stroke="#c084fc" stroke-width="5.5" stroke-linecap="square"/>
-    <circle cx="66" cy="90" r="2.5" fill="#22d3ee"/>
-    <circle cx="118" cy="90" r="2.5" fill="#22d3ee"/>
+    <circle cx="66" cy="90" r="1.8" fill="#22d3ee"/>
+    <circle cx="118" cy="90" r="1.8" fill="#22d3ee"/>
     <!-- K -->
     <path d="M140 8 L140 92" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"/>
     <path d="M140 50 L182 5" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"/>
     <path d="M140 50 L185 95" stroke="#c084fc" stroke-width="7.5" stroke-linecap="square"/>
     <path d="M140 50 L128 50" stroke="#c084fc" stroke-width="4" stroke-linecap="square"/>
-    <circle cx="126" cy="50" r="4" fill="#22d3ee"/>
+    <circle cx="126" cy="50" r="2.8" fill="#22d3ee"/>
     <!-- it -->
     <g transform="rotate(-45, 210, 70)">
-      <rect x="195" y="22.5" width="6" height="6" rx="1" fill="#22d3ee"/>
+      <rect x="196" y="23.5" width="4" height="4" rx="1" fill="#22d3ee"/>
       <path d="M198 35 L198 70" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"/>
       <path d="M218 17 L218 70" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"/>
       <path d="M207 33 L229 33" stroke="#c084fc" stroke-width="4.5" stroke-linecap="square"/>
