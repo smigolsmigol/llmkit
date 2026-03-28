@@ -109,10 +109,40 @@ export default function DocsPage() {
           </p>
         </section>
 
+        {/* TypeScript */}
+        <section>
+          <div className="mb-2 flex items-center gap-3">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 font-mono text-sm font-bold text-blue-400">3</span>
+            <h2 className="text-lg font-semibold">TypeScript SDK</h2>
+          </div>
+          <p className="mb-4 text-sm text-zinc-400">
+            Full client with sessions, cost tracking, and streaming. Also available as a Vercel AI SDK provider.
+          </p>
+          <CodeBlock title="install">
+            <p><span className="text-emerald-400">$</span> <span className="text-zinc-300">npm install @f3d1/llmkit-sdk</span></p>
+          </CodeBlock>
+          <div className="mt-4">
+            <CodeBlock title="usage">
+              <div className="space-y-1 text-zinc-300">
+                <p><span className="text-violet-400">import</span> {'{'} LLMKit {'}'} <span className="text-violet-400">from</span> <span className="text-emerald-400">&apos;@f3d1/llmkit-sdk&apos;</span></p>
+                <p className="text-zinc-600">&nbsp;</p>
+                <p><span className="text-violet-400">const</span> kit = <span className="text-violet-400">new</span> <span className="text-amber-300">LLMKit</span>({'{'} apiKey: process.env.LLMKIT_KEY {'}'})</p>
+                <p><span className="text-violet-400">const</span> res = <span className="text-violet-400">await</span> kit.<span className="text-amber-300">chat</span>({'{'}</p>
+                <p>  provider: <span className="text-emerald-400">&apos;openai&apos;</span>,</p>
+                <p>  model: <span className="text-emerald-400">&apos;gpt-4o&apos;</span>,</p>
+                <p>  messages: [{'{'} role: <span className="text-emerald-400">&apos;user&apos;</span>, content: <span className="text-emerald-400">&apos;hello&apos;</span> {'}'}]</p>
+                <p>{'}'})</p>
+                <p className="text-zinc-600">&nbsp;</p>
+                <p>console.<span className="text-amber-300">log</span>(res.content, res.cost)</p>
+              </div>
+            </CodeBlock>
+          </div>
+        </section>
+
         {/* CLI */}
         <section>
           <div className="mb-2 flex items-center gap-3">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 font-mono text-sm font-bold text-amber-400">3</span>
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 font-mono text-sm font-bold text-amber-400">4</span>
             <h2 className="text-lg font-semibold">CLI</h2>
           </div>
           <p className="mb-4 text-sm text-zinc-400">

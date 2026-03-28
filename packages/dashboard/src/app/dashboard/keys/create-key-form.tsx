@@ -90,6 +90,16 @@ from openai import OpenAI
 # local cost tracking only (no proxy, no dashboard data)
 client = OpenAI(http_client=tracked())`;
 
+    const tsSnippet = `import { LLMKit } from '@f3d1/llmkit-sdk'
+
+const kit = new LLMKit({ apiKey: '${newKey}' })
+const res = await kit.chat({
+  provider: 'openai',
+  model: 'gpt-4o',
+  messages: [{ role: 'user', content: 'hello' }],
+})
+console.log(res.content, res.cost)`;
+
     const curlSnippet = `curl ${PROXY_URL}/chat/completions \\
   -H "Authorization: Bearer ${newKey}" \\
   -H "Content-Type: application/json" \\
@@ -127,6 +137,7 @@ client = OpenAI(http_client=tracked())`;
             <div className="mt-3 space-y-3">
               <SnippetBlock label="Env vars (recommended, any language)" code={envSnippet} onCopy={copyText} />
               <SnippetBlock label="Python (explicit)" code={pythonSnippet} onCopy={copyText} />
+              <SnippetBlock label="TypeScript / Node.js" code={tsSnippet} onCopy={copyText} />
               <SnippetBlock label="curl" code={curlSnippet} onCopy={copyText} />
               <SnippetBlock label="Local only (no proxy, no dashboard)" code={localSnippet} onCopy={copyText} />
             </div>
