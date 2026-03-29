@@ -134,6 +134,48 @@ function merge(genai, litellm, current) {
   return merged;
 }
 
+function validate(merged, current) {
+  const errors = [];
+  const warnings = [];
+  const MAX_INPUT = 200;
+  const MAX_OUTPUT = 800;
+  const CHANGE_THRESHOLD = 0.5;
+
+  for (const [provider, models] of Object.entries(merged.providers)) {
+    for (const [model, pricing] of Object.entries(models)) {
+      const key = `${provider}/${model}`;
+
+      if (pricing.input > MAX_INPUT) {
+        errors.push(`${key}: input $${pricing.input}/M exceeds $${MAX_INPUT}/M cap`);
+      }
+      if (pricing.output > MAX_OUTPUT) {
+        errors.push(`${key}: output $${pricing.output}/M exceeds $${MAX_OUTPUT}/M cap`);
+      }
+
+      const old = current.providers[provider]?.[model];
+      if (old) {
+        if (old.input > 0 && Math.abs(pricing.input - old.input) / old.input > CHANGE_THRESHOLD) {
+          warnings.push(`${key}: input $${old.input} -> $${pricing.input} (${((pricing.input - old.input) / old.input * 100).toFixed(0)}%)`);
+        }
+        if (old.output > 0 && Math.abs(pricing.output - old.output) / old.output > CHANGE_THRESHOLD) {
+          warnings.push(`${key}: output $${old.output} -> $${pricing.output} (${((pricing.output - old.output) / old.output * 100).toFixed(0)}%)`);
+        }
+      }
+    }
+  }
+
+  if (warnings.length) {
+    console.log(`\nwarning: ${warnings.length} price(s) changed by >50%:`);
+    for (const w of warnings) console.log(`  ${w}`);
+  }
+
+  if (errors.length) {
+    console.error(`\nerror: ${errors.length} price(s) exceed sanity caps:`);
+    for (const e of errors) console.error(`  ${e}`);
+    throw new Error('pricing validation failed: data corruption likely');
+  }
+}
+
 function diffPricing(before, after) {
   const changes = { added: [], updated: [], removed: [] };
 
@@ -189,6 +231,8 @@ async function main() {
 
   const merged = merge(genai, litellm, current);
   merged.updatedAt = new Date().toISOString().slice(0, 10);
+
+  validate(merged, current);
 
   const afterCount = Object.values(merged.providers).reduce((s, m) => s + Object.keys(m).length, 0);
   const diff = diffPricing(current, merged);

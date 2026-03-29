@@ -66,6 +66,9 @@ jobs:
       - name: typecheck
         run: pnpm typecheck
 
+      - name: typecheck dashboard
+        run: pnpm turbo typecheck --filter=@f3d1/llmkit-dashboard
+
       - name: biome
         run: npx biome check packages/proxy/src packages/sdk/src packages/cli/src packages/shared/src packages/ai-sdk-provider/src packages/mcp-server/src
 
