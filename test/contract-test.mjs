@@ -58,6 +58,24 @@ test('server.json version matches package.json version', () => {
     `server.json package version ${pkgVersion} != package.json ${mcpPkg.version}`);
 });
 
+// manifest.json version sync
+const manifest = JSON.parse(readFileSync('packages/mcp-server/manifest.json', 'utf8'));
+test('manifest.json version matches package.json version', () => {
+  assert(manifest.version === mcpPkg.version,
+    `manifest.json ${manifest.version} != package.json ${mcpPkg.version}`);
+});
+
+// MCPB freshness check
+import { statSync, existsSync } from 'node:fs';
+test('MCPB file exists and is not older than dist/', () => {
+  const mcpbPath = 'packages/mcp-server/mcp-server.mcpb';
+  assert(existsSync(mcpbPath), 'mcp-server.mcpb does not exist');
+  const mcpbTime = statSync(mcpbPath).mtimeMs;
+  const distTime = statSync('packages/mcp-server/dist/index.js').mtimeMs;
+  assert(mcpbTime >= distTime - 60000,
+    'mcp-server.mcpb is older than dist/ - rebuild with the MCPB script');
+});
+
 // README claims
 test('README claims 11 tools, actual is 11', () => {
   const total = PROXY_TOOLS.length + LOCAL_TOOLS.length;
