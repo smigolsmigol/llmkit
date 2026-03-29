@@ -1,3 +1,5 @@
+export const runtime = 'edge';
+
 import { PublicNav } from '@/components/public-nav';
 import { PublicFooter } from '@/components/public-footer';
 import { TrackClick } from '@/components/track-event';
