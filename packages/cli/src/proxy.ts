@@ -17,21 +17,39 @@ interface ProxyTarget {
   tracked: boolean;
 }
 
-const OPENAI_TARGET: ProxyTarget = { host: 'api.openai.com', provider: 'openai', basePath: '', tracked: true };
-const ANTHROPIC_TARGET: ProxyTarget = { host: 'api.anthropic.com', provider: 'anthropic', basePath: '', tracked: true };
+function resolveOpenAIHost(): string {
+  const env = process.env.OPENAI_BASE_URL || process.env.OPENAI_API_BASE || '';
+  try { return new URL(env).hostname; } catch { return 'api.openai.com'; }
+}
+
+function inferProvider(host: string): ProviderName {
+  if (host.includes('x.ai')) return 'xai';
+  if (host.includes('anthropic')) return 'anthropic';
+  if (host.includes('groq')) return 'groq';
+  if (host.includes('together')) return 'together';
+  if (host.includes('deepseek')) return 'deepseek';
+  if (host.includes('mistral')) return 'mistral';
+  if (host.includes('fireworks')) return 'fireworks';
+  if (host.includes('openrouter')) return 'openrouter';
+  return 'openai';
+}
 
 function resolveTarget(url: string, authHeader: string): ProxyTarget | null {
+  const openaiHost = resolveOpenAIHost();
+  const OPENAI_TARGET: ProxyTarget = { host: openaiHost, provider: inferProvider(openaiHost), basePath: '', tracked: true };
+  const ANTHROPIC_TARGET: ProxyTarget = { host: 'api.anthropic.com', provider: 'anthropic', basePath: '', tracked: true };
+
   // tracked routes: cost tracking enabled
   if (url.startsWith('/v1/chat/completions')) return OPENAI_TARGET;
   if (url.startsWith('/v1/responses')) return OPENAI_TARGET;
   if (url.startsWith('/v1/messages')) return ANTHROPIC_TARGET;
 
-  // untracked pass-through: infer provider from auth header, forward transparently
+  // untracked pass-through
   if (authHeader.includes('sk-ant-')) {
     return { host: 'api.anthropic.com', provider: 'anthropic', basePath: '', tracked: false };
   }
   if (url.startsWith('/v1/')) {
-    return { host: 'api.openai.com', provider: 'openai', basePath: '', tracked: false };
+    return { host: openaiHost, provider: inferProvider(openaiHost), basePath: '', tracked: false };
   }
   return null;
 }
