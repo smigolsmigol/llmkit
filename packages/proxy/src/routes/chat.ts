@@ -87,6 +87,13 @@ providerRouter.post('/chat/completions', async (c) => {
     ? (userMaxTokens ? Math.min(userMaxTokens as number, budgetMaxTokens) : budgetMaxTokens)
     : userMaxTokens as number | undefined;
 
+  // collect provider-specific fields that we don't explicitly handle
+  const knownFields = new Set(['model', 'messages', 'temperature', 'max_tokens', 'maxTokens', 'tools', 'tool_choice', 'response_format', 'stream', 'stream_options', 'provider']);
+  const extra: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(body)) {
+    if (!knownFields.has(k)) extra[k] = v;
+  }
+
   const req: ProviderRequest = {
     model: body.model as string,
     messages: body.messages as ProviderRequest['messages'],
@@ -96,6 +103,7 @@ providerRouter.post('/chat/completions', async (c) => {
     tools: body.tools as unknown[] | undefined,
     toolChoice: body.tool_choice,
     responseFormat: body.response_format,
+    extra: Object.keys(extra).length ? extra : undefined,
   };
 
   if (wantStream) {

@@ -15,6 +15,7 @@ export interface ProviderRequest {
   tools?: unknown[];
   toolChoice?: unknown;
   responseFormat?: unknown;
+  extra?: Record<string, unknown>;
 }
 
 export interface ToolCall {

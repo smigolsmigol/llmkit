@@ -67,6 +67,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     if (req.tools?.length) body.tools = req.tools;
     if (req.toolChoice !== undefined) body.tool_choice = req.toolChoice;
     if (req.responseFormat) body.response_format = req.responseFormat;
+    if (req.extra) Object.assign(body, req.extra);
 
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
@@ -104,6 +105,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     if (req.tools?.length) body.tools = req.tools;
     if (req.toolChoice !== undefined) body.tool_choice = req.toolChoice;
     if (req.responseFormat) body.response_format = req.responseFormat;
+    if (req.extra) Object.assign(body, req.extra);
 
     const res = await fetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',

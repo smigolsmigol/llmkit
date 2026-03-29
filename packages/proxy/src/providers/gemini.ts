@@ -64,6 +64,7 @@ export class GeminiAdapter implements ProviderAdapter {
         parameters: t.function?.parameters,
       })) }];
     }
+    if (req.extra) Object.assign(body, req.extra);
 
     const res = await fetch(`${BASE_URL}/${req.model}:generateContent`, {
       method: 'POST',

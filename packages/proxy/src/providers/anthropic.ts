@@ -63,6 +63,7 @@ export class AnthropicAdapter implements ProviderAdapter {
       else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
       else body.tool_choice = { type: 'auto' };
     }
+    if (req.extra) Object.assign(body, req.extra);
 
     const res = await fetch(`${BASE_URL}/messages`, {
       method: 'POST',
@@ -108,6 +109,7 @@ export class AnthropicAdapter implements ProviderAdapter {
       else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
       else body.tool_choice = { type: 'auto' };
     }
+    if (req.extra) Object.assign(body, req.extra);
 
     const res = await fetch(`${BASE_URL}/messages`, {
       method: 'POST',
