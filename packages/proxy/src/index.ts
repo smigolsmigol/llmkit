@@ -13,6 +13,7 @@ import { analyticsRouter } from './routes/analytics';
 import { providerRouter } from './routes/chat';
 import { keysRouter } from './routes/keys';
 import { mcpRouter } from './routes/mcp';
+import { pricingRouter } from './routes/pricing';
 
 export { BudgetDO } from './do/budget-do';
 export { RateLimitDO } from './do/ratelimit-do';
@@ -141,6 +142,9 @@ app.onError(async (err, c) => {
 });
 
 app.get('/health', (c) => c.json({ status: 'ok', version: '0.0.1' }));
+
+// public pricing API (no auth required)
+app.route('/v1', pricingRouter);
 
 app.use('/v1/*', auth());
 app.use('/v1/*', rateLimit());
