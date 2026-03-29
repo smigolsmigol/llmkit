@@ -30,12 +30,21 @@ const PRICING: Record<ProviderName, PricingTable> = {} as Record<ProviderName, P
 for (const [provider, models] of Object.entries(PRICING_DATA)) {
   const table: PricingTable = {};
   for (const [model, p] of Object.entries(models)) {
-    table[model] = {
+    const entry: ModelPricing = {
       inputPerMillion: p.input,
       outputPerMillion: p.output,
       cacheReadPerMillion: p.cacheRead,
       cacheWritePerMillion: p.cacheWrite,
     };
+    if (p.extraRates) {
+      entry.extraRates = Object.entries(p.extraRates).map(([dim, r]) => ({
+        dimension: dim as ExtraCostDimension,
+        rate: (r as { rate: number; per: number }).rate,
+        per: (r as { rate: number; per: number }).per,
+        label: dim.replace(/_/g, ' '),
+      }));
+    }
+    table[model] = entry;
   }
   PRICING[provider as ProviderName] = table;
 }

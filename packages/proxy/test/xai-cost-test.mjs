@@ -33,9 +33,10 @@ test('all 9 xAI models have valid pricing', () => {
   }
 });
 
-test('no xAI model has extraRates', () => {
+test('all xAI models have extraRates (5 dimensions)', () => {
   for (const [model, pricing] of Object.entries(PRICING.xai)) {
-    assert.equal(pricing.extraRates, undefined, `${model} should not have extraRates (regression guard)`);
+    assert.ok(pricing.extraRates, `${model} should have extraRates`);
+    assert.equal(pricing.extraRates.length, 5, `${model} should have 5 extra rate dimensions`);
   }
 });
 
@@ -71,7 +72,7 @@ test('grok-4 pricing correct', () => {
 // COST CALCULATIONS
 // ============================
 
-test('xAI function calls are free (no extraRates)', () => {
+test('xAI tool calls add extra costs', () => {
   const pricing = getModelPricing('xai', 'grok-4');
   assert.ok(pricing, 'should resolve grok-4');
 
@@ -81,8 +82,12 @@ test('xAI function calls are free (no extraRates)', () => {
     { dimension: 'web_search', quantity: 5 },
   ]);
 
-  assert.equal(base.totalCost, withTools.totalCost, 'cost should be identical since no extraRates');
-  assert.equal(withTools.extraCosts, undefined, 'extraCosts should be undefined');
+  assert.ok(withTools.totalCost > base.totalCost, 'tool calls should add cost');
+  assert.ok(withTools.extraCosts, 'extraCosts should be present');
+  assert.equal(withTools.extraCosts.length, 1);
+  assert.equal(withTools.extraCosts[0].dimension, 'web_search');
+  assert.equal(withTools.extraCosts[0].quantity, 5);
+  assert.equal(withTools.extraCosts[0].totalCost, 0.025); // 5 calls * $5/1000
 });
 
 test('cache cost works for xAI', () => {

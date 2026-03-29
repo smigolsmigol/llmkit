@@ -42,13 +42,14 @@ function generateSharedTS() {
   const lines = [HEADER_TS];
   lines.push(`export const UPDATED_AT = '${pricing.updatedAt}';\n`);
 
-  lines.push('export const PRICING_DATA: Record<string, Record<string, { input: number; output: number; cacheRead?: number; cacheWrite?: number }>> = {');
+  lines.push('export const PRICING_DATA: Record<string, Record<string, { input: number; output: number; cacheRead?: number; cacheWrite?: number; extraRates?: Record<string, { rate: number; per: number }> }>> = {');
   for (const [provider, models] of Object.entries(pricing.providers)) {
     lines.push(`  '${provider}': {`);
     for (const [model, p] of Object.entries(models)) {
       const parts = [`input: ${p.input}, output: ${p.output}`];
       if (num(p.cacheRead)) parts.push(`cacheRead: ${p.cacheRead}`);
       if (num(p.cacheWrite)) parts.push(`cacheWrite: ${p.cacheWrite}`);
+      if (p.extraRates) parts.push(`extraRates: ${JSON.stringify(p.extraRates)}`);
       lines.push(`    '${model}': { ${parts.join(', ')} },`);
     }
     lines.push('  },');
