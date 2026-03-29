@@ -39,7 +39,7 @@ runs:
         LLMKIT_BUDGET: ${{ inputs.budget-usd }}
         LLMKIT_COMMAND: ${{ inputs.command }}
       run: |
-        RESULT=$(npx @f3d1/llmkit-cli@latest --json -- $LLMKIT_COMMAND 2>/dev/null || true)
+        RESULT=$(npx @f3d1/llmkit-cli@0.0.8 --json -- $LLMKIT_COMMAND 2>/dev/null || true)
 
         COST=$(echo "$RESULT" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.write(String(d.totalCost||0))" 2>/dev/null || echo "0")
         REQS=$(echo "$RESULT" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.write(String(d.totalRequests||0))" 2>/dev/null || echo "0")
