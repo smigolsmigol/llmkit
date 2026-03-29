@@ -8,6 +8,18 @@ const VALID_PERIODS = ['daily', 'weekly', 'monthly'] as const;
 const VALID_SCOPES = ['key', 'session'] as const;
 const NAME_PATTERN = /^[a-zA-Z0-9 -]+$/;
 
+const recentBudgetOps = new Map<string, number[]>();
+
+function checkBudgetRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const hourAgo = now - 3600000;
+  const timestamps = (recentBudgetOps.get(userId) ?? []).filter(t => t > hourAgo);
+  if (timestamps.length >= 10) return false;
+  timestamps.push(now);
+  recentBudgetOps.set(userId, timestamps);
+  return true;
+}
+
 export async function createBudget(
   name: string,
   limitCents: number,
@@ -17,6 +29,7 @@ export async function createBudget(
 ) {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
+  if (!checkBudgetRateLimit(userId)) throw new Error('Rate limit exceeded. Max 10 budget operations per hour.');
 
   if (!name || name.length > 100 || !NAME_PATTERN.test(name)) {
     throw new Error('Invalid budget name');

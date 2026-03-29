@@ -4,10 +4,23 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
 
+const recentKeyCreations = new Map<string, number[]>();
+
+function checkKeyCreationLimit(userId: string): boolean {
+  const now = Date.now();
+  const hourAgo = now - 3600000;
+  const timestamps = (recentKeyCreations.get(userId) ?? []).filter(t => t > hourAgo);
+  if (timestamps.length >= 10) return false;
+  timestamps.push(now);
+  recentKeyCreations.set(userId, timestamps);
+  return true;
+}
+
 export async function createApiKey(name: string) {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
 
+  if (!checkKeyCreationLimit(userId)) throw new Error('Rate limit exceeded. Max 10 keys per hour.');
   if (!name || name.length > 100) throw new Error('Key name must be 1-100 characters');
   if (!/^[\w\s\-.]+$/.test(name)) throw new Error('Key name contains invalid characters');
 

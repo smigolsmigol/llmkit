@@ -27,7 +27,8 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url);
   const format = url.searchParams.get('format') || 'raw';
-  const days = Number(url.searchParams.get('days') || '30');
+  const rawDays = Number(url.searchParams.get('days') || '30');
+  const days = Number.isFinite(rawDays) && rawDays >= 1 && rawDays <= 365 ? rawDays : 30;
   const provider = url.searchParams.get('provider');
   const model = url.searchParams.get('model');
   const session = url.searchParams.get('session');
