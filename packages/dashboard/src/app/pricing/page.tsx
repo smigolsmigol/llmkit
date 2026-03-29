@@ -1,5 +1,6 @@
 import { PublicNav } from '@/components/public-nav';
 import { PublicFooter } from '@/components/public-footer';
+import { TrackClick } from '@/components/track-event';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -98,12 +99,12 @@ export default async function PricingPage() {
             Budget limits reject requests before they reach the provider.
           </p>
           <div className="mt-4 flex items-center justify-center gap-3">
-            <a href="/sign-up" className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
+            <TrackClick event="cta_click" properties={{ label: "sign_up", location: "pricing" }} href="/sign-up" className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
               Get started free
-            </a>
-            <a href="https://github.com/smigolsmigol/llmkit" className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] transition" target="_blank" rel="noopener noreferrer">
+            </TrackClick>
+            <TrackClick event="cta_click" properties={{ label: "view_source", location: "pricing" }} href="https://github.com/smigolsmigol/llmkit" className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] transition" target="_blank" rel="noopener noreferrer">
               View source
-            </a>
+            </TrackClick>
           </div>
         </div>
       </div>

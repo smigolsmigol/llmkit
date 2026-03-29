@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { PublicNav } from '@/components/public-nav';
 import { PublicFooter } from '@/components/public-footer';
 import { ProviderIcon } from '@/components/provider-icons';
+import { TrackClick } from '@/components/track-event';
 
 
 const providers = [
@@ -62,14 +63,16 @@ export default async function Home() {
                 >
                   {ctaLabel}
                 </Link>
-                <a
+                <TrackClick
+                  event="cta_click"
+                  properties={{ label: "view_source", location: "hero" }}
                   href="https://github.com/smigolsmigol/llmkit"
                   className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-6 py-2.5 text-sm text-zinc-300 hover:bg-white/[0.06] hover:text-white transition"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
                   View source
-                </a>
+                </TrackClick>
               </div>
 
               <p className="mt-4 text-xs text-zinc-600">
@@ -268,14 +271,16 @@ export default async function Home() {
           >
             {userId ? 'Open dashboard' : 'Try the dashboard'}
           </Link>
-          <a
+          <TrackClick
+            event="cta_click"
+            properties={{ label: "view_source", location: "footer" }}
             href="https://github.com/smigolsmigol/llmkit"
             className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-6 py-2.5 text-sm text-zinc-300 hover:bg-white/[0.06] hover:text-white transition"
             target="_blank"
             rel="noopener noreferrer"
           >
             View source
-          </a>
+          </TrackClick>
         </div>
       </div>
 

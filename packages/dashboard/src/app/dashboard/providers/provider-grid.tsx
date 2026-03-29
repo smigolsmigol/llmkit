@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { track } from '@vercel/analytics';
 import { addProviderKey, revokeProviderKey } from './actions';
 import { formatCents } from '@/lib/format';
 import { ProviderIcon } from '@/components/provider-icons';
@@ -154,6 +155,7 @@ function AddKeyInline({ provider, onDone }: { provider: string; onDone: () => vo
     setError('');
     try {
       await addProviderKey(provider, key, name || undefined);
+      track('provider_key_added', { provider });
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add key');

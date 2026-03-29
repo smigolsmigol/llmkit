@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { track } from '@vercel/analytics';
 import { createApiKey } from './actions';
 
 const PROXY_URL = 'https://llmkit-proxy.smigolsmigol.workers.dev/v1';
@@ -41,6 +42,7 @@ export function CreateKeyForm() {
       const result = await createApiKey(name.trim());
       setNewKey(result.key);
       setName('');
+      track('api_key_created');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create key');
     } finally {
@@ -59,6 +61,7 @@ export function CreateKeyForm() {
   function copyText(text: string) {
     navigator.clipboard.writeText(text);
     setCopied(true);
+    track('snippet_copied', { type: text.includes('python') ? 'python' : text.includes('curl') ? 'curl' : 'other' });
     setTimeout(() => setCopied(false), 2000);
   }
 

@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   keywords: ['AI cost tracking', 'LLM budget', 'API gateway', 'Claude Code cost', 'AI agent cost', 'OpenAI budget', 'MCP server', 'cost tracking', 'budget enforcement'],
   openGraph: {
     title: 'LLMKit - Track what your AI agents spend',
-    description: 'Open-source API gateway with cost tracking and budget enforcement. 11 providers, 45+ models, budget limits that actually reject requests.',
+    description: 'Open-source API gateway with cost tracking and budget enforcement. 11 providers, 730+ models, budget limits that actually reject requests.',
     url: 'https://llmkit-dashboard.vercel.app',
     siteName: 'LLMKit',
     type: 'website',
