@@ -1,0 +1,75 @@
+name: PR Monitor
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'  # every 2 hours
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: check cookbook PR #476
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          PR=$(gh pr view 476 --repo anthropics/claude-cookbooks --json state,reviews,comments,statusCheckRollup,mergedAt,closedAt 2>&1)
+
+          STATE=$(echo "$PR" | jq -r '.state')
+          REVIEWS=$(echo "$PR" | jq '.reviews | length')
+          COMMENTS=$(echo "$PR" | jq '.comments | length')
+          CHECKS=$(echo "$PR" | jq '.statusCheckRollup | length')
+          MERGED=$(echo "$PR" | jq -r '.mergedAt // empty')
+
+          # load previous state
+          PREV_FILE="/tmp/pr476_state.json"
+          PREV_REVIEWS=0
+          PREV_COMMENTS=0
+          PREV_CHECKS=0
+          PREV_STATE="OPEN"
+          if [ -f "$PREV_FILE" ]; then
+            PREV_REVIEWS=$(jq -r '.reviews' "$PREV_FILE" 2>/dev/null || echo 0)
+            PREV_COMMENTS=$(jq -r '.comments' "$PREV_FILE" 2>/dev/null || echo 0)
+            PREV_CHECKS=$(jq -r '.checks' "$PREV_FILE" 2>/dev/null || echo 0)
+            PREV_STATE=$(jq -r '.state' "$PREV_FILE" 2>/dev/null || echo "OPEN")
+          fi
+
+          CHANGED=false
+          MSG=""
+
+          if [ "$STATE" = "MERGED" ] && [ "$PREV_STATE" != "MERGED" ]; then
+            MSG="🎉 COOKBOOK PR #476 MERGED! anthropics/claude-cookbooks"
+            CHANGED=true
+          elif [ "$STATE" = "CLOSED" ] && [ "$PREV_STATE" != "CLOSED" ]; then
+            MSG="❌ Cookbook PR #476 CLOSED without merge"
+            CHANGED=true
+          elif [ "$REVIEWS" -gt "$PREV_REVIEWS" ]; then
+            MSG="👀 Cookbook PR #476: new review ($REVIEWS total)"
+            CHANGED=true
+          elif [ "$COMMENTS" -gt "$PREV_COMMENTS" ]; then
+            MSG="💬 Cookbook PR #476: new comment ($COMMENTS total)"
+            CHANGED=true
+          elif [ "$CHECKS" -gt "$PREV_CHECKS" ]; then
+            MSG="⚙️ Cookbook PR #476: CI running ($CHECKS checks)"
+            CHANGED=true
+          fi
+
+          # save current state
+          echo "{\"state\":\"$STATE\",\"reviews\":$REVIEWS,\"comments\":$COMMENTS,\"checks\":$CHECKS}" > "$PREV_FILE"
+
+          if [ "$CHANGED" = "true" ] && [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then
+            curl -s "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              -d chat_id="$TG_CHAT" \
+              -d parse_mode=HTML \
+              --data-urlencode "text=$MSG
+
+          https://github.com/anthropics/claude-cookbooks/pull/476" > /dev/null
+            echo "Alert sent: $MSG"
+          else
+            echo "No changes detected (state=$STATE reviews=$REVIEWS comments=$COMMENTS checks=$CHECKS)"
+          fi
