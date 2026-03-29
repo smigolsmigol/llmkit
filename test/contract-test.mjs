@@ -21,24 +21,31 @@ const pyPricingData = readFileSync('packages/python-sdk/src/llmkit/_pricing_data
 const pricingJson = JSON.parse(readFileSync('packages/shared/pricing.json', 'utf8'));
 
 // pricing sync: shared PRICING (from pricing.json) vs python generated data
+// ruff may wrap long tuples across lines, so match with regex allowing whitespace
+function pyHasModel(model, inputPrice) {
+  const escaped = model.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`"${escaped}":\\s*\\(\\s*${inputPrice}`);
+  return re.test(pyPricingData);
+}
+
 test('pricing sync: claude-opus-4-6 matches across shared and python', () => {
   const shared = PRICING.anthropic['claude-opus-4-6'];
   assert(shared, 'shared should have claude-opus-4-6');
-  assert(pyPricingData.includes(`"claude-opus-4-6": (${shared.inputPerMillion}`),
+  assert(pyHasModel('claude-opus-4-6', shared.inputPerMillion),
     `python should have matching input price ${shared.inputPerMillion}`);
 });
 
 test('pricing sync: gpt-4o matches across shared and python', () => {
   const shared = PRICING.openai['gpt-4o'];
   assert(shared, 'shared should have gpt-4o');
-  assert(pyPricingData.includes(`"gpt-4o": (${shared.inputPerMillion}`),
+  assert(pyHasModel('gpt-4o', shared.inputPerMillion),
     `python should have matching input price ${shared.inputPerMillion}`);
 });
 
 test('pricing sync: grok-4 matches across shared and python', () => {
   const shared = PRICING.xai['grok-4'];
   assert(shared, 'shared should have grok-4');
-  assert(pyPricingData.includes(`"grok-4": (${shared.inputPerMillion}`),
+  assert(pyHasModel('grok-4', shared.inputPerMillion),
     `python should have matching input price ${shared.inputPerMillion}`);
 });
 
