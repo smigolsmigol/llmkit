@@ -20,13 +20,18 @@ interface ModelPrice {
 }
 
 async function getPricing(): Promise<ModelPrice[]> {
-  // import pricing data directly (server component, no fetch needed)
-  const { PRICING_DATA } = await import('@f3d1/llmkit-shared/dist/pricing-data.js');
+  const { PRICING } = await import('@f3d1/llmkit-shared');
 
   const models: ModelPrice[] = [];
-  for (const [provider, providerModels] of Object.entries(PRICING_DATA as Record<string, Record<string, { input: number; output: number; cacheRead?: number }>>)) {
+  for (const [provider, providerModels] of Object.entries(PRICING)) {
     for (const [model, p] of Object.entries(providerModels)) {
-      models.push({ provider, model, input: p.input, output: p.output, cacheRead: p.cacheRead });
+      models.push({
+        provider,
+        model,
+        input: p.inputPerMillion,
+        output: p.outputPerMillion,
+        cacheRead: p.cacheReadPerMillion,
+      });
     }
   }
   models.sort((a, b) => a.input - b.input);
