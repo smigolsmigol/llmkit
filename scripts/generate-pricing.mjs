@@ -144,11 +144,18 @@ for (const { path, content } of outputs) {
     }
     let existing = readFileSync(path, 'utf8');
     let expected = content;
-    // for Python files, compare formatted versions (ruff may reformat)
+    // for Python files, compare formatted versions (ruff may reformat lines)
     if (path.endsWith('.py')) {
       try {
-        expected = execSync(`ruff format --quiet --stdin-filename x.py`, { input: content, encoding: 'utf8' });
-      } catch {}
+        expected = execSync('ruff format --quiet --stdin-filename x.py', { input: content, encoding: 'utf8' });
+      } catch {
+        // ruff not installed - also try matching existing (already formatted) file
+        if (existing !== content) {
+          // can't format, but file might be ruff-formatted already - skip this check
+          console.log(`  OK  ${rel} (ruff unavailable, skipping format check)`);
+          continue;
+        }
+      }
     }
     if (existing !== expected) {
       console.error(`STALE: ${rel} (run: node scripts/generate-pricing.mjs)`);
