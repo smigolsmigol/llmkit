@@ -87,11 +87,17 @@ providerRouter.post('/chat/completions', async (c) => {
     ? (userMaxTokens ? Math.min(userMaxTokens as number, budgetMaxTokens) : budgetMaxTokens)
     : userMaxTokens as number | undefined;
 
-  // collect provider-specific fields that we don't explicitly handle
-  const knownFields = new Set(['model', 'messages', 'temperature', 'max_tokens', 'maxTokens', 'tools', 'tool_choice', 'response_format', 'stream', 'stream_options', 'provider']);
+  // collect provider-specific fields, blocking sensitive and core fields from override
+  const blockedFields = new Set([
+    'model', 'messages', 'temperature', 'max_tokens', 'maxTokens',
+    'tools', 'tool_choice', 'response_format', 'stream', 'stream_options', 'provider',
+    'apiKey', 'api_key', 'Authorization', 'authorization', 'secret', 'token',
+    'x-api-key', 'x-goog-api-key', 'x-llmkit-provider-key', 'anthropic-version',
+    '__proto__', 'constructor', 'prototype',
+  ]);
   const extra: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) {
-    if (!knownFields.has(k)) extra[k] = v;
+    if (!blockedFields.has(k)) extra[k] = v;
   }
 
   const req: ProviderRequest = {
