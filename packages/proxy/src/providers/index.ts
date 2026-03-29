@@ -26,4 +26,19 @@ export function getAdapter(provider: ProviderName): ProviderAdapter {
   return adapter;
 }
 
+const BASE_URLS: Record<string, string> = {
+  openai: 'https://api.openai.com/v1',
+  xai: 'https://api.x.ai/v1',
+  groq: 'https://api.groq.com/openai/v1',
+  together: 'https://api.together.xyz/v1',
+  fireworks: 'https://api.fireworks.ai/inference/v1',
+  deepseek: 'https://api.deepseek.com',
+  mistral: 'https://api.mistral.ai/v1',
+  openrouter: 'https://openrouter.ai/api/v1',
+};
+
+export function getProviderBaseUrl(provider: ProviderName): string {
+  return BASE_URLS[provider] || 'https://api.openai.com/v1';
+}
+
 export type { ProviderAdapter, ProviderRequest, ProviderResponse } from './types';

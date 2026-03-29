@@ -14,6 +14,7 @@ import { providerRouter } from './routes/chat';
 import { keysRouter } from './routes/keys';
 import { mcpRouter } from './routes/mcp';
 import { pricingRouter } from './routes/pricing';
+import { responsesRouter } from './routes/responses';
 
 export { BudgetDO } from './do/budget-do';
 export { RateLimitDO } from './do/ratelimit-do';
@@ -152,6 +153,7 @@ app.use('/v1/*', budgetCheck());
 app.use('/v1/*', costLogger());
 
 app.route('/v1', providerRouter);
+app.route('/v1', responsesRouter);
 app.route('/v1', keysRouter);
 app.route('/v1', analyticsRouter);
 
