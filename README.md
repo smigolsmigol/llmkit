@@ -250,5 +250,5 @@ Per-request logging with timestamps, model attribution, cost tracking, per-end-u
 </p>
 
 <p align="center">
-  MIT. Built with <a href="https://claude.ai/claude-code">Claude Code</a>.
+  MIT. Built by <a href="https://github.com/smigolsmigol">f3d1</a> and <a href="https://claude.ai/claude-code">Claude Code</a>.
 </p>
