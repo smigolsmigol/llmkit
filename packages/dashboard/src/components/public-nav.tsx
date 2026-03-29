@@ -7,9 +7,10 @@ import { AnimatedLogo } from './animated-logo';
 import { cn } from '@/lib/utils';
 
 const links = [
+  { href: '/pricing', label: 'Pricing' },
+  { href: '/compare', label: 'Calculator' },
   { href: '/mcp', label: 'MCP' },
   { href: '/docs', label: 'Docs' },
-  { href: '/dashboard', label: 'Dashboard' },
 ];
 
 export function PublicNav() {
