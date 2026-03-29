@@ -107,7 +107,7 @@ export function calculateCostFromPricing(
     extraCosts = [];
     for (const eu of extraUsage) {
       const rateDef = pricing.extraRates.find(r => r.dimension === eu.dimension);
-      if (rateDef && eu.quantity > 0) {
+      if (rateDef && eu.quantity > 0 && rateDef.per > 0 && rateDef.rate >= 0) {
         const cost = (eu.quantity / rateDef.per) * rateDef.rate;
         extraCosts.push({
           dimension: eu.dimension,
