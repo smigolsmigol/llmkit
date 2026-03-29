@@ -46,7 +46,8 @@
       },
       "claude-3-haiku-20240307": {
         "input": 0.25,
-        "output": 1.25
+        "output": 1.25,
+        "cacheRead": 0.03
       },
       "claude-opus-4-20250514": {
         "input": 15,
@@ -416,9 +417,9 @@
         "cacheRead": 7.5
       },
       "o1-mini": {
-        "input": 1.1,
-        "output": 4.4,
-        "cacheRead": 0.55
+        "input": 3.0,
+        "output": 12.0,
+        "cacheRead": 1.5
       },
       "o1-pro": {
         "input": 150,
@@ -2992,11 +2993,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3019,11 +3028,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3046,11 +3063,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3073,11 +3098,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3100,19 +3133,27 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
         }
       },
       "grok-4": {
-        "input": 3,
-        "output": 15,
+        "input": 2,
+        "output": 6,
         "extraRates": {
           "web_search": {
             "rate": 5,
@@ -3126,15 +3167,24 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
-        }
+        },
+        "cacheRead": 0.2
       },
       "grok-3": {
         "input": 3,
@@ -3153,11 +3203,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3180,11 +3238,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3206,11 +3272,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3232,11 +3306,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3258,11 +3340,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3285,11 +3375,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3312,11 +3410,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3339,11 +3445,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3366,11 +3480,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3393,11 +3515,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3420,11 +3550,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3446,11 +3584,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3472,11 +3618,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3498,11 +3652,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3525,11 +3687,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3552,11 +3722,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3579,11 +3757,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3606,11 +3792,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3633,11 +3827,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3660,11 +3862,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3687,11 +3897,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3714,19 +3932,27 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
         }
       },
       "grok-4-latest": {
-        "input": 3,
-        "output": 15,
+        "input": 2,
+        "output": 6,
         "extraRates": {
           "web_search": {
             "rate": 5,
@@ -3740,15 +3966,24 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
-        }
+        },
+        "cacheRead": 0.2
       },
       "grok-4-1-fast": {
         "input": 0.2,
@@ -3767,11 +4002,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3794,11 +4037,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3821,11 +4072,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3848,11 +4107,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3875,11 +4142,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3902,11 +4177,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3928,11 +4211,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3955,11 +4246,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -3982,11 +4281,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }
@@ -4008,11 +4315,19 @@
             "rate": 5,
             "per": 1000
           },
-          "file_attachment": {
+          "attachment_search": {
             "rate": 10,
             "per": 1000
           },
-          "rag_search": {
+          "collections_search": {
+            "rate": 2.5,
+            "per": 1000
+          },
+          "code_interpreter": {
+            "rate": 5,
+            "per": 1000
+          },
+          "file_search": {
             "rate": 2.5,
             "per": 1000
           }

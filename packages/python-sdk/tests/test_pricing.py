@@ -88,7 +88,7 @@ def test_deepseek_pricing():
 def test_grok_pricing():
     p = lookup_pricing("grok-4")
     assert p is not None
-    assert p.input_per_m == 3.0
+    assert p.input_per_m == 2.0
 
 
 def test_grok_cache_pricing():

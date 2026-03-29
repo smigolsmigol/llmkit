@@ -72,23 +72,28 @@ function generateSharedTS() {
 
 // --- Python SDK pricing data ---
 
+function formatExtraRates(extra) {
+  const entries = Object.entries(extra).map(
+    ([k, v]) => `"${k}": (${v.rate}, ${v.per})`
+  );
+  return `{${entries.join(', ')}}`;
+}
+
 function generatePythonData() {
   const lines = [HEADER_PY];
   lines.push(`UPDATED_AT = "${pricing.updatedAt}"\n`);
 
-  lines.push('PRICING: dict[str, dict[str, tuple[float, ...]]] = {');
+  lines.push('# 5-tuple: (input, output, cacheRead, cacheWrite, extraRates)');
+  lines.push('# extraRates is dict[str, tuple[rate, per]] or None');
+  lines.push('PRICING: dict[str, dict[str, tuple]] = {');
   for (const [provider, models] of Object.entries(pricing.providers)) {
     if (Object.keys(models).length === 0) continue;
     lines.push(`    "${provider}": {`);
     for (const [model, p] of Object.entries(models)) {
-      const vals = [p.input, p.output];
-      if (num(p.cacheRead) || num(p.cacheWrite)) {
-        vals.push(num(p.cacheRead) || 0);
-      }
-      if (num(p.cacheWrite)) {
-        vals.push(p.cacheWrite);
-      }
-      lines.push(`        "${model}": (${vals.join(', ')}),`);
+      const cr = num(p.cacheRead) || 0;
+      const cw = num(p.cacheWrite) || 0;
+      const extra = p.extraRates ? formatExtraRates(p.extraRates) : 'None';
+      lines.push(`        "${model}": (${p.input}, ${p.output}, ${cr}, ${cw}, ${extra}),`);
     }
     lines.push('    },');
   }

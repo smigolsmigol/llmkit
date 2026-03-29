@@ -50,8 +50,10 @@ export type ExtraCostDimension =
   | 'web_search'
   | 'x_search'
   | 'code_execution'
-  | 'file_attachment'
-  | 'rag_search';
+  | 'code_interpreter'
+  | 'attachment_search'
+  | 'collections_search'
+  | 'file_search';
 
 export interface ExtraCost {
   dimension: ExtraCostDimension;

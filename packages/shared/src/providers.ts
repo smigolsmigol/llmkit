@@ -19,10 +19,9 @@ interface ModelPricing {
 type PricingTable = Record<string, ModelPricing>;
 
 // xAI server-side tool pricing (Responses API only, not Chat Completions):
-// web_search $5/1K, x_search $5/1K, code_execution $5/1K,
-// file_attachment $10/1K, rag_search $2.50/1K.
+// web_search $5/1K, x_search $5/1K, code_execution/code_interpreter $5/1K,
+// attachment_search $10/1K, collections_search/file_search $2.50/1K.
 // User-defined function calls via Chat Completions are FREE.
-// extraRates will be populated when we add /v1/responses routing.
 
 // pricing data loaded from pricing.json via generated pricing-data.ts
 const PRICING: Record<ProviderName, PricingTable> = {} as Record<ProviderName, PricingTable>;
