@@ -1,0 +1,90 @@
+name: 'LLMKit Budget Cap'
+description: 'Run any AI agent command with cost tracking and budget enforcement'
+branding:
+  icon: 'dollar-sign'
+  color: 'purple'
+
+inputs:
+  command:
+    description: 'Command to run (e.g., python agent.py)'
+    required: true
+  budget-usd:
+    description: 'Budget cap in USD. Action fails if exceeded.'
+    default: '5.00'
+  post-comment:
+    description: 'Post cost summary as PR comment (true/false)'
+    default: 'true'
+
+outputs:
+  total-cost:
+    description: 'Total cost in USD'
+    value: ${{ steps.run.outputs.total-cost }}
+  total-requests:
+    description: 'Number of API requests made'
+    value: ${{ steps.run.outputs.total-requests }}
+  budget-exceeded:
+    description: 'true if cost exceeded budget'
+    value: ${{ steps.run.outputs.budget-exceeded }}
+  summary-json:
+    description: 'Full cost summary as JSON'
+    value: ${{ steps.run.outputs.summary-json }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run with cost tracking
+      id: run
+      shell: bash
+      env:
+        LLMKIT_BUDGET: ${{ inputs.budget-usd }}
+        LLMKIT_COMMAND: ${{ inputs.command }}
+      run: |
+        RESULT=$(npx @f3d1/llmkit-cli@latest --json -- $LLMKIT_COMMAND 2>/dev/null || true)
+
+        COST=$(echo "$RESULT" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.write(String(d.totalCost||0))" 2>/dev/null || echo "0")
+        REQS=$(echo "$RESULT" | node -e "const d=JSON.parse(require('fs').readFileSync(0,'utf8'));process.stdout.write(String(d.totalRequests||0))" 2>/dev/null || echo "0")
+
+        EXCEEDED="false"
+        if [ "$(node -e "process.stdout.write(String($COST > $LLMKIT_BUDGET))")" = "true" ]; then
+          EXCEEDED="true"
+        fi
+
+        echo "total-cost=$COST" >> $GITHUB_OUTPUT
+        echo "total-requests=$REQS" >> $GITHUB_OUTPUT
+        echo "budget-exceeded=$EXCEEDED" >> $GITHUB_OUTPUT
+        echo "summary-json=$RESULT" >> $GITHUB_OUTPUT
+
+    - name: Post PR comment
+      if: inputs.post-comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        COST="${{ steps.run.outputs.total-cost }}"
+        REQS="${{ steps.run.outputs.total-requests }}"
+        BUDGET="${{ inputs.budget-usd }}"
+        EXCEEDED="${{ steps.run.outputs.budget-exceeded }}"
+
+        if [ "$EXCEEDED" = "true" ]; then
+          STATUS="over budget"
+        else
+          STATUS="within budget"
+        fi
+
+        BODY="**LLMKit Cost Report**
+
+        | Metric | Value |
+        |--------|-------|
+        | Total Cost | \$$COST |
+        | Requests | $REQS |
+        | Budget | \$$BUDGET |
+        | Status | $STATUS |"
+
+        gh pr comment ${{ github.event.pull_request.number }} --body "$BODY"
+
+    - name: Fail if over budget
+      if: steps.run.outputs.budget-exceeded == 'true'
+      shell: bash
+      run: |
+        echo "::error::Budget exceeded! Cost: \$${{ steps.run.outputs.total-cost }} > Budget: \$${{ inputs.budget-usd }}"
+        exit 1
