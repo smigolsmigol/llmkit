@@ -20,7 +20,9 @@ def _build_flat() -> dict[str, TokenRates]:
     for models in _RAW_PRICING.values():
         for model, rates in models.items():
             if len(rates) == 5:
-                flat[model] = TokenRates(rates[0], rates[1], rates[2], rates[3], rates[4])
+                flat[model] = TokenRates(
+                    rates[0], rates[1], rates[2], rates[3], rates[4]
+                )
             else:
                 flat[model] = TokenRates(*rates)
     return flat

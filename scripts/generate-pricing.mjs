@@ -15,6 +15,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
@@ -141,8 +142,15 @@ for (const { path, content } of outputs) {
       failures++;
       continue;
     }
-    const existing = readFileSync(path, 'utf8');
-    if (existing !== content) {
+    let existing = readFileSync(path, 'utf8');
+    let expected = content;
+    // for Python files, compare formatted versions (ruff may reformat)
+    if (path.endsWith('.py')) {
+      try {
+        expected = execSync(`ruff format --quiet --stdin-filename x.py`, { input: content, encoding: 'utf8' });
+      } catch {}
+    }
+    if (existing !== expected) {
       console.error(`STALE: ${rel} (run: node scripts/generate-pricing.mjs)`);
       failures++;
     } else {
@@ -150,6 +158,10 @@ for (const { path, content } of outputs) {
     }
   } else {
     writeFileSync(path, content);
+    // auto-format Python files with ruff if available
+    if (path.endsWith('.py')) {
+      try { execSync(`ruff format "${path}"`, { stdio: 'pipe' }); } catch {}
+    }
     console.log(`  GEN  ${rel}`);
   }
 }
