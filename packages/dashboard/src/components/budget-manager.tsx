@@ -88,7 +88,7 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="mb-1 block text-xs text-muted-foreground">Scope</label>
               <div className="flex gap-2">

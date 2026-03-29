@@ -34,7 +34,7 @@ export default async function Home() {
 
       {/* hero - split layout */}
       <div className="relative overflow-hidden">
-        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[600px] w-[900px] bg-[radial-gradient(ellipse,_rgba(192,132,252,0.08),_transparent_70%)]" />
+        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[600px] w-full max-w-[900px] bg-[radial-gradient(ellipse,_rgba(192,132,252,0.08),_transparent_70%)]" />
 
         <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-12">
           <div className="grid items-center gap-12 md:grid-cols-2">

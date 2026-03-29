@@ -44,7 +44,7 @@ export function SupportWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 w-80 rounded-xl border border-white/[0.08] bg-[#111] shadow-2xl shadow-black/40">
+    <div className="fixed bottom-5 right-3 left-3 sm:left-auto sm:right-5 z-50 sm:w-80 rounded-xl border border-white/[0.08] bg-[#111] shadow-2xl shadow-black/40">
       <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-3">
         <div>
           <p className="text-sm font-medium text-white">Support</p>

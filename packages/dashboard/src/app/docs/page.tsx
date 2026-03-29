@@ -35,7 +35,7 @@ export default function DocsPage() {
       <PublicNav />
 
       <div className="relative">
-        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[400px] w-[700px] bg-[radial-gradient(ellipse,_rgba(34,211,238,0.06),_transparent_70%)]" />
+        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[400px] w-full max-w-[700px] bg-[radial-gradient(ellipse,_rgba(34,211,238,0.06),_transparent_70%)]" />
         <div className="relative mx-auto max-w-3xl px-6 pt-16 pb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Getting Started</h1>
           <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-zinc-400">

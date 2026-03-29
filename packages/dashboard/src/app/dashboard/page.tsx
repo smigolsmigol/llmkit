@@ -103,7 +103,7 @@ export default async function OverviewPage({
       </div>}
 
       {budgetUsage.length > 0 && (
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
           {budgetUsage.map((b) => {
             const pct = b.limitCents > 0 ? Math.min(100, (b.usedCents / b.limitCents) * 100) : 0;
             const warn = pct >= 80;
@@ -162,7 +162,7 @@ export default async function OverviewPage({
 
       {totalRequests > 0 ? (
         <>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Spend</h2>
@@ -199,7 +199,7 @@ export default async function OverviewPage({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
             <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">Cost by Model</h2>
