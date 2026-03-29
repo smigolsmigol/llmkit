@@ -33,10 +33,10 @@ test('all 9 xAI models have valid pricing', () => {
   }
 });
 
-test('all xAI models have extraRates (5 dimensions)', () => {
+test('all xAI models have extraRates (7 dimensions)', () => {
   for (const [model, pricing] of Object.entries(PRICING.xai)) {
     assert.ok(pricing.extraRates, `${model} should have extraRates`);
-    assert.equal(pricing.extraRates.length, 5, `${model} should have 5 extra rate dimensions`);
+    assert.equal(pricing.extraRates.length, 7, `${model} should have 7 extra rate dimensions`);
   }
 });
 
@@ -63,9 +63,9 @@ test('grok-4-1-fast-reasoning pricing correct', () => {
 test('grok-4 pricing correct', () => {
   const p = PRICING.xai['grok-4'];
   assert.ok(p, 'should exist');
-  assert.equal(p.inputPerMillion, 3.0);
-  assert.equal(p.outputPerMillion, 15.0);
-  assert.equal(p.cacheReadPerMillion, undefined, 'grok-4 has no cache pricing');
+  assert.equal(p.inputPerMillion, 2.0);
+  assert.equal(p.outputPerMillion, 6.0);
+  assert.equal(p.cacheReadPerMillion, 0.2);
 });
 
 // ============================
@@ -124,8 +124,8 @@ test('cache cost works for xAI', () => {
 test('getModelPricing resolves xAI models', () => {
   const p = getModelPricing('xai', 'grok-4');
   assert.ok(p, 'should resolve grok-4');
-  assert.equal(p.inputPerMillion, 3.0);
-  assert.equal(p.outputPerMillion, 15.0);
+  assert.equal(p.inputPerMillion, 2.0);
+  assert.equal(p.outputPerMillion, 6.0);
 });
 
 test('getModelPricing resolves xAI dated models', () => {
