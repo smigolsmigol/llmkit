@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { stream } from 'hono/streaming';
 import { inferProvider, ValidationError, type CostBreakdown, type ExtraCostDimension, type ProviderName } from '@f3d1/llmkit-shared';
 import type { Env, ResponseMeta } from '../env';
 import { findProviderKey } from '../db';
