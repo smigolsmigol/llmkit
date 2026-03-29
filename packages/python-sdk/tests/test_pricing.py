@@ -136,4 +136,21 @@ def test_estimate_cost_public():
 def test_token_rates_is_tuple():
     r = TokenRates(1.0, 2.0, 0.1, 0.2)
     assert isinstance(r, tuple)
-    assert len(r) == 4
+    assert len(r) == 5
+    assert r.extra_rates is None
+
+
+def test_token_rates_with_extra_rates():
+    extra = {"web_search": (5.0, 1000)}
+    r = TokenRates(1.0, 2.0, 0.1, 0.2, extra)
+    assert r.extra_rates == {"web_search": (5.0, 1000)}
+
+
+def test_xai_extra_rates_loaded():
+    p = lookup_pricing("grok-4.20-0309-reasoning")
+    assert p is not None
+    assert p.extra_rates is not None
+    assert "web_search" in p.extra_rates
+    rate, per = p.extra_rates["web_search"]
+    assert rate == 5.0
+    assert per == 1000

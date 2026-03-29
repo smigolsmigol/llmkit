@@ -12,18 +12,22 @@ class TokenRates(NamedTuple):
     output_per_m: float
     cache_read_per_m: float = 0.0
     cache_write_per_m: float = 0.0
+    extra_rates: dict[str, tuple[float, float]] | None = None
 
 
-_PRICING: dict[str, dict[str, TokenRates]] = {
-    provider: {model: TokenRates(*rates) for model, rates in models.items()}
-    for provider, models in _RAW_PRICING.items()
-}
+def _build_flat() -> dict[str, TokenRates]:
+    flat: dict[str, TokenRates] = {}
+    for models in _RAW_PRICING.values():
+        for model, rates in models.items():
+            if len(rates) == 5:
+                flat[model] = TokenRates(rates[0], rates[1], rates[2], rates[3], rates[4])
+            else:
+                flat[model] = TokenRates(*rates)
+    return flat
+
 
 _PREFIXES: list[tuple[str, str]] = _RAW_PREFIXES
-
-_FLAT: dict[str, TokenRates] = {}
-for _models in _PRICING.values():
-    _FLAT.update(_models)
+_FLAT: dict[str, TokenRates] = _build_flat()
 
 
 def _strip_date_suffix(model: str) -> str:
