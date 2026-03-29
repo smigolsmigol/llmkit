@@ -135,6 +135,12 @@ export function createLLMKit(config: LLMKitProviderConfig) {
           max_tokens: options.maxOutputTokens,
           temperature: options.temperature,
         };
+        if (options.topP !== undefined) body.top_p = options.topP;
+        if (options.topK !== undefined) body.top_k = options.topK;
+        if (options.frequencyPenalty !== undefined) body.frequency_penalty = options.frequencyPenalty;
+        if (options.presencePenalty !== undefined) body.presence_penalty = options.presencePenalty;
+        if (options.seed !== undefined) body.seed = options.seed;
+        if (options.stopSequences?.length) body.stop = options.stopSequences;
         if (tools) body.tools = tools;
         if (toolChoice !== undefined) body.tool_choice = toolChoice;
         if (responseFormat) body.response_format = responseFormat;
@@ -147,7 +153,7 @@ export function createLLMKit(config: LLMKitProviderConfig) {
         });
 
         if (!res.ok) {
-          const errBody = await res.text();
+          const errBody = (await res.text()).slice(0, 500);
           throw new Error(`LLMKit ${res.status}: ${errBody}`);
         }
 
@@ -205,6 +211,12 @@ export function createLLMKit(config: LLMKitProviderConfig) {
           temperature: options.temperature,
           stream: true,
         };
+        if (options.topP !== undefined) body.top_p = options.topP;
+        if (options.topK !== undefined) body.top_k = options.topK;
+        if (options.frequencyPenalty !== undefined) body.frequency_penalty = options.frequencyPenalty;
+        if (options.presencePenalty !== undefined) body.presence_penalty = options.presencePenalty;
+        if (options.seed !== undefined) body.seed = options.seed;
+        if (options.stopSequences?.length) body.stop = options.stopSequences;
         if (tools) body.tools = tools;
         if (toolChoice !== undefined) body.tool_choice = toolChoice;
         if (responseFormat) body.response_format = responseFormat;
@@ -217,7 +229,7 @@ export function createLLMKit(config: LLMKitProviderConfig) {
         });
 
         if (!res.ok) {
-          const errBody = await res.text();
+          const errBody = (await res.text()).slice(0, 500);
           throw new Error(`LLMKit ${res.status}: ${errBody}`);
         }
 
@@ -231,10 +243,21 @@ export function createLLMKit(config: LLMKitProviderConfig) {
             let textBlockId = '';
             let partCounter = 0;
 
+            controller.enqueue({ type: 'stream-start', warnings: [] });
+
             // tool call accumulation (OpenAI streams tool calls by index)
             const toolAccum = new Map<number, { id: string; name: string; args: string; started: boolean }>();
 
+            let metadataEmitted = false;
             for await (const event of parts) {
+              if (!metadataEmitted) {
+                const id = event.data.id as string | undefined;
+                const model = event.data.model as string | undefined;
+                if (id || model) {
+                  controller.enqueue({ type: 'response-metadata', id, modelId: model, timestamp: new Date() });
+                  metadataEmitted = true;
+                }
+              }
               // LLMKit format: event.type === 'delta'
               if (event.type === 'delta' && event.data.text !== undefined) {
                 if (!textBlockId) {

@@ -13,7 +13,7 @@ function countToolInvocations(toolCalls?: ToolCall[]): Array<{ dimension: ExtraC
   const counts = new Map<string, number>();
   for (const tc of toolCalls) {
     const dim = tc.name;
-    if (['web_search', 'x_search', 'code_execution', 'file_attachment', 'rag_search'].includes(dim)) {
+    if (['web_search', 'x_search', 'code_execution', 'code_interpreter', 'attachment_search', 'collections_search', 'file_search'].includes(dim)) {
       counts.set(dim, (counts.get(dim) || 0) + 1);
     }
   }
@@ -85,18 +85,19 @@ responsesRouter.post('/responses', async (c) => {
   const data = await res.json() as Record<string, unknown>;
   const latency = Date.now() - start;
 
-  // extract usage
-  const rawUsage = data.usage as { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined;
+  // extract usage - Responses API uses input_tokens/output_tokens (not prompt_tokens/completion_tokens)
+  const rawUsage = data.usage as Record<string, number> | undefined;
   const usage = {
-    inputTokens: rawUsage?.prompt_tokens ?? 0,
-    outputTokens: rawUsage?.completion_tokens ?? 0,
+    inputTokens: rawUsage?.input_tokens ?? rawUsage?.prompt_tokens ?? 0,
+    outputTokens: rawUsage?.output_tokens ?? rawUsage?.completion_tokens ?? 0,
     totalTokens: rawUsage?.total_tokens ?? 0,
   };
 
-  // extract tool calls for cost tracking
-  const choices = data.choices as Array<{ message?: { tool_calls?: Array<{ id: string; type: string; function: { name: string; arguments: string } }> } }> | undefined;
-  const rawToolCalls = choices?.[0]?.message?.tool_calls;
-  const toolCalls = rawToolCalls?.map(tc => ({ id: tc.id, name: tc.function.name, arguments: tc.function.arguments }));
+  // extract tool calls - Responses API uses output[] array (not choices[].message.tool_calls)
+  const output = data.output as Array<{ type: string; name?: string; id?: string }> | undefined;
+  const toolCalls = output
+    ?.filter((o): o is { type: string; name: string; id: string } => o.type !== 'message' && !!o.name)
+    .map(o => ({ id: o.id || '', name: o.name, arguments: '' }));
   const extraUsage = countToolInvocations(toolCalls);
 
   // calculate cost including non-token dimensions

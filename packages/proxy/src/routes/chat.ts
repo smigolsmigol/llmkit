@@ -370,7 +370,7 @@ async function writeStreamFinale(
   await s.write(encoder.encode('data: [DONE]\n\n'));
 }
 
-const VALID_ROLES = new Set(['system', 'user', 'assistant']);
+const VALID_ROLES = new Set(['system', 'developer', 'user', 'assistant', 'tool']);
 
 function validateBody(body: Record<string, unknown>): void {
   if (!body.model || typeof body.model !== 'string') {

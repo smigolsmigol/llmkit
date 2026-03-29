@@ -52,19 +52,22 @@ runs:
         echo "total-cost=$COST" >> $GITHUB_OUTPUT
         echo "total-requests=$REQS" >> $GITHUB_OUTPUT
         echo "budget-exceeded=$EXCEEDED" >> $GITHUB_OUTPUT
-        echo "summary-json=$RESULT" >> $GITHUB_OUTPUT
+        DELIM="$(openssl rand -hex 16)"
+        echo "summary-json<<${DELIM}" >> $GITHUB_OUTPUT
+        echo "$RESULT" >> $GITHUB_OUTPUT
+        echo "${DELIM}" >> $GITHUB_OUTPUT
 
     - name: Post PR comment
       if: inputs.post-comment == 'true' && github.event_name == 'pull_request'
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}
+        COST: ${{ steps.run.outputs.total-cost }}
+        REQS: ${{ steps.run.outputs.total-requests }}
+        BUDGET: ${{ inputs.budget-usd }}
+        EXCEEDED: ${{ steps.run.outputs.budget-exceeded }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
       run: |
-        COST="${{ steps.run.outputs.total-cost }}"
-        REQS="${{ steps.run.outputs.total-requests }}"
-        BUDGET="${{ inputs.budget-usd }}"
-        EXCEEDED="${{ steps.run.outputs.budget-exceeded }}"
-
         if [ "$EXCEEDED" = "true" ]; then
           STATUS="over budget"
         else
@@ -80,11 +83,14 @@ runs:
         | Budget | \$$BUDGET |
         | Status | $STATUS |"
 
-        gh pr comment ${{ github.event.pull_request.number }} --body "$BODY"
+        gh pr comment "$PR_NUMBER" --body "$BODY"
 
     - name: Fail if over budget
       if: steps.run.outputs.budget-exceeded == 'true'
       shell: bash
+      env:
+        COST: ${{ steps.run.outputs.total-cost }}
+        BUDGET: ${{ inputs.budget-usd }}
       run: |
-        echo "::error::Budget exceeded! Cost: \$${{ steps.run.outputs.total-cost }} > Budget: \$${{ inputs.budget-usd }}"
+        echo "::error::Budget exceeded! Cost: \$$COST > Budget: \$$BUDGET"
         exit 1

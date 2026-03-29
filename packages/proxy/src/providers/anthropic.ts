@@ -231,7 +231,7 @@ function mapUsage(raw: AnthropicResponse['usage']): TokenUsage {
     outputTokens: raw.output_tokens,
     cacheReadTokens: cacheRead || undefined,
     cacheWriteTokens: cacheWrite || undefined,
-    totalTokens: raw.input_tokens + raw.output_tokens,
+    totalTokens: raw.input_tokens + raw.output_tokens + cacheRead + cacheWrite,
   };
 }
 

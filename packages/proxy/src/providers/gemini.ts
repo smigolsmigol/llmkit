@@ -15,6 +15,7 @@ interface GeminiUsage {
   candidatesTokenCount: number;
   totalTokenCount: number;
   cachedContentTokenCount?: number;
+  thoughtsTokenCount?: number;
 }
 
 interface GeminiCandidate {
@@ -63,6 +64,17 @@ export class GeminiAdapter implements ProviderAdapter {
         description: t.function?.description,
         parameters: t.function?.parameters,
       })) }];
+      if (req.toolChoice) {
+        const tc = req.toolChoice as { type?: string; function?: { name?: string } } | string;
+        const mode = typeof tc === 'string' ? tc : tc.type;
+        const modeMap: Record<string, string> = { auto: 'AUTO', required: 'ANY', none: 'NONE' };
+        const config: Record<string, unknown> = { mode: modeMap[mode || 'auto'] || 'AUTO' };
+        if (typeof tc === 'object' && tc.function?.name) {
+          config.mode = 'ANY';
+          config.allowedFunctionNames = [tc.function.name];
+        }
+        body.tool_config = { function_calling_config: config };
+      }
     }
     if (req.extra) Object.assign(body, req.extra);
 
@@ -144,9 +156,15 @@ export class GeminiAdapter implements ProviderAdapter {
 
             const candidate = chunk.candidates?.[0];
             if (candidate?.finishReason) finishReason = candidate.finishReason;
-            const text = candidate?.content?.parts?.[0]?.text;
-            if (text) {
-              yield { type: 'text', text };
+
+            for (const part of candidate?.content?.parts ?? []) {
+              if (part.text) {
+                yield { type: 'text' as const, text: part.text };
+              }
+              const fc = (part as { functionCall?: { id?: string; name: string; args: unknown } }).functionCall;
+              if (fc) {
+                yield { type: 'tool' as const, toolCallId: fc.id || `call_${Date.now()}`, toolName: fc.name, toolArguments: JSON.stringify(fc.args) };
+              }
             }
 
             // full usage only on final chunk (has candidatesTokenCount)
@@ -207,11 +225,11 @@ function toGeminiFormat(messages: Array<{ role: string; content: string | Array<
 function mapUsage(raw: GeminiUsage): TokenUsage {
   const cached = raw.cachedContentTokenCount || 0;
   return {
-    // Gemini's promptTokenCount includes cachedContentTokenCount - subtract to avoid double-counting
     inputTokens: cached ? raw.promptTokenCount - cached : raw.promptTokenCount,
     outputTokens: raw.candidatesTokenCount,
     totalTokens: raw.totalTokenCount,
     cacheReadTokens: cached || undefined,
+    reasoningTokens: raw.thoughtsTokenCount || undefined,
   };
 }
 
@@ -234,9 +252,9 @@ function parseResponse(data: GeminiResponse, requestModel: string): ProviderResp
     .join('') || '';
 
   const toolCalls = candidate.content?.parts
-    ?.filter((p): p is { functionCall: { name: string; args: unknown } } => !!p.functionCall)
+    ?.filter((p): p is { functionCall: { id?: string; name: string; args: unknown } } => !!p.functionCall)
     .map((p, i) => ({
-      id: `call_${i}`,
+      id: p.functionCall.id || `call_${i}`,
       name: p.functionCall.name,
       arguments: JSON.stringify(p.functionCall.args),
     }));

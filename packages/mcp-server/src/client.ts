@@ -41,7 +41,7 @@ async function api<T>(path: string): Promise<T> {
   });
 
   if (!res.ok) {
-    const body = await res.text().catch(() => '');
+    const body = (await res.text().catch(() => '')).slice(0, 500);
     throw new Error(`API request failed (${res.status}): ${body}`);
   }
 
