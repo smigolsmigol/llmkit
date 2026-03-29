@@ -135,10 +135,7 @@ Query AI costs from Claude Code, Cline, or Cursor:
 
 `llmkit_usage_stats` `llmkit_cost_query` `llmkit_budget_status` `llmkit_session_summary` `llmkit_list_keys` `llmkit_health` `llmkit_local_session` `llmkit_local_projects` `llmkit_local_cache` `llmkit_local_forecast` `llmkit_local_agents`
 
-<details>
-<summary><strong>SessionEnd hook</strong></summary>
-
-Auto-log session costs when Claude Code exits. Add to your `settings.json`:
+**SessionEnd hook** - auto-log session costs when Claude Code exits. Add to `settings.json`:
 
 ```json
 {
@@ -155,7 +152,19 @@ Auto-log session costs when Claude Code exits. Add to your `settings.json`:
 
 Parses the session transcript and prints cost summary. No API key needed.
 
-</details>
+## GitHub Action
+
+Cap AI spend in CI. The action runs your command through the CLI, tracks cost, and fails the job if it exceeds the budget.
+
+```yaml
+- uses: smigolsmigol/llmkit/.github/actions/llmkit-budget@main
+  with:
+    command: python agent.py
+    budget-usd: '5.00'
+    post-comment: 'true'
+```
+
+Posts a cost report as a PR comment. Outputs `total-cost`, `total-requests`, `budget-exceeded`, and `summary-json` for downstream steps.
 
 ## Why LLMKit
 
@@ -165,7 +174,11 @@ Tag requests with a session ID or end-user ID to track costs per agent, per conv
 
 11 providers through one interface: Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Fallback chains with one header (`x-llmkit-fallback: anthropic,openai,gemini`).
 
-Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 700+ models priced across all providers.
+Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 730+ models priced across all providers.
+
+**Public API endpoints** (no auth required):
+
+- [`/v1/pricing/compare`](https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=1000&output=1000) - compare cost across all 730+ models for a given token count
 
 ## Security
 
@@ -195,7 +208,7 @@ Full details in [SECURITY.md](SECURITY.md).
 | [@f3d1/llmkit-proxy](packages/proxy) | Hono-based CF Workers proxy: auth, budgets, routing, logging |
 | [@f3d1/llmkit-ai-sdk-provider](packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider |
 | [@f3d1/llmkit-mcp-server](packages/mcp-server) | 11 tools: proxy analytics, local costs (Claude Code + Cline + Cursor) |
-| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 700+ models), cost calculation |
+| [@f3d1/llmkit-shared](packages/shared) | Types, pricing table (11 providers, 730+ models), cost calculation |
 
 </details>
 
@@ -227,7 +240,7 @@ npx wrangler deploy
 <details>
 <summary><strong>Testing</strong></summary>
 
-270+ tests across TypeScript and Python: cost calculation, budget enforcement, crypto, reservations, pricing accuracy, streaming, transport hooks, contract tests, and integration tests. CI runs on every push with a 6-stage security pipeline.
+280+ tests across TypeScript and Python: cost calculation, budget enforcement, crypto, reservations, pricing accuracy, streaming, transport hooks, contract tests, and integration tests. CI runs on every push with a 6-stage security pipeline.
 
 </details>
 
