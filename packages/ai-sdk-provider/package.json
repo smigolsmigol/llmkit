@@ -48,7 +48,7 @@
     }
   },
   "devDependencies": {
-    "typescript": "^5.7.0"
+    "typescript": "^6.0.2"
   },
   "homepage": "https://github.com/smigolsmigol/llmkit/tree/main/packages/ai-sdk-provider",
   "bugs": {

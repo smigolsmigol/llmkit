@@ -23,7 +23,7 @@ importers:
         version: 0.1.0
       knip:
         specifier: ^5.85.0
-        version: 5.88.1(@types/node@22.19.15)(typescript@5.9.3)
+        version: 5.88.1(@types/node@22.19.15)(typescript@6.0.2)
       publint:
         specifier: ^0.3.18
         version: 0.3.18
@@ -31,8 +31,8 @@ importers:
         specifier: ^2.4.0
         version: 2.8.20
       typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
+        specifier: ^6.0.2
+        version: 6.0.2
 
   packages/ai-sdk-provider:
     dependencies:
@@ -44,8 +44,8 @@ importers:
         version: 6.0.137(zod@4.3.6)
     devDependencies:
       typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
+        specifier: ^6.0.2
+        version: 6.0.2
 
   packages/cli:
     dependencies:
@@ -118,8 +118,8 @@ importers:
         specifier: ^4.0.0
         version: 4.2.2
       typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
+        specifier: ^6.0.2
+        version: 6.0.2
 
   packages/mcp-server:
     dependencies:
@@ -1813,8 +1813,8 @@ packages:
     resolution: {integrity: sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==}
     engines: {node: '>= 0.6'}
 
-  typescript@5.9.3:
-    resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+  typescript@6.0.2:
+    resolution: {integrity: sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -2944,7 +2944,7 @@ snapshots:
 
   kleur@4.1.5: {}
 
-  knip@5.88.1(@types/node@22.19.15)(typescript@5.9.3):
+  knip@5.88.1(@types/node@22.19.15)(typescript@6.0.2):
     dependencies:
       '@nodelib/fs.walk': 1.2.8
       '@types/node': 22.19.15
@@ -2957,7 +2957,7 @@ snapshots:
       picomatch: 4.0.4
       smol-toml: 1.6.1
       strip-json-comments: 5.0.3
-      typescript: 5.9.3
+      typescript: 6.0.2
       unbash: 2.2.0
       yaml: 2.8.3
       zod: 4.3.6
@@ -3366,7 +3366,7 @@ snapshots:
       media-typer: 1.1.0
       mime-types: 3.0.2
 
-  typescript@5.9.3: {}
+  typescript@6.0.2: {}
 
   unbash@2.2.0: {}
 
