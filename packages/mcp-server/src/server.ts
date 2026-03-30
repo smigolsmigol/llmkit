@@ -35,7 +35,7 @@ const PROMPT_MESSAGES: Record<string, (args: Record<string, string>) => { role: 
 
 export async function startServer(): Promise<void> {
   const server = new Server(
-    { name: 'llmkit', version: '0.4.5' },
+    { name: 'llmkit', version: '0.4.6' },
     { capabilities: { tools: {}, resources: {}, prompts: {} } },
   );
 
