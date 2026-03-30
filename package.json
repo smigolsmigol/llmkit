@@ -24,7 +24,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.2",
     "kguard": "^0.1.0",
-    "knip": "^5.85.0",
+    "knip": "^6.1.0",
     "publint": "^0.3.18",
     "turbo": "^2.4.0",
     "typescript": "^5.7.0"
