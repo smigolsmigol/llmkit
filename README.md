@@ -272,8 +272,8 @@ Per-request logging with timestamps, model attribution, cost tracking, per-end-u
 <details>
 <summary><strong>Listed on</strong></summary>
 
-- [LobeHub](https://lobehub.com/mcp/smigolsmigol-llmkit) - A grade (88%)
-- [Glama](https://glama.ai/mcp/servers/@smigolsmigol/llmkit) - triple A scores
+- [LobeHub](https://lobehub.com/mcp/smigolsmigol-llmkit) 
+- [Glama](https://glama.ai/mcp/servers/@smigolsmigol/llmkit)
 - [MCP Registry](https://registry.modelcontextprotocol.io) - official
 - [Smithery](https://smithery.ai/server/@smigolsmigol/llmkit)
 - [AgentHotspot](https://agenthotspot.com/connectors/oss/llmkit)
