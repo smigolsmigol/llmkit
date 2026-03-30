@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { ClerkProvider } from '@clerk/nextjs';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { Space_Grotesk, JetBrains_Mono, Orbitron } from 'next/font/google';
@@ -8,16 +7,19 @@ import './globals.css';
 const spaceGrotesk = Space_Grotesk({
   subsets: ['latin'],
   variable: '--font-sans',
+  display: 'swap',
 });
 
 const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
+  display: 'swap',
 });
 
 const orbitron = Orbitron({
   subsets: ['latin'],
   variable: '--font-logo',
+  display: 'swap',
 });
 
 export const metadata: Metadata = {
@@ -41,16 +43,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider>
-      <html lang="en" className="dark">
-        <body
-          className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${orbitron.variable} min-h-screen bg-background text-foreground antialiased`}
-        >
-          {children}
-          <Analytics />
-          <SpeedInsights />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className="dark">
+      <body
+        className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${orbitron.variable} min-h-screen bg-background text-foreground antialiased`}
+      >
+        {children}
+        <Analytics />
+        <SpeedInsights />
+      </body>
+    </html>
   );
 }

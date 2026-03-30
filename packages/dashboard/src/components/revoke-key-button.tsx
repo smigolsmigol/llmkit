@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { revokeApiKey } from '@/app/dashboard/keys/actions';
+import { revokeApiKey } from '@/app/(auth)/dashboard/keys/actions';
 
 interface RevokeKeyButtonProps {
   keyId: string;

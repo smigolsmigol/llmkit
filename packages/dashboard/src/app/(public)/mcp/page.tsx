@@ -1,7 +1,7 @@
 export const runtime = 'edge';
 
 import type { Metadata } from 'next';
-import { PublicNav } from '@/components/public-nav';
+import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
 
 export const metadata: Metadata = {
@@ -56,7 +56,7 @@ export default function McpPage() {
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
       />
 
-      <PublicNav />
+      <PublicNavStatic />
 
       {/* hero */}
       <div className="relative">

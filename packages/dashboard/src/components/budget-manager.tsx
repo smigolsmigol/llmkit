@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { createBudget, deleteBudget } from '@/app/dashboard/settings/actions';
+import { createBudget, deleteBudget } from '@/app/(auth)/dashboard/settings/actions';
 import { Button } from '@/components/ui/button';
 import type { BudgetRow } from '@/lib/queries';
 

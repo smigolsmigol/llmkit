@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { sendSupportMessage } from '@/app/dashboard/support-action';
+import { sendSupportMessage } from '@/app/(auth)/dashboard/support-action';
 
 export function SupportWidget() {
   const [open, setOpen] = useState(false);

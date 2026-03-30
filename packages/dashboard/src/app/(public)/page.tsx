@@ -1,8 +1,7 @@
 export const runtime = 'edge';
 
 import Link from 'next/link';
-import { auth } from '@clerk/nextjs/server';
-import { PublicNav } from '@/components/public-nav';
+import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
 import { ProviderIcon } from '@/components/provider-icons';
 import { TrackClick } from '@/components/track-event';
@@ -22,10 +21,9 @@ const providers = [
   { id: 'openrouter', name: 'OpenRouter', models: 0, bg: 'bg-purple-500/15 text-purple-400', accent: 'border-l-purple-400', tag: 'meta-gateway' },
 ];
 
-export default async function Home() {
-  const { userId } = await auth();
-  const ctaHref = userId ? '/dashboard' : '/sign-up';
-  const ctaLabel = userId ? 'Go to dashboard' : 'Get started free';
+export default function Home() {
+  const ctaHref = '/sign-up';
+  const ctaLabel = 'Get started free';
   return (
     <div className="relative min-h-screen bg-[#0a0a0a] text-white selection:bg-violet-500/30">
       <div
@@ -33,7 +31,7 @@ export default async function Home() {
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
       />
 
-      <PublicNav />
+      <PublicNavStatic />
 
       {/* hero - split layout */}
       <div className="relative overflow-hidden">
@@ -271,7 +269,7 @@ export default async function Home() {
             href={ctaHref}
             className="rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-500 transition"
           >
-            {userId ? 'Open dashboard' : 'Try the dashboard'}
+            Try the dashboard
           </Link>
           <TrackClick
             event="cta_click"

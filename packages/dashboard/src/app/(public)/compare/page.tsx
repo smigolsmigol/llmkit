@@ -1,6 +1,6 @@
 export const runtime = 'edge';
 
-import { PublicNav } from '@/components/public-nav';
+import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
 import { Calculator } from './calculator';
 import type { Metadata } from 'next';
@@ -47,7 +47,7 @@ export default async function ComparePage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100">
-      <PublicNav />
+      <PublicNavStatic />
       <div className="mx-auto max-w-6xl px-6 pt-12 pb-16">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
           LLM Cost Calculator

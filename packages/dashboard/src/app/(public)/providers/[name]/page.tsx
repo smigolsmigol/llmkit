@@ -1,4 +1,4 @@
-import { PublicNav } from '@/components/public-nav';
+import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
@@ -102,7 +102,7 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-zinc-100">
-      <PublicNav />
+      <PublicNavStatic />
 
       <div className="mx-auto max-w-6xl px-6 pt-12 pb-16">
         <div className="flex items-center gap-2 text-sm text-zinc-500 mb-6">

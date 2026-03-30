@@ -2,7 +2,7 @@ export const runtime = 'edge';
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { PublicNav } from '@/components/public-nav';
+import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
 
 export const metadata: Metadata = {
@@ -34,7 +34,7 @@ export default function DocsPage() {
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
       />
 
-      <PublicNav />
+      <PublicNavStatic />
 
       <div className="relative">
         <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[400px] w-full max-w-[700px] bg-[radial-gradient(ellipse,_rgba(34,211,238,0.06),_transparent_70%)]" />
