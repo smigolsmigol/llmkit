@@ -269,4 +269,22 @@ Per-request logging with timestamps, model attribution, cost tracking, per-end-u
   MIT. Built by <a href="https://github.com/smigolsmigol">f3d1</a> and <a href="https://claude.ai/claude-code">Claude Code</a>.
 </p>
 
+<details>
+<summary><strong>Listed on</strong></summary>
 
+- [LobeHub](https://lobehub.com/mcp/smigolsmigol-llmkit) - A grade (88%)
+- [Glama](https://glama.ai/mcp/servers/@smigolsmigol/llmkit) - triple A scores
+- [MCP Registry](https://registry.modelcontextprotocol.io) - official
+- [Smithery](https://smithery.ai/server/@smigolsmigol/llmkit)
+- [AgentHotspot](https://agenthotspot.com/connectors/oss/llmkit)
+- [TensorBlock awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers)
+- [awesome-cloudflare](https://github.com/zhuima/awesome-cloudflare)
+- [Fronteir AI](https://fronteir.ai/mcp/smigolsmigol-llmkit) - hosted deployment
+- [Pricing comparison](https://llmkit-dashboard.vercel.app/pricing) - 730+ models
+- [Cost calculator](https://llmkit-dashboard.vercel.app/compare)
+
+</details>
+
+<p align="center">
+  <a href="https://github.com/smigolsmigol/llmkit">Star this repo</a> if you find it useful.
+</p>
