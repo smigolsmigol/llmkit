@@ -1,21 +1,14 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-const isStaticPublicRoute = createRouteMatcher(['/', '/mcp', '/docs', '/pricing', '/compare', '/providers(.*)', '/guides(.*)', '/opengraph-image(.*)']);
+const isDashboard = createRouteMatcher(['/dashboard(.*)']);
 
-export default function middleware(req: NextRequest) {
-  // static public routes skip Clerk entirely for faster TTFB
-  if (isStaticPublicRoute(req)) return NextResponse.next();
-
-  // auth routes (sign-in, sign-up, dashboard) go through Clerk
-  return clerkMiddleware(async (auth, r) => {
-    const isAuthPage = r.nextUrl.pathname.startsWith('/sign-in') || r.nextUrl.pathname.startsWith('/sign-up');
-    if (!isAuthPage) {
-      await auth.protect({ unauthenticatedUrl: new URL('/sign-in', r.url).toString() });
-    }
-  })(req, {} as never);
-}
+export default clerkMiddleware(async (auth, req) => {
+  if (isDashboard(req)) {
+    await auth.protect({
+      unauthenticatedUrl: new URL('/sign-in', req.url).toString(),
+    });
+  }
+});
 
 export const config = {
   matcher: [
