@@ -254,25 +254,10 @@ Per-request logging with timestamps, model attribution, cost tracking, per-end-u
 
 </details>
 
----
-
-<p align="center">
-  <a href="https://llmkit-dashboard.vercel.app">Dashboard</a> .
-  <a href="https://www.npmjs.com/package/@f3d1/llmkit-sdk">npm</a> .
-  <a href="https://pypi.org/project/llmkit-sdk/">PyPI</a> .
-  <a href="https://github.com/smigolsmigol/llmkit/tree/main/packages/mcp-server">MCP Server</a> .
-  <a href="SECURITY.md">Security</a> .
-  <a href="CONTRIBUTING.md">Contributing</a>
-</p>
-
-<p align="center">
-  MIT. Built by <a href="https://github.com/smigolsmigol">f3d1</a> and <a href="https://claude.ai/claude-code">Claude Code</a>.
-</p>
-
 <details>
 <summary><strong>Listed on</strong></summary>
 
-- [LobeHub](https://lobehub.com/mcp/smigolsmigol-llmkit) 
+- [LobeHub](https://lobehub.com/mcp/smigolsmigol-llmkit)
 - [Glama](https://glama.ai/mcp/servers/@smigolsmigol/llmkit)
 - [MCP Registry](https://registry.modelcontextprotocol.io) - official
 - [Smithery](https://smithery.ai/server/@smigolsmigol/llmkit)
