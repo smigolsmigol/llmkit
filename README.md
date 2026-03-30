@@ -236,6 +236,8 @@ npx wrangler secret put ENCRYPTION_KEY
 npx wrangler deploy
 ```
 
+Or use a hosted deployment on [Fronteir AI](https://fronteir.ai/mcp/smigolsmigol-llmkit).
+
 </details>
 
 <details>
@@ -267,7 +269,4 @@ Per-request logging with timestamps, model attribution, cost tracking, per-end-u
   MIT. Built by <a href="https://github.com/smigolsmigol">f3d1</a> and <a href="https://claude.ai/claude-code">Claude Code</a>.
 </p>
 
-## Hosted deployment
-
-A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/smigolsmigol-llmkit).
 
