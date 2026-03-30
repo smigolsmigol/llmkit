@@ -2,15 +2,18 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/', '/mcp', '/docs', '/pricing', '/compare', '/providers(.*)', '/guides(.*)', '/opengraph-image(.*)']);
+const isStaticPublicRoute = createRouteMatcher(['/', '/mcp', '/docs', '/pricing', '/compare', '/providers(.*)', '/guides(.*)', '/opengraph-image(.*)']);
 
 export default function middleware(req: NextRequest) {
-  // public routes skip Clerk entirely for faster TTFB
-  if (isPublicRoute(req)) return NextResponse.next();
+  // static public routes skip Clerk entirely for faster TTFB
+  if (isStaticPublicRoute(req)) return NextResponse.next();
 
-  // auth routes go through Clerk
+  // auth routes (sign-in, sign-up, dashboard) go through Clerk
   return clerkMiddleware(async (auth, r) => {
-    await auth.protect({ unauthenticatedUrl: new URL('/sign-in', r.url).toString() });
+    const isAuthPage = r.nextUrl.pathname.startsWith('/sign-in') || r.nextUrl.pathname.startsWith('/sign-up');
+    if (!isAuthPage) {
+      await auth.protect({ unauthenticatedUrl: new URL('/sign-in', r.url).toString() });
+    }
   })(req, {} as never);
 }
 
