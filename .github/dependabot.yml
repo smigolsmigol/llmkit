@@ -6,6 +6,9 @@ updates:
       interval: "weekly"
       day: "tuesday"
     open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       dev-dependencies:
         dependency-type: "development"
@@ -20,6 +23,9 @@ updates:
       interval: "weekly"
       day: "tuesday"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
