@@ -12,7 +12,7 @@
   <a href="https://pypi.org/project/llmkit-sdk/"><img src="https://img.shields.io/pypi/v/llmkit-sdk?label=PyPI&color=blue" alt="PyPI" /></a>
   <a href="https://www.npmjs.com/package/@f3d1/llmkit-sdk"><img src="https://img.shields.io/npm/v/%40f3d1/llmkit-sdk?label=npm&color=blue" alt="npm" /></a>
   <a href="https://github.com/smigolsmigol/llmkit/tree/main/packages/mcp-server"><img src="https://img.shields.io/badge/MCP-Registry-blue" alt="MCP" /></a>
-  <a href="https://lobehub.com/mcp/smigolsmigol-llmkit"><img src="https://lobehub.com/badge/mcp/smigolsmigol-llmkit" alt="LobeHub MCP" /></a>
+  <a href="https://lobehub.com/mcp/smigolsmigol-llmkit"><img src="https://lobehub.com/badge/mcp/smigolsmigol-llmkit?theme=dark" alt="LobeHub MCP" /></a>
 </p>
 
 <p align="center">
