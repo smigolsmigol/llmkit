@@ -1,21 +1,23 @@
 export const dynamic = 'force-dynamic';
 
 import { auth } from '@clerk/nextjs/server';
-import { getApiKeys } from '@/lib/queries';
+import { getApiKeys, getBudgets } from '@/lib/queries';
 import { formatDate } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
 import { CreateKeyForm } from './create-key-form';
 import { RevokeKeyButton } from '@/components/revoke-key-button';
+import { KeyBudgetSelector } from '@/components/key-budget-selector';
 
 export default async function KeysPage() {
   const { userId } = await auth();
   if (!userId) return null;
 
   let keys: Awaited<ReturnType<typeof getApiKeys>> = [];
+  let budgets: Awaited<ReturnType<typeof getBudgets>> = [];
   let connected = true;
 
   try {
-    keys = await getApiKeys(userId);
+    [keys, budgets] = await Promise.all([getApiKeys(userId), getBudgets(userId)]);
   } catch {
     connected = false;
   }
@@ -33,11 +35,13 @@ export default async function KeysPage() {
     );
   }
 
+  const budgetMap = new Map(budgets.map(b => [b.id, b]));
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">API Keys</h1>
-        <CreateKeyForm />
+        <CreateKeyForm budgets={budgets} />
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-border">
@@ -48,6 +52,7 @@ export default async function KeysPage() {
               <th className="px-4 py-2.5 font-medium">Key</th>
               <th className="px-4 py-2.5 font-medium">Created</th>
               <th className="px-4 py-2.5 font-medium">Status</th>
+              <th className="px-4 py-2.5 font-medium">Budget</th>
               <th className="px-4 py-2.5 font-medium">Actions</th>
             </tr>
           </thead>
@@ -67,6 +72,15 @@ export default async function KeysPage() {
                     </Badge>
                   </td>
                   <td className="px-4 py-2.5">
+                    {!revoked ? (
+                      <KeyBudgetSelector keyId={key.id} currentBudgetId={key.budget_id} budgets={budgets} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        {key.budget_id ? budgetMap.get(key.budget_id)?.name ?? '-' : '-'}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
                     {!revoked && <RevokeKeyButton keyId={key.id} keyName={key.name} />}
                   </td>
                 </tr>
@@ -74,7 +88,7 @@ export default async function KeysPage() {
             })}
             {keys.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-12 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                   No API keys yet. Create your first key to get started.
                 </td>
               </tr>

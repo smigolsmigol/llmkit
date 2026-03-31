@@ -16,13 +16,20 @@ function checkKeyCreationLimit(userId: string): boolean {
   return true;
 }
 
-export async function createApiKey(name: string) {
+export async function createApiKey(name: string, budgetId?: string | null) {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
 
   if (!checkKeyCreationLimit(userId)) throw new Error('Rate limit exceeded. Max 10 keys per hour.');
   if (!name || name.length > 100) throw new Error('Key name must be 1-100 characters');
   if (!/^[\w\s\-.]+$/.test(name)) throw new Error('Key name contains invalid characters');
+
+  const db = createServerClient();
+
+  if (budgetId) {
+    const { data: budget } = await db.from('budgets').select('user_id').eq('id', budgetId).single();
+    if (!budget || budget.user_id !== userId) throw new Error('Budget not found');
+  }
 
   const array = new Uint8Array(32);
   globalThis.crypto.getRandomValues(array);
@@ -34,12 +41,12 @@ export async function createApiKey(name: string) {
   const hashBuffer = await globalThis.crypto.subtle.digest('SHA-256', encoder.encode(fullKey));
   const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-  const db = createServerClient();
   const { error } = await db.from('api_keys').insert({
     user_id: userId,
     name,
     key_prefix: prefix,
     key_hash: hash,
+    ...(budgetId ? { budget_id: budgetId } : {}),
   });
 
   if (error) {
@@ -73,6 +80,30 @@ export async function revokeApiKey(keyId: string) {
   if (error) {
     console.error('revokeApiKey failed:', error.message);
     throw new Error('Failed to revoke API key');
+  }
+
+  revalidatePath('/dashboard/keys');
+}
+
+export async function updateKeyBudget(keyId: string, budgetId: string | null) {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Unauthorized');
+
+  const db = createServerClient();
+
+  const { data: key } = await db.from('api_keys').select('user_id').eq('id', keyId).single();
+  if (!key || key.user_id !== userId) throw new Error('Key not found');
+
+  if (budgetId) {
+    const { data: budget } = await db.from('budgets').select('user_id').eq('id', budgetId).single();
+    if (!budget || budget.user_id !== userId) throw new Error('Budget not found');
+  }
+
+  const { error } = await db.from('api_keys').update({ budget_id: budgetId }).eq('id', keyId);
+
+  if (error) {
+    console.error('updateKeyBudget failed:', error.message);
+    throw new Error('Failed to update key budget');
   }
 
   revalidatePath('/dashboard/keys');

@@ -24,12 +24,15 @@ function SnippetBlock({ label, code, onCopy }: { label: string; code: string; on
   );
 }
 
-export function CreateKeyForm() {
+interface Budget { id: string; name: string; limit_cents: number; period: string }
+
+export function CreateKeyForm({ budgets = [] }: { budgets?: Budget[] }) {
   const [open, setOpen] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [name, setName] = useState('');
+  const [budgetId, setBudgetId] = useState('');
   const [copied, setCopied] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -39,9 +42,10 @@ export function CreateKeyForm() {
     setPending(true);
     setError(null);
     try {
-      const result = await createApiKey(name.trim());
+      const result = await createApiKey(name.trim(), budgetId || null);
       setNewKey(result.key);
       setName('');
+      setBudgetId('');
       track('api_key_created');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create key');
@@ -191,6 +195,22 @@ console.log(res.content, res.cost)`;
               className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
+          {budgets.length > 0 && (
+            <div>
+              <label htmlFor="key-budget" className="mb-1.5 block text-sm text-muted-foreground">Budget (optional)</label>
+              <select
+                id="key-budget"
+                value={budgetId}
+                onChange={(e) => setBudgetId(e.target.value)}
+                className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                <option value="">No budget</option>
+                {budgets.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name} (${(b.limit_cents / 100).toFixed(2)}/{b.period})</option>
+                ))}
+              </select>
+            </div>
+          )}
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex justify-end gap-2">
             <button
