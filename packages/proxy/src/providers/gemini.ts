@@ -107,6 +107,9 @@ export class GeminiAdapter implements ProviderAdapter {
     const genConfig: Record<string, unknown> = {};
     if (req.maxTokens) genConfig.maxOutputTokens = req.maxTokens;
     if (req.temperature !== undefined) genConfig.temperature = req.temperature;
+    if (req.responseFormat && (req.responseFormat as { type?: string }).type === 'json_object') {
+      genConfig.responseMimeType = 'application/json';
+    }
     if (Object.keys(genConfig).length) body.generationConfig = genConfig;
 
     const res = await fetch(`${BASE_URL}/${req.model}:streamGenerateContent?alt=sse`, {

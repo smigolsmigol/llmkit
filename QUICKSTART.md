@@ -18,12 +18,7 @@ npx @f3d1/llmkit-cli -- python my_agent.py
 That's it. Your existing code talks to OpenAI/Anthropic as usual - the CLI rewrites `base_url` to
 route through the proxy. Use `-v` for per-request costs as they happen.
 
-Set your LLMKit key:
-
-```bash
-export LLMKIT_API_KEY=llmk_your_key_here
-npx @f3d1/llmkit-cli -- node my_agent.js
-```
+The CLI runs a local proxy - no LLMKit account needed. Just make sure your provider key is set (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`).
 
 Works with Python, Node, Go, Rust, Ruby - anything that hits the OpenAI or Anthropic API.
 

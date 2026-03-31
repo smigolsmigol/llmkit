@@ -60,6 +60,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     if (req.toolChoice) {
       const tc = req.toolChoice as { type?: string; function?: { name?: string } };
       if (tc.type === 'none') body.tool_choice = { type: 'none' };
+      else if (tc.type === 'required' || tc.type === 'any') body.tool_choice = { type: 'any' };
       else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
       else body.tool_choice = { type: 'auto' };
     }
@@ -106,6 +107,7 @@ export class AnthropicAdapter implements ProviderAdapter {
     if (req.toolChoice) {
       const tc = req.toolChoice as { type?: string; function?: { name?: string } };
       if (tc.type === 'none') body.tool_choice = { type: 'none' };
+      else if (tc.type === 'required' || tc.type === 'any') body.tool_choice = { type: 'any' };
       else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
       else body.tool_choice = { type: 'auto' };
     }

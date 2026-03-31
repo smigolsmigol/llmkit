@@ -81,7 +81,7 @@ export async function findApiKey(
   const res = await postgrest(
     url,
     serviceKey,
-    `api_keys?key_hash=eq.${keyHash}&revoked_at=is.null&select=id,user_id,key_prefix,name,budget_id,rpm_limit,budgets(limit_cents,period)`,
+    `api_keys?key_hash=eq.${keyHash}&revoked_at=is.null&select=id,user_id,key_prefix,name,budget_id,rpm_limit,budgets(limit_cents,period,scope,alert_webhook_url)`,
   );
 
   if (!res.ok) {

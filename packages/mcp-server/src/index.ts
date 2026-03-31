@@ -1,5 +1,9 @@
 #!/usr/bin/env node
+import { createRequire } from 'node:module';
 import { startServer } from './server.js';
+
+const require = createRequire(import.meta.url);
+const PKG_VERSION: string = (require('../package.json') as { version: string }).version;
 
 if (process.argv.includes('--hook')) {
   import('./hook.js').then(m => m.runHook()).catch(() => process.exit(1));
@@ -41,7 +45,7 @@ function printUsage(): void {
   const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 
   process.stderr.write(`
-  ${purple('LLMKit MCP Server')} ${dim('v0.4.4')}
+  ${purple('LLMKit MCP Server')} ${dim(`v${PKG_VERSION}`)}
 
   ${bold('This is an MCP server.')} It connects to Claude Code, Cursor, or Cline
   through the MCP protocol. It's not meant to be run directly.

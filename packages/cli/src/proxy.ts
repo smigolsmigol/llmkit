@@ -130,7 +130,7 @@ export function startProxy(opts: { port: number; verbose: boolean }): Promise<Pr
               const buffer = sseChunks.join('');
               const parsed = target.provider === 'anthropic'
                 ? parseAnthropicStream(buffer)
-                : parseOpenAIStream(buffer);
+                : parseOpenAIStream(buffer, target.provider);
               if (parsed) {
                 trackUsage(records, parsed, Date.now() - start, opts.verbose);
               }
@@ -145,7 +145,7 @@ export function startProxy(opts: { port: number; verbose: boolean }): Promise<Pr
               const text = resBody.toString();
               const parsed = target.provider === 'anthropic'
                 ? parseAnthropicResponse(text)
-                : parseOpenAIResponse(text);
+                : parseOpenAIResponse(text, target.provider);
               if (parsed) {
                 trackUsage(records, parsed, Date.now() - start, opts.verbose);
               }

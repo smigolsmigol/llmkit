@@ -28,12 +28,15 @@ export function getAdapter(provider: ProviderName): ProviderAdapter {
 
 const BASE_URLS: Record<string, string> = {
   openai: 'https://api.openai.com/v1',
+  anthropic: 'https://api.anthropic.com/v1',
+  gemini: 'https://generativelanguage.googleapis.com/v1beta',
   xai: 'https://api.x.ai/v1',
   groq: 'https://api.groq.com/openai/v1',
   together: 'https://api.together.xyz/v1',
   fireworks: 'https://api.fireworks.ai/inference/v1',
   deepseek: 'https://api.deepseek.com',
   mistral: 'https://api.mistral.ai/v1',
+  ollama: 'http://localhost:11434/v1',
   openrouter: 'https://openrouter.ai/api/v1',
 };
 

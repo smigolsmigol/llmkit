@@ -9,14 +9,14 @@ export interface ParsedUsage {
   cacheWriteTokens: number;
 }
 
-export function parseOpenAIResponse(body: string): ParsedUsage | null {
+export function parseOpenAIResponse(body: string, provider: ProviderName = 'openai'): ParsedUsage | null {
   try {
     const data = JSON.parse(body);
     if (!data.usage) return null;
     const cached = data.usage.prompt_tokens_details?.cached_tokens ?? 0;
     const rawInput = data.usage.prompt_tokens ?? data.usage.input_tokens ?? 0;
     return {
-      provider: 'openai',
+      provider,
       model: data.model ?? 'unknown',
       inputTokens: cached ? rawInput - cached : rawInput,
       outputTokens: data.usage.completion_tokens ?? data.usage.output_tokens ?? 0,
@@ -47,7 +47,7 @@ export function parseAnthropicResponse(body: string): ParsedUsage | null {
 
 // OpenAI streams: final chunk before [DONE] contains usage when
 // stream_options.include_usage is true (Python SDK default since v1.3)
-export function parseOpenAIStream(buffer: string): ParsedUsage | null {
+export function parseOpenAIStream(buffer: string, provider: ProviderName = 'openai'): ParsedUsage | null {
   let model = 'unknown';
   let inputTokens = 0;
   let outputTokens = 0;
@@ -74,7 +74,7 @@ export function parseOpenAIStream(buffer: string): ParsedUsage | null {
     }
   }
 
-  return found ? { provider: 'openai', model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens: 0 } : null;
+  return found ? { provider, model, inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens: 0 } : null;
 }
 
 // Anthropic streams: message_start has input_tokens + cache tokens,

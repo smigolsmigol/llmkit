@@ -29,7 +29,7 @@ const PROMPT_MESSAGES: Record<string, (args: Record<string, string>) => { role: 
     { role: 'user', content: { type: 'text', text: 'Check all my budgets using llmkit_budget_status. For any budget above 70% usage, warn me. For any above 90%, flag it as critical. Suggest adjustments if needed.' } },
   ],
   'session-summary': () => [
-    { role: 'user', content: { type: 'text', text: 'Summarize my current coding session costs using llmkit_session_cost. Show total spend, tokens used, cache savings, and cost per model. Compare to my typical session if you have historical data from llmkit_usage_stats.' } },
+    { role: 'user', content: { type: 'text', text: 'Summarize my current coding session costs using llmkit_local_session. Show total spend, tokens used, cache savings, and cost per model. Compare to my typical session if you have historical data from llmkit_usage_stats.' } },
   ],
 };
 

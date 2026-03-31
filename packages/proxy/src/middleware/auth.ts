@@ -37,6 +37,8 @@ export function auth() {
         c.set('budgetConfig', {
           limitCents: keyRecord.budgets.limit_cents,
           period: keyRecord.budgets.period,
+          scope: keyRecord.budgets.scope,
+          alertWebhookUrl: keyRecord.budgets.alert_webhook_url,
         });
       }
     }
