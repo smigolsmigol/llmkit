@@ -258,6 +258,12 @@ export class BudgetDO extends DurableObject {
     }
 
     await this.ctx.storage.put(`r:${reservationId}`, { amount, sessionId: input.sessionId, createdAt: Date.now() });
+
+    // arm alarm for stale reservation cleanup (covers key-scoped budgets too, not just sessions)
+    if (!(await this.ctx.storage.getAlarm())) {
+      await this.ctx.storage.setAlarm(Date.now() + 86_400_000);
+    }
+
     return reservationId;
   }
 
