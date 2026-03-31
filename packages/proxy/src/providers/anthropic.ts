@@ -32,7 +32,8 @@ interface AnthropicResponse {
 interface AnthropicStreamEvent {
   type: string;
   message?: AnthropicResponse;
-  delta?: { type: string; text?: string; stop_reason?: string };
+  content_block?: { type: string; id?: string; name?: string };
+  delta?: { type: string; text?: string; partial_json?: string; stop_reason?: string };
   usage?: AnthropicResponse['usage'];
   index?: number;
 }
@@ -139,6 +140,9 @@ export class AnthropicAdapter implements ProviderAdapter {
     let messageId = '';
     let model = req.model;
 
+    // tool call accumulation across content blocks
+    const toolAccum = new Map<number, { id: string; name: string; args: string }>();
+
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -164,8 +168,28 @@ export class AnthropicAdapter implements ProviderAdapter {
               }
             }
 
-            if (event.type === 'content_block_delta' && event.delta?.text) {
-              yield { type: 'text', text: event.delta.text };
+            if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
+              const idx = event.index ?? 0;
+              toolAccum.set(idx, { id: event.content_block.id ?? `call_${idx}`, name: event.content_block.name ?? '', args: '' });
+            }
+
+            if (event.type === 'content_block_delta') {
+              if (event.delta?.type === 'text_delta' && event.delta.text) {
+                yield { type: 'text' as const, text: event.delta.text };
+              }
+              if (event.delta?.type === 'input_json_delta' && event.delta.partial_json) {
+                const idx = event.index ?? 0;
+                const entry = toolAccum.get(idx);
+                if (entry) entry.args += event.delta.partial_json;
+              }
+            }
+
+            if (event.type === 'content_block_stop') {
+              const idx = event.index ?? 0;
+              const entry = toolAccum.get(idx);
+              if (entry && entry.name) {
+                yield { type: 'tool' as const, toolCallId: entry.id, toolName: entry.name, toolArguments: entry.args };
+              }
             }
 
             if (event.type === 'message_delta') {
@@ -209,13 +233,19 @@ function toAnthropicContent(content: string | Array<{ type: string; text?: strin
   });
 }
 
-function splitSystem(messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>) {
+function splitSystem(messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>; tool_call_id?: string }>) {
   let system: string | undefined;
   const filtered: AnthropicMessage[] = [];
 
   for (const msg of messages) {
-    if (msg.role === 'system') {
+    if (msg.role === 'system' || msg.role === 'developer') {
       system = msg.content as string;
+    } else if (msg.role === 'tool') {
+      // convert OpenAI tool result to Anthropic tool_result content block
+      filtered.push({
+        role: 'user',
+        content: [{ type: 'tool_result' as const, tool_use_id: msg.tool_call_id ?? '', content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) }] as unknown as AnthropicContent,
+      });
     } else {
       filtered.push({ role: msg.role as 'user' | 'assistant', content: toAnthropicContent(msg.content) });
     }

@@ -206,13 +206,23 @@ function toGeminiParts(content: string | Array<{ type: string; text?: string; im
   });
 }
 
-function toGeminiFormat(messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }>) {
+function toGeminiFormat(messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>; tool_call_id?: string; name?: string }>) {
   let systemInstruction: { parts: Array<{ text: string }> } | undefined;
   const contents: GeminiContent[] = [];
 
   for (const msg of messages) {
-    if (msg.role === 'system') {
+    if (msg.role === 'system' || msg.role === 'developer') {
       systemInstruction = { parts: [{ text: msg.content as string }] };
+      continue;
+    }
+
+    if (msg.role === 'tool') {
+      // convert OpenAI tool result to Gemini functionResponse
+      const responseData = typeof msg.content === 'string' ? { result: msg.content } : msg.content;
+      contents.push({
+        role: 'user',
+        parts: [{ functionResponse: { name: msg.name ?? '', response: responseData } } as unknown as GeminiPart],
+      });
       continue;
     }
 
