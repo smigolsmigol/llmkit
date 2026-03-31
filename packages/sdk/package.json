@@ -1,6 +1,6 @@
 {
   "name": "@f3d1/llmkit-sdk",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "license": "MIT",
   "description": "Client SDK for LLMKit - cost tracking, provider routing, budget enforcement",
   "repository": {

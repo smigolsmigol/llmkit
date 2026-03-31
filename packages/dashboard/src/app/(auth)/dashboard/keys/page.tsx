@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { auth } from '@clerk/nextjs/server';
+import { Key } from 'lucide-react';
 import { getApiKeys, getBudgets } from '@/lib/queries';
 import { formatDate } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,31 @@ export default async function KeysPage() {
         <div className="rounded-lg border border-border bg-card p-8 text-center">
           <p className="text-muted-foreground">
             Unable to load data. Please refresh to try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (keys.length === 0) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-semibold">API Keys</h1>
+        <div className="rounded-lg border border-border bg-card px-6 py-16 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-violet-500/10">
+            <Key className="h-6 w-6 text-violet-400" />
+          </div>
+          <h2 className="text-lg font-medium">Create your first API key</h2>
+          <p className="mx-auto mt-1.5 max-w-sm text-sm text-muted-foreground">
+            API keys authenticate your requests through the LLMKit proxy so you get cost tracking, budgets, and usage analytics.
+          </p>
+          <div className="mt-6">
+            <CreateKeyForm budgets={budgets} />
+          </div>
+          <p className="mx-auto mt-6 max-w-xs text-xs text-zinc-600">
+            Create a key, add a provider in{' '}
+            <a href="/dashboard/providers" className="text-zinc-500 hover:text-white transition">Providers</a>
+            , then drop the key into your existing code.
           </p>
         </div>
       </div>
@@ -86,13 +112,6 @@ export default async function KeysPage() {
                 </tr>
               );
             })}
-            {keys.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
-                  No API keys yet. Create your first key to get started.
-                </td>
-              </tr>
-            )}
           </tbody>
         </table></div>
       </div>
