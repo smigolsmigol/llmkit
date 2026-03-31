@@ -29,7 +29,7 @@ export type Env = {
     apiKeyId?: string;
     userId?: string;
     budgetId?: string;
-    budgetConfig?: { limitCents: number; period: string };
+    budgetConfig?: { limitCents: number; period: string; scope?: string; alertWebhookUrl?: string | null };
     budgetScope?: 'key' | 'session';
     budgetMaxTokens?: number;
     budgetReservationId?: string;

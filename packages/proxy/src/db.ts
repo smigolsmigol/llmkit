@@ -3,6 +3,8 @@
 export interface BudgetRow {
   limit_cents: number;
   period: 'daily' | 'weekly' | 'monthly' | 'total';
+  scope?: 'key' | 'session';
+  alert_webhook_url?: string | null;
 }
 
 export interface ApiKeyRow {
