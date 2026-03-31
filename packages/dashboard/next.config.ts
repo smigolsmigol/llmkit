@@ -13,7 +13,7 @@ const config: NextConfig = {
         { key: 'X-DNS-Prefetch-Control', value: 'on' },
         { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-        { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.clerk.com https://*.clerk.accounts.dev https://va.vercel-scripts.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https: wss:; frame-src https://*.clerk.com https://*.clerk.accounts.dev; frame-ancestors 'none'" },
+        { key: 'Content-Security-Policy', value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://*.clerk.com https://*.clerk.accounts.dev https://va.vercel-scripts.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://vitals.vercel-insights.com https://va.vercel-scripts.com wss://*.clerk.accounts.dev; frame-src https://*.clerk.com https://*.clerk.accounts.dev; frame-ancestors 'none'" },
       ],
     },
   ],
