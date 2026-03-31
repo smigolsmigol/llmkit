@@ -1,10 +1,20 @@
 export const runtime = 'edge';
 
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
 import { ProviderIcon } from '@/components/provider-icons';
 import { TrackClick } from '@/components/track-event';
+
+export const metadata: Metadata = {
+  title: 'LLMKit - Know what your AI agents cost',
+  description: 'Open-source API gateway that tracks every AI request with token counts and dollar costs. Budget limits reject requests before reaching the provider. 11 providers, 730+ models.',
+  openGraph: {
+    title: 'LLMKit - Know what your AI agents cost',
+    description: 'Track spend, enforce budgets, and log every request across OpenAI, Anthropic, Gemini, xAI, and 7 more providers.',
+  },
+};
 
 
 const providers = [

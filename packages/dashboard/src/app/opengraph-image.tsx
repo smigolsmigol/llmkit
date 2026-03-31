@@ -68,7 +68,7 @@ export default function OGImage() {
             marginTop: 32,
           }}
         >
-          {['11 providers', '45+ models', '14 MCP tools', 'MIT licensed'].map((t) => (
+          {['11 providers', '730+ models', '11 MCP tools', 'MIT licensed'].map((t) => (
             <div
               key={t}
               style={{
