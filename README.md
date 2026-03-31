@@ -236,7 +236,6 @@ npx wrangler secret put ENCRYPTION_KEY
 npx wrangler deploy
 ```
 
-Or use a hosted deployment on [Fronteir AI](https://fronteir.ai/mcp/smigolsmigol-llmkit).
 
 </details>
 
@@ -264,7 +263,6 @@ Per-request logging with timestamps, model attribution, cost tracking, per-end-u
 - [AgentHotspot](https://agenthotspot.com/connectors/oss/llmkit)
 - [TensorBlock awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers)
 - [awesome-cloudflare](https://github.com/zhuima/awesome-cloudflare)
-- [Fronteir AI](https://fronteir.ai/mcp/smigolsmigol-llmkit) - hosted deployment
 - [Pricing comparison](https://llmkit-dashboard.vercel.app/pricing) - 730+ models
 - [Cost calculator](https://llmkit-dashboard.vercel.app/compare)
 
