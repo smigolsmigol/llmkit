@@ -67,6 +67,10 @@ export function AnimatedLogo({ className }: { className?: string }) {
           0%, 100% { opacity: 0.8; }
           50% { opacity: 1; }
         }
+        @media (prefers-reduced-motion: reduce) {
+          svg { animation: none !important; }
+          svg * { animation: none !important; stroke-dashoffset: 0 !important; opacity: 1 !important; }
+        }
       `}</style>
 
       <g filter="url(#neon)">
