@@ -102,11 +102,11 @@ export async function GET(req: Request) {
     csvLines.push(rowToCsv(row as Record<string, unknown>));
   }
 
-  const body = csvLines.join('\n');
-  const hash = createHash('sha256').update(body).digest('hex');
+  // hash covers header + data rows only (excludes metadata lines starting with #)
+  const dataLines = csvLines.filter(l => !l.startsWith('#'));
+  const hash = createHash('sha256').update(dataLines.join('\n')).digest('hex');
 
-  // insert hash as second line
-  csvLines.splice(1, 0, `# Integrity: sha256:${hash}`);
+  csvLines.splice(1, 0, `# Integrity: sha256:${hash} (covers header + data rows, verify with: grep -v '^#' file.csv | sha256sum)`);
   const finalBody = csvLines.join('\n');
 
   const filename = `llmkit-export-${format}-${new Date().toISOString().slice(0, 10)}.csv`;

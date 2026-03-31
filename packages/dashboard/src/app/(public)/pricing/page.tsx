@@ -65,7 +65,7 @@ export default async function PricingPage() {
           const providerModels = models.filter(m => m.provider === provider);
           return (
             <section key={provider} className="mt-10" id={provider}>
-              <h2 className="text-xl font-semibold capitalize mb-3">{provider}</h2>
+              <h2 className="text-xl font-semibold capitalize mb-3"><a href={`/providers/${provider}`} className="hover:text-violet-400 transition">{provider}</a></h2>
               <p className="text-xs text-zinc-500 mb-2">{providerModels.length} models</p>
               <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
                 <table className="w-full text-sm">

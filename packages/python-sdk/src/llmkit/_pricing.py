@@ -61,8 +61,13 @@ def calculate_cost(
     output_tokens: int,
     cache_read_tokens: int = 0,
     cache_write_tokens: int = 0,
+    extra_usage: dict[str, int] | None = None,
 ) -> float | None:
-    """Calculate cost in USD. Returns None if model is unknown."""
+    """Calculate cost in USD. Returns None if model is unknown.
+
+    extra_usage: optional dict of tool invocation counts, e.g.
+    {"web_search": 2, "code_execution": 1} for xAI server-side tools.
+    """
     pricing = lookup_pricing(model)
     if not pricing:
         return None
@@ -73,4 +78,10 @@ def calculate_cost(
         cost += (cache_read_tokens / per_m) * pricing.cache_read_per_m
     if cache_write_tokens and pricing.cache_write_per_m:
         cost += (cache_write_tokens / per_m) * pricing.cache_write_per_m
+    if extra_usage and pricing.extra_rates:
+        for dimension, quantity in extra_usage.items():
+            rate_info = pricing.extra_rates.get(dimension)
+            if rate_info and quantity > 0:
+                rate, per = rate_info
+                cost += (quantity / per) * rate
     return cost
