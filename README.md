@@ -175,7 +175,7 @@ Tag requests with a session ID or end-user ID to track costs per agent, per conv
 
 11 providers through one interface: Anthropic, OpenAI, Google Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter. Fallback chains with one header (`x-llmkit-fallback: anthropic,openai,gemini`).
 
-Runs on Cloudflare Workers at the edge. Cache-aware pricing for Anthropic, DeepSeek, and Fireworks prompt caching. 730+ models priced across all providers.
+Runs on Cloudflare Workers at the edge. Cache-aware pricing across 7 providers with prompt caching. 730+ models priced across all providers.
 
 **Public API endpoints** (no auth required):
 
@@ -257,7 +257,7 @@ Per-request logging with timestamps, model attribution, cost tracking, per-end-u
 <summary><strong>Listed on</strong></summary>
 
 - [LobeHub](https://lobehub.com/mcp/smigolsmigol-llmkit)
-- [Glama](https://glama.ai/mcp/servers/@smigolsmigol/llmkit)
+- [Glama](https://glama.ai/mcp/servers/smigolsmigol/llmkit)
 - [MCP Registry](https://registry.modelcontextprotocol.io) - official
 - [Smithery](https://smithery.ai/server/@smigolsmigol/llmkit)
 - [AgentHotspot](https://agenthotspot.com/connectors/oss/llmkit)

@@ -1,4 +1,3 @@
-export const runtime = 'edge';
 
 import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';

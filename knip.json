@@ -1,7 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignoreDependencies": [],
-  "ignoreBinaries": ["kguard"],
   "exclude": ["types", "exports"],
   "ignore": ["examples/**", "scripts/**"],
   "workspaces": {
@@ -15,7 +14,6 @@
     "packages/dashboard": {
       "ignoreDependencies": ["class-variance-authority"],
       "ignore": [
-        "src/components/skeletons.tsx",
         "src/components/ui/card.tsx"
       ]
     }
