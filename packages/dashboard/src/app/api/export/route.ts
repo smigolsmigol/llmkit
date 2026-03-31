@@ -96,6 +96,7 @@ export async function GET(req: Request) {
   csvLines.push(`# Records: ${rows.length}`);
   csvLines.push(`# Total spend: $${totalSpend.toFixed(2)}`);
   csvLines.push(`# Format: ${isDetailed ? 'detailed' : 'raw'}`);
+  csvLines.push(`# Note: cost estimates are approximate. This export is for operational use, not regulatory compliance.`);
   csvLines.push(columns.join(','));
 
   for (const row of rows) {
