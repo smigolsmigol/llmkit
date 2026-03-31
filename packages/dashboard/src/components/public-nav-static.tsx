@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import { AnimatedLogo } from './animated-logo';
 
@@ -9,6 +12,8 @@ const links = [
 ];
 
 export function PublicNavStatic() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
@@ -18,11 +23,7 @@ export function PublicNavStatic() {
         <div className="flex items-center gap-3 sm:gap-5">
           <div className="hidden sm:flex items-center gap-5">
             {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="text-sm text-zinc-400 hover:text-white transition"
-              >
+              <Link key={l.href} href={l.href} className="text-sm text-zinc-400 hover:text-white transition">
                 {l.label}
               </Link>
             ))}
@@ -45,8 +46,31 @@ export function PublicNavStatic() {
           >
             Get started
           </Link>
+          {/* mobile hamburger */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="sm:hidden p-1 text-zinc-400 hover:text-white"
+            aria-label="Toggle menu"
+          >
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+              {menuOpen
+                ? <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                : <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+              }
+            </svg>
+          </button>
         </div>
       </div>
+      {/* mobile dropdown */}
+      {menuOpen && (
+        <div className="sm:hidden border-t border-white/[0.06] px-6 py-3 space-y-2">
+          {links.map((l) => (
+            <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)} className="block text-sm text-zinc-400 hover:text-white transition py-1">
+              {l.label}
+            </Link>
+          ))}
+        </div>
+      )}
     </nav>
   );
 }
