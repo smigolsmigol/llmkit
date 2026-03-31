@@ -72,11 +72,11 @@ test('manifest.json version matches package.json version', () => {
     `manifest.json ${manifest.version} != package.json ${mcpPkg.version}`);
 });
 
-// MCPB freshness check
+// MCPB freshness check (skipped if mcpb not present - file is gitignored, built locally)
 import { statSync, existsSync } from 'node:fs';
 test('MCPB file exists and is not older than dist/', () => {
   const mcpbPath = 'packages/mcp-server/mcp-server.mcpb';
-  assert(existsSync(mcpbPath), 'mcp-server.mcpb does not exist');
+  if (!existsSync(mcpbPath)) { return; } // gitignored, skip in CI
   const mcpbTime = statSync(mcpbPath).mtimeMs;
   const distTime = statSync('packages/mcp-server/dist/index.js').mtimeMs;
   assert(mcpbTime >= distTime - 60000,
