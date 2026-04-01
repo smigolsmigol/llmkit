@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "llmkit-sdk"
-version = "0.1.5"
+version = "0.1.6"
 description = "AI API gateway SDK with cost tracking, budget enforcement, and multi-provider routing for LLM applications"
 readme = "README.md"
 license = { text = "MIT" }

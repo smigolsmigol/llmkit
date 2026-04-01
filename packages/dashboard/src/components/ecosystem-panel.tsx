@@ -105,7 +105,7 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
   if (loading) {
     return (
       <div className="space-y-1.5">
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
           {['s1', 's2', 's3', 's4'].map((id) => (
             <div key={id} className="h-24 animate-pulse rounded-lg border border-[#2a2a2a] bg-card" />
           ))}
@@ -155,7 +155,7 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
   return (
     <div className="space-y-1.5">
       {/* ecosystem stat cards with sparklines */}
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
         <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="flex items-center justify-between">
             <p className="text-xs text-muted-foreground">npm Organic</p>

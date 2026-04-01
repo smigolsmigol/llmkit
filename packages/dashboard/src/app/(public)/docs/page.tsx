@@ -20,7 +20,7 @@ function CodeBlock({ title, children }: { title: string; children: React.ReactNo
       <div className="border-b border-white/[0.06] px-4 py-2.5">
         <span className="text-xs text-zinc-500">{title}</span>
       </div>
-      <div className="p-5 font-mono text-sm">{children}</div>
+      <div className="overflow-x-auto p-5 font-mono text-sm">{children}</div>
     </div>
   );
 }
@@ -61,7 +61,7 @@ export default function DocsPage() {
           </CodeBlock>
           <div className="mt-4">
             <CodeBlock title="add to your MCP config">
-              <pre className="text-xs text-zinc-300">{`{
+              <pre className="overflow-x-auto text-xs text-zinc-300">{`{
   "mcpServers": {
     "llmkit": {
       "command": "npx",
