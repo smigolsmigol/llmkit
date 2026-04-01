@@ -1,7 +1,7 @@
 {
   "manifest_version": "0.2",
   "name": "@f3d1/llmkit-mcp-server",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "description": "AI cost tracking: 11 tools for spend, budgets, and local costs (Claude Code + Cline + Cursor)",
   "author": {
     "name": "F3d1",
