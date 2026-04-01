@@ -13,6 +13,8 @@
   <a href="https://www.npmjs.com/package/@f3d1/llmkit-sdk"><img src="https://img.shields.io/npm/v/%40f3d1/llmkit-sdk?label=npm&color=blue" alt="npm" /></a>
   <a href="https://github.com/smigolsmigol/llmkit/tree/main/packages/mcp-server"><img src="https://img.shields.io/badge/MCP-Registry-blue" alt="MCP" /></a>
   <a href="https://lobehub.com/mcp/smigolsmigol-llmkit"><img src="https://img.shields.io/badge/LobeHub-A_Grade-green" alt="LobeHub MCP" /></a>
+  <a href="https://www.npmjs.com/package/@f3d1/llmkit-mcp-server"><img src="https://img.shields.io/npm/dw/@f3d1/llmkit-mcp-server?label=npm%20downloads" alt="npm downloads" /></a>
+  <a href="https://pypi.org/project/llmkit-sdk/"><img src="https://img.shields.io/pypi/dm/llmkit-sdk?label=PyPI%20downloads" alt="PyPI downloads" /></a>
 </p>
 
 <p align="center">
