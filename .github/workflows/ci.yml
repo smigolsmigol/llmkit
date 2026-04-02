@@ -133,7 +133,7 @@ jobs:
       - name: install
         run: |
           pip install -e ".[dev]" 2>/dev/null || pip install -e .
-          pip install --require-hashes -r ../../requirements-ci.txt
+          pip install --require-hashes --no-deps -r ../../requirements-ci.txt
 
       - name: ruff check
         run: ruff check src/ tests/
