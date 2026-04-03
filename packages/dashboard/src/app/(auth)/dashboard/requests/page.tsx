@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
+
+export const metadata: Metadata = { title: 'Requests - LLMKit' };
 import { getRequestsPaginated, getDistinctProviders, getDistinctModels, getRequestSummary } from '@/lib/queries';
 import type { RequestFilters } from '@/lib/queries';
 import { formatCents, formatDate } from '@/lib/format';

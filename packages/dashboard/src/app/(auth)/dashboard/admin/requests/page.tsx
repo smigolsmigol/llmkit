@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -16,6 +17,8 @@ import { Badge } from '@/components/ui/badge';
 import { RequestFilters as Filters } from '@/components/request-filters';
 import { Pagination } from '@/components/pagination';
 
+export const metadata: Metadata = { title: 'Admin Requests - LLMKit' };
+
 interface PageProps {
   searchParams: Promise<Record<string, string | undefined>>;
 }
@@ -30,6 +33,11 @@ export default async function AdminRequestsPage({ searchParams }: PageProps) {
   const page = Math.max(1, Number(params.page) || 1);
   const pageSize = 50;
 
+  let result: Awaited<ReturnType<typeof getAdminRequestsPaginated>>;
+  let providers: Awaited<ReturnType<typeof getAdminDistinctProviders>>;
+  let models: Awaited<ReturnType<typeof getAdminDistinctModels>>;
+  let users: Awaited<ReturnType<typeof getAdminDistinctUsers>>;
+
   const filters: AdminRequestFilters = {
     provider: params.provider,
     model: params.model,
@@ -40,12 +48,25 @@ export default async function AdminRequestsPage({ searchParams }: PageProps) {
     sortOrder: (params.order as 'asc' | 'desc') || 'desc',
   };
 
-  const [result, providers, models, users] = await Promise.all([
-    getAdminRequestsPaginated(page, pageSize, filters),
-    getAdminDistinctProviders(),
-    getAdminDistinctModels(),
-    getAdminDistinctUsers(),
-  ]);
+  try {
+    [result, providers, models, users] = await Promise.all([
+      getAdminRequestsPaginated(page, pageSize, filters),
+      getAdminDistinctProviders(),
+      getAdminDistinctModels(),
+      getAdminDistinctUsers(),
+    ]);
+  } catch {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-semibold">Admin Requests</h1>
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <p className="text-muted-foreground">
+            Unable to load data. Please refresh to try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const totalPages = Math.max(1, Math.ceil(result.total / pageSize));
 

@@ -12,7 +12,7 @@ function validateSessionId(sessionId: string | undefined): void {
 }
 
 function validateEndUserId(endUserId: string | undefined): void {
-  if (endUserId && !/^[\w@.+\-]{1,256}$/.test(endUserId)) {
+  if (endUserId && !/^[\w@.+-]{1,256}$/.test(endUserId)) {
     throw new ValidationError('invalid end user ID format');
   }
 }

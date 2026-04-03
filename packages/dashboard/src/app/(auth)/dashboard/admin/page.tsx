@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { TimeRangeSelector } from '@/components/time-range-selector';
@@ -16,6 +17,8 @@ import {
 } from '@/lib/queries';
 import { AdminTabs } from './admin-tabs';
 
+export const metadata: Metadata = { title: 'Admin - LLMKit' };
+
 export default async function AdminPage({
   searchParams,
 }: {
@@ -29,15 +32,36 @@ export default async function AdminPage({
   const params = await searchParams;
   const days = params.days !== undefined ? Number(params.days) : 30;
 
-  const [accounts, trend, timeseries, userBreakdown, topModels, providerHealth, providerSpend] = await Promise.all([
-    getAllAccounts(),
-    getAdminStatsTrend(days),
-    getAdminRequestTimeseries(days),
-    getAdminUserBreakdown(days),
-    getAdminTopModels(days),
-    getAdminProviderHealth(days),
-    getAdminProviderSpend(days),
-  ]);
+  let accounts: Awaited<ReturnType<typeof getAllAccounts>>;
+  let trend: Awaited<ReturnType<typeof getAdminStatsTrend>>;
+  let timeseries: Awaited<ReturnType<typeof getAdminRequestTimeseries>>;
+  let userBreakdown: Awaited<ReturnType<typeof getAdminUserBreakdown>>;
+  let topModels: Awaited<ReturnType<typeof getAdminTopModels>>;
+  let providerHealth: Awaited<ReturnType<typeof getAdminProviderHealth>>;
+  let providerSpend: Awaited<ReturnType<typeof getAdminProviderSpend>>;
+
+  try {
+    [accounts, trend, timeseries, userBreakdown, topModels, providerHealth, providerSpend] = await Promise.all([
+      getAllAccounts(),
+      getAdminStatsTrend(days),
+      getAdminRequestTimeseries(days),
+      getAdminUserBreakdown(days),
+      getAdminTopModels(days),
+      getAdminProviderHealth(days),
+      getAdminProviderSpend(days),
+    ]);
+  } catch {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-semibold">Admin</h1>
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <p className="text-muted-foreground">
+            Unable to load data. Please refresh to try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const stats = trend.current;
   const totalTokens = stats.totalInputTokens + stats.totalOutputTokens;

@@ -10,18 +10,25 @@ interface RevokeKeyButtonProps {
 
 export function RevokeKeyButton({ keyId, keyName }: RevokeKeyButtonProps) {
   const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState(false);
   const [pending, startTransition] = useTransition();
 
   function handleRevoke() {
+    setError(false);
     startTransition(async () => {
-      await revokeApiKey(keyId);
-      setConfirming(false);
+      try {
+        await revokeApiKey(keyId);
+        setConfirming(false);
+      } catch {
+        setError(true);
+      }
     });
   }
 
   if (confirming) {
     return (
       <span className="flex items-center gap-1.5">
+        {error && <span className="text-xs text-red-400">Failed.</span>}
         <span className="text-xs text-muted-foreground">Revoke {keyName}?</span>
         <button
           onClick={handleRevoke}
