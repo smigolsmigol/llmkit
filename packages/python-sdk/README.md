@@ -1,98 +1,113 @@
-# llmkit
+<p align="center">
+  <img src="https://raw.githubusercontent.com/smigolsmigol/llmkit/main/.github/logo-wordmark-animated.svg" width="240" alt="LLMKit" />
+</p>
 
-Python SDK for [LLMKit](https://github.com/smigolsmigol/llmkit), the AI API gateway with cost tracking and budget enforcement.
+<h3 align="center">Track what your AI agents cost. One line of code.</h3>
 
-## Install
+<p align="center">
+  <a href="https://pypi.org/project/llmkit-sdk/"><img src="https://img.shields.io/pypi/v/llmkit-sdk?color=blue" alt="PyPI" /></a>
+  <a href="https://pypi.org/project/llmkit-sdk/"><img src="https://img.shields.io/pypi/dm/llmkit-sdk" alt="Downloads" /></a>
+  <a href="https://github.com/smigolsmigol/llmkit"><img src="https://img.shields.io/github/stars/smigolsmigol/llmkit?style=flat" alt="Stars" /></a>
+  <a href="https://github.com/smigolsmigol/llmkit/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT" /></a>
+  <a href="https://scorecard.dev/viewer/?uri=github.com/smigolsmigol/llmkit"><img src="https://api.scorecard.dev/projects/github.com/smigolsmigol/llmkit/badge" alt="Scorecard" /></a>
+</p>
+
+---
+
+Cost tracking for LLM APIs. Works with OpenAI, Anthropic, Gemini, Groq, Mistral, Together, and Cohere SDKs. 730+ models priced. Zero config, zero account needed for local tracking.
 
 ```bash
-pip install llmkit-sdk  # import as: from llmkit import ...
+pip install llmkit-sdk
 ```
 
-## Local cost tracking (no proxy)
+## Zero-config cost tracking
 
-Drop-in cost tracking for any OpenAI-compatible SDK. No account, no proxy, no config:
+Wrap any OpenAI-compatible client. Costs are estimated locally from a bundled pricing table - no proxy, no account, no network calls:
 
 ```python
 from llmkit import tracked
 from openai import OpenAI
 
 client = OpenAI(http_client=tracked())
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "hello"}],
+res = client.chat.completions.create(
+    model="gpt-4.1",
+    messages=[{"role": "user", "content": "explain CQRS"}],
 )
-# costs estimated locally from bundled pricing table
+# costs calculated automatically from response usage data
 ```
 
-Collect costs with a callback:
+Works the same with Anthropic, Gemini, Groq, Mistral, Together, and Cohere:
+
+```python
+from anthropic import Anthropic
+
+client = Anthropic(http_client=tracked())
+msg = client.messages.create(
+    model="claude-sonnet-4-20250514",
+    max_tokens=1024,
+    messages=[{"role": "user", "content": "explain event sourcing"}],
+)
+```
+
+## Collect costs
 
 ```python
 costs = []
 client = OpenAI(http_client=tracked(on_cost=costs.append))
-# ... make requests ...
+
+# ... run your agent ...
+
 total = sum(c.total_cost for c in costs if c.total_cost)
+print(f"Agent run cost: ${total:.4f}")
 ```
 
-Or estimate from any existing response:
+## Estimate from any response
 
 ```python
 from llmkit import estimate_cost
 
 cost = estimate_cost(response)
-if cost.total_cost is not None:
-    print(f"~${cost.total_cost:.6f}")
-
+print(f"~${cost.total_cost:.6f}")
 ```
 
-Works with OpenAI, Anthropic, Groq, Together, Cohere, and Mistral SDKs.
+## How it compares
 
-## Quick start (proxy mode)
+| Feature | llmkit-sdk | tokencost | litellm |
+|---|---|---|---|
+| Zero-config tracking | yes (httpx transport) | no (manual call) | no (callback setup) |
+| Works with existing SDK code | yes (drop-in) | no (separate function) | yes (but requires litellm wrapper) |
+| Local estimation (no proxy) | yes | yes | no |
+| Budget enforcement | yes (via proxy) | no | yes (but 9+ bypass bugs) |
+| Streaming cost tracking | yes | no | yes |
+| Session grouping | yes | no | no |
+| Models priced | 730+ | 400+ | 100+ |
+| Install size | ~200KB | ~50KB | ~50MB |
+
+## Session tracking
+
+Group costs by agent run:
 
 ```python
 from llmkit import LLMKit
 
 client = LLMKit(api_key="llmk_...")
-completion, cost = client.chat(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "hello"}],
-)
-
-print(completion.choices[0].message.content)
-print(f"Cost: ${cost.total_cost:.4f} via {cost.provider}")
-```
-
-## Session tracking
-
-Group costs by agent run using sessions:
-
-```python
 agent = client.session()
 
 for task in tasks:
     completion, cost = agent.chat(
-        model="gpt-4o",
+        model="gpt-4.1",
         messages=[{"role": "user", "content": task}],
     )
 
-print(f"Session total: ${agent.stats.total_cost:.4f}")
-print(f"Requests: {agent.stats.request_count}")
+print(f"Session: ${agent.stats.total_cost:.4f} across {agent.stats.request_count} requests")
 ```
 
-## Bring your own provider key
-
-```python
-client = LLMKit(
-    api_key="llmk_...",
-    provider_key="sk-...",
-)
-```
-
-## Streaming with cost tracking
+## Streaming
 
 ```python
 stream = client.chat_stream(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "hello"}],
+    model="claude-sonnet-4-20250514",
+    messages=[{"role": "user", "content": "write a haiku"}],
 )
 for chunk in stream:
     print(chunk.choices[0].delta.content or "", end="")
@@ -100,22 +115,20 @@ for chunk in stream:
 print(f"\nCost: ${stream.cost.total_cost:.6f}")
 ```
 
-Cost is captured from the final stream chunk's usage data. Cumulative totals are available on `client.stats`.
+## Proxy mode (budget enforcement)
 
-## Escape hatch
-
-The underlying OpenAI client is always accessible for anything the SDK doesn't cover:
+Route through the LLMKit proxy for hard budget limits, per-key rate limiting, and dashboard analytics:
 
 ```python
-stream = client.openai.chat.completions.create(
-    model="gpt-4o",
+client = LLMKit(api_key="llmk_...")
+completion, cost = client.chat(
+    model="gpt-4.1",
     messages=[{"role": "user", "content": "hello"}],
-    stream=True,
 )
-
-for chunk in stream:
-    print(chunk.choices[0].delta.content or "", end="")
+print(f"${cost.total_cost:.4f} via {cost.provider}")
 ```
+
+Set a $10 daily budget in the dashboard. When it's hit, requests get a 402 - not a log message, an actual block. No more runaway agents.
 
 ## Async
 
@@ -124,14 +137,14 @@ from llmkit import AsyncLLMKit
 
 client = AsyncLLMKit(api_key="llmk_...")
 completion, cost = await client.chat(
-    model="gpt-4o",
+    model="gpt-4.1",
     messages=[{"role": "user", "content": "hello"}],
 )
 ```
 
 ## No SDK needed
 
-LLMKit works with any OpenAI-compatible client. No pip install required:
+LLMKit is OpenAI-compatible. Any client works:
 
 ```python
 from openai import OpenAI
@@ -140,12 +153,17 @@ client = OpenAI(
     base_url="https://llmkit-proxy.smigolsmigol.workers.dev/v1",
     api_key="llmk_...",
 )
-
-response = client.chat.completions.create(
-    model="gpt-4o",
-    messages=[{"role": "user", "content": "hello"}],
-)
 ```
+
+## Part of LLMKit
+
+This is the Python SDK for [LLMKit](https://github.com/smigolsmigol/llmkit), an open-source AI API gateway. The full platform includes:
+
+- **Proxy** (Cloudflare Workers) - budget enforcement, cost tracking, provider routing
+- **Dashboard** (Next.js) - analytics, API key management, budget configuration
+- **MCP server** - 11 tools for Claude Code, Cursor, and Cline cost tracking
+- **TypeScript SDK** - same features for Node.js/Deno/Bun
+- **CLI** - wrap any command with `llmkit wrap -- node agent.js`
 
 ## License
 
