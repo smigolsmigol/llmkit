@@ -90,8 +90,8 @@ const app = new Hono<Env>();
 
 app.use('*', cors({
   origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-format'],
-  exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'x-llmkit-user-id', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-format', 'x-llmkit-revenue', 'x-llmkit-revenue-token'],
+  exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-provider-cost', 'x-llmkit-extra-costs', 'x-llmkit-margin', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
   allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'],
 }));
 

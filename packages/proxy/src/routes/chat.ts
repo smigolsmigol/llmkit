@@ -2,6 +2,7 @@ import {
   AllProvidersFailedError,
   type CostBreakdown,
   inferProvider,
+  type MarginInfo,
   ProviderError,
   type ProviderName,
   type TokenUsage,
@@ -25,6 +26,17 @@ function wantsLLMKitFormat(c: Context<Env>): boolean {
   return c.req.header('x-llmkit-format') === 'llmkit';
 }
 
+function calculateMargin(c: Context<Env>, costUsd: number): MarginInfo | undefined {
+  const revenueStr = c.req.header('x-llmkit-revenue');
+  if (!revenueStr) return undefined;
+  const revenueUsd = parseFloat(revenueStr);
+  if (isNaN(revenueUsd) || revenueUsd < 0) return undefined;
+  const profitUsd = revenueUsd - costUsd;
+  const marginPct = revenueUsd > 0 ? Math.round((profitUsd / revenueUsd) * 1000) / 10 : 0;
+  const revenueToken = c.req.header('x-llmkit-revenue-token') || undefined;
+  return { revenueUsd, costUsd, profitUsd, marginPct, revenueToken };
+}
+
 function setCostHeaders(c: Context<Env>, cost: CostBreakdown, provider: string, latencyMs: number, providerCostUsd?: number) {
   c.header('x-llmkit-cost', String(cost.totalCost));
   c.header('x-llmkit-provider', provider);
@@ -34,6 +46,8 @@ function setCostHeaders(c: Context<Env>, cost: CostBreakdown, provider: string, 
   if (sid) c.header('x-llmkit-session-id', sid);
   const uid = c.req.header('x-llmkit-user-id');
   if (uid) c.header('x-llmkit-user-id', uid);
+  const margin = calculateMargin(c, cost.totalCost);
+  if (margin) c.header('x-llmkit-margin', JSON.stringify(margin));
 }
 
 function toOpenAIFinishReason(reason: string): string {
@@ -151,6 +165,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
       c.set('llmkit_response', meta);
 
       if (wantsLLMKitFormat(c)) {
+        const margin = calculateMargin(c, cost.totalCost);
         return c.json({
           id: result.id,
           provider: providerName,
@@ -159,6 +174,7 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
           finishReason: result.finishReason,
           usage: result.usage,
           cost,
+          ...(margin && { margin }),
           latencyMs: latency,
           cached: false,
           sessionId: c.req.header('x-llmkit-session-id') || undefined,
