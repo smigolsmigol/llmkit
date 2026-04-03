@@ -14,7 +14,7 @@
 
 ---
 
-Cost tracking for LLM APIs. Works with OpenAI, Anthropic, Gemini, Groq, Mistral, Together, and Cohere SDKs. 730+ models priced. Zero config, zero account needed for local tracking.
+Cost tracking for LLM APIs. Works with OpenAI, Anthropic, Gemini, Groq, Mistral, Together, and any OpenAI-compatible SDK. 730+ models priced. Zero config, zero account needed for local tracking.
 
 ```bash
 pip install llmkit-sdk
@@ -36,7 +36,7 @@ res = client.chat.completions.create(
 # costs calculated automatically from response usage data
 ```
 
-Works the same with Anthropic, Gemini, Groq, Mistral, Together, and Cohere:
+Works the same with Anthropic, Gemini, Groq, Mistral, Together, and any OpenAI-compatible SDK:
 
 ```python
 from anthropic import Anthropic
@@ -82,6 +82,32 @@ print(f"~${cost.total_cost:.6f}")
 | Session grouping | yes | no | no |
 | Models priced | 730+ | 400+ | 100+ |
 | Install size | ~200KB | ~50KB | ~50MB |
+
+## Framework integrations
+
+Drop-in cost tracking for popular agent frameworks:
+
+```python
+# LangChain
+from llmkit.integrations.langchain import LLMKitCallbackHandler
+handler = LLMKitCallbackHandler()
+chain.invoke("...", config={"callbacks": [handler]})
+print(f"${handler.total_cost:.4f}")
+
+# LlamaIndex
+from llmkit.integrations.llamaindex import LLMKitCallbackHandler
+from llama_index.core import Settings
+Settings.callback_manager.add_handler(LLMKitCallbackHandler())
+
+# Pydantic AI
+from llmkit.integrations.pydantic_ai import llmkit_hooks
+hooks, tracker = llmkit_hooks()
+agent = Agent("openai:gpt-4.1", capabilities=[hooks])
+result = await agent.run("...")
+print(f"${tracker.total_cost:.4f}")
+```
+
+Frameworks are optional dependencies - install only what you use.
 
 ## Session tracking
 
@@ -163,7 +189,7 @@ This is the Python SDK for [LLMKit](https://github.com/smigolsmigol/llmkit), an 
 - **Dashboard** (Next.js) - analytics, API key management, budget configuration
 - **MCP server** - 11 tools for Claude Code, Cursor, and Cline cost tracking
 - **TypeScript SDK** - same features for Node.js/Deno/Bun
-- **CLI** - wrap any command with `llmkit wrap -- node agent.js`
+- **CLI** - wrap any command with `npx @f3d1/llmkit-cli -- node agent.js`
 
 ## License
 
