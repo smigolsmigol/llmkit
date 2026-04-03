@@ -156,6 +156,9 @@ jobs:
       - name: pytest
         run: python -m pytest tests/ -v
 
+      - name: fuzz smoke test
+        run: python fuzz/run_local.py
+
   deploy:
     needs: [secrets-scan, semgrep, check-and-test, check-python]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
