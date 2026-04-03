@@ -5,6 +5,7 @@ import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
 import { ProviderIcon } from '@/components/provider-icons';
 import { TrackClick } from '@/components/track-event';
+import { TerminalDemo } from '@/components/terminal-demo';
 
 export const metadata: Metadata = {
   title: 'LLMKit - Know what your AI agents cost',
@@ -61,8 +62,8 @@ export default function Home() {
               </h1>
 
               <p className="mt-6 max-w-md text-lg leading-relaxed text-zinc-400">
-                Cost tracking and budget enforcement across 11 providers.
-                Set a limit. Requests get rejected before they reach the provider.
+                Set a dollar limit per key, session, or user.
+                Requests get rejected before they reach the provider.
               </p>
 
               <div className="mt-8 flex items-center gap-3">
@@ -132,39 +133,7 @@ export default function Home() {
 
       {/* terminal */}
       <div className="mx-auto max-w-3xl px-6 pb-10">
-        <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
-          <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
-            <div className="flex gap-1.5">
-              <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-              <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-              <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
-            </div>
-            <span className="ml-2 text-xs text-zinc-500">terminal</span>
-          </div>
-          <div className="space-y-4 p-5 font-mono text-sm">
-            <div>
-              <p className="text-zinc-500"># MCP server for Claude Code / Cline / Cursor</p>
-              <p><span className="text-emerald-400">$</span> <span className="text-zinc-300">npx @f3d1/llmkit-mcp-server</span></p>
-            </div>
-            <div>
-              <p className="text-zinc-500"># wrap any command, see costs on exit</p>
-              <p><span className="text-emerald-400">$</span> <span className="text-zinc-300">npx @f3d1/llmkit-cli -- python agent.py</span></p>
-            </div>
-            <div>
-              <p className="text-zinc-500"># or one line in Python</p>
-              <p>
-                <span className="text-violet-400">client</span>
-                <span className="text-zinc-500"> = </span>
-                <span className="text-amber-300">OpenAI</span>
-                <span className="text-zinc-400">(</span>
-                <span className="text-zinc-300">http_client</span>
-                <span className="text-zinc-500">=</span>
-                <span className="text-amber-300">tracked</span>
-                <span className="text-zinc-400">())</span>
-              </p>
-            </div>
-          </div>
-        </div>
+        <TerminalDemo />
       </div>
 
       {/* three pillars */}
