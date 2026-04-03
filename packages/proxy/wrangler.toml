@@ -1,6 +1,9 @@
 name = "llmkit-proxy"
 main = "src/index.ts"
 compatibility_date = "2025-02-18"
+routes = [
+  { pattern = "api.llmkit.sh/*", zone_name = "llmkit.sh" }
+]
 
 [observability]
 enabled = true
