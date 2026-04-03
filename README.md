@@ -188,6 +188,12 @@ Tag requests with a session ID or end-user ID to track costs per agent, per conv
 
 Runs on Cloudflare Workers at the edge. Cache-aware pricing across 7 providers with prompt caching. 730+ models priced across all providers.
 
+**Automatic prompt caching** for Anthropic: the proxy injects cache breakpoints on system prompts and conversation history. Second request with the same system prompt costs 90% less. Zero config, zero code changes.
+
+**Framework integrations**: drop-in cost tracking for LangChain, LlamaIndex, and Pydantic AI via callback handlers. Works alongside the httpx transport for direct SDK use.
+
+**470+ tests**, ClusterFuzzLite fuzzing, 6-stage security pipeline (gitleaks, semgrep, CodeQL, bandit, pip-audit, pnpm audit). [OpenSSF Scorecard 8.3](https://scorecard.dev/viewer/?uri=github.com/smigolsmigol/llmkit) - higher than React, Django, Kubernetes, and every AI gateway competitor.
+
 **Public API endpoints** (no auth required):
 
 - [`/v1/pricing/compare`](https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=1000&output=1000) - compare cost across all 730+ models for a given token count
