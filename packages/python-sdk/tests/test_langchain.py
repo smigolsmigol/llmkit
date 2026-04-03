@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-import pytest
-
 from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, Generation, LLMResult
 

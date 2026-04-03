@@ -43,10 +43,10 @@ class LLMKitCallbackHandler(BaseCallbackHandler):
         self.prompt_tokens: int = 0
         self.completion_tokens: int = 0
         self.request_count: int = 0
-        self._last_cost: CostInfo | None = None
+        self._last_cost: float | None = None
 
     @property
-    def last_cost(self) -> CostInfo | None:
+    def last_cost(self) -> float | None:
         return self._last_cost
 
     def on_event_start(
