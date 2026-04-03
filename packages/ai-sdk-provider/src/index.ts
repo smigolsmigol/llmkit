@@ -468,7 +468,6 @@ export function flattenPrompt(prompt: LanguageModelV3Prompt): OpenAIMessage[] {
         }
         out.push({ role: 'tool', tool_call_id: tp.toolCallId, content: resultText || '{}' });
       }
-      continue;
     }
   }
 

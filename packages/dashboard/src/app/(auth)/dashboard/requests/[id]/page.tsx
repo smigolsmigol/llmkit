@@ -26,7 +26,23 @@ export default async function RequestDetailPage({ params }: PageProps) {
   if (!userId) return null;
 
   const { id } = await params;
-  const req = await getRequestById(userId, id);
+
+  let req: Awaited<ReturnType<typeof getRequestById>>;
+  try {
+    req = await getRequestById(userId, id);
+  } catch {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-semibold">Request Detail</h1>
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <p className="text-muted-foreground">
+            Unable to load data. Please refresh to try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   if (!req) notFound();
 
   const ok = !req.error_code;

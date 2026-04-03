@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
 import { Key } from 'lucide-react';
+
+export const metadata: Metadata = { title: 'API Keys - LLMKit' };
 import { getApiKeys, getBudgets } from '@/lib/queries';
 import { formatDate } from '@/lib/format';
 import { Badge } from '@/components/ui/badge';

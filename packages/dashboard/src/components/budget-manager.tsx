@@ -16,6 +16,7 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
   const [period, setPeriod] = useState('monthly');
   const [scope, setScope] = useState<'key' | 'session'>('key');
   const [alertUrl, setAlertUrl] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function handleCreate() {
@@ -23,19 +24,29 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
     const limitCents = Math.round(parseFloat(limit) * 100);
     if (isNaN(limitCents) || limitCents <= 0) return;
 
+    setError(null);
     startTransition(async () => {
-      await createBudget(name.trim(), limitCents, period, scope, alertUrl.trim() || undefined);
-      setName('');
-      setLimit('');
-      setScope('key');
-      setAlertUrl('');
-      setCreating(false);
+      try {
+        await createBudget(name.trim(), limitCents, period, scope, alertUrl.trim() || undefined);
+        setName('');
+        setLimit('');
+        setScope('key');
+        setAlertUrl('');
+        setCreating(false);
+      } catch {
+        setError('Failed to create budget. Please try again.');
+      }
     });
   }
 
   function handleDelete(id: string) {
+    setError(null);
     startTransition(async () => {
-      await deleteBudget(id);
+      try {
+        await deleteBudget(id);
+      } catch {
+        setError('Failed to delete budget. Please try again.');
+      }
     });
   }
 
@@ -49,6 +60,12 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
           </Button>
         )}
       </div>
+
+      {error && (
+        <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+          {error}
+        </div>
+      )}
 
       {creating && (
         <div className="rounded-lg border border-border bg-background p-4 space-y-3">

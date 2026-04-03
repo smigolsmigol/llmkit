@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { getSessionCost } from './claude-code.js';
 
 function isValidTranscriptPath(p: string): boolean {
-  const claudeDir = resolve(homedir(), '.claude').replace(/\\/g, '/') + '/';
+  const claudeDir = `${resolve(homedir(), '.claude').replace(/\\/g, '/')}/`;
   const norm = resolve(p).replace(/\\/g, '/');
   return norm.startsWith(claudeDir) && norm.endsWith('.jsonl');
 }

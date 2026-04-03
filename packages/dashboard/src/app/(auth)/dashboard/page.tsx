@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
 import Link from 'next/link';
 import { getTotalSpend, getSpendByProvider, getRequestTimeseries, getRecentRequests, getModelBreakdown, getRequestSummary, getSessions, getUserStatsTrend, getBudgetUsage } from '@/lib/queries';
@@ -12,6 +13,8 @@ import { TimeRangeSelector } from '@/components/time-range-selector';
 import { RequestFeed } from '@/components/request-feed';
 import { formatCents } from '@/lib/format';
 
+export const metadata: Metadata = { title: 'Overview - LLMKit' };
+
 export default async function OverviewPage({
   searchParams,
 }: {
@@ -23,17 +26,40 @@ export default async function OverviewPage({
   const params = await searchParams;
   const days = params.days !== undefined ? Number(params.days) : 30;
 
-  const [spend, providers, timeseries, recent, models, summary, sessions, trend, budgetUsage] = await Promise.all([
-    getTotalSpend(userId, days),
-    getSpendByProvider(userId, days),
-    getRequestTimeseries(userId, days || 365),
-    getRecentRequests(userId, 10),
-    getModelBreakdown(userId, days),
-    getRequestSummary(userId, days),
-    getSessions(userId, 10, days),
-    getUserStatsTrend(userId, days),
-    getBudgetUsage(userId),
-  ]);
+  let spend: Awaited<ReturnType<typeof getTotalSpend>>;
+  let providers: Awaited<ReturnType<typeof getSpendByProvider>>;
+  let timeseries: Awaited<ReturnType<typeof getRequestTimeseries>>;
+  let recent: Awaited<ReturnType<typeof getRecentRequests>>;
+  let models: Awaited<ReturnType<typeof getModelBreakdown>>;
+  let summary: Awaited<ReturnType<typeof getRequestSummary>>;
+  let sessions: Awaited<ReturnType<typeof getSessions>>;
+  let trend: Awaited<ReturnType<typeof getUserStatsTrend>>;
+  let budgetUsage: Awaited<ReturnType<typeof getBudgetUsage>>;
+
+  try {
+    [spend, providers, timeseries, recent, models, summary, sessions, trend, budgetUsage] = await Promise.all([
+      getTotalSpend(userId, days),
+      getSpendByProvider(userId, days),
+      getRequestTimeseries(userId, days || 365),
+      getRecentRequests(userId, 10),
+      getModelBreakdown(userId, days),
+      getRequestSummary(userId, days),
+      getSessions(userId, 10, days),
+      getUserStatsTrend(userId, days),
+      getBudgetUsage(userId),
+    ]);
+  } catch {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-semibold">Overview</h1>
+        <div className="rounded-lg border border-border bg-card p-8 text-center">
+          <p className="text-muted-foreground">
+            Unable to load data. Please refresh to try again.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const providerData = providers
     .map((p) => ({

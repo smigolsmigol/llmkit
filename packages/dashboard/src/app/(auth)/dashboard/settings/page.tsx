@@ -1,7 +1,10 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
 import { getBudgets, getAccount } from '@/lib/queries';
+
+export const metadata: Metadata = { title: 'Settings - LLMKit' };
 import { BudgetManager } from '@/components/budget-manager';
 
 
