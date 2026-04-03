@@ -207,7 +207,7 @@ jobs:
       - name: verify proxy health
         run: |
           for i in 1 2 3; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://llmkit-proxy.smigolsmigol.workers.dev/health")
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://api.llmkit.sh/health")
             [ "$STATUS" -eq 200 ] && echo "Proxy: OK ($STATUS)" && exit 0
             echo "Attempt $i: got $STATUS, retrying in 10s..."
             sleep 10
