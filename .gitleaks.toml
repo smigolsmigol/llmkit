@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[allowlist]
+paths = [
+    '''(^|/)test/''',
+    '''(^|/)tests/''',
+    '''(^|/)fuzz/''',
+]

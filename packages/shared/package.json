@@ -27,6 +27,7 @@
     "cost-tracking",
     "token-usage"
   ],
+  "sideEffects": false,
   "files": [
     "dist"
   ],

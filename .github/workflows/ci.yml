@@ -99,6 +99,9 @@ jobs:
           node packages/proxy/test/budget-bypass-test.mjs
           node packages/proxy/test/xai-cost-test.mjs
           node packages/proxy/test/openai-adapter-test.mjs
+          node packages/proxy/test/auth-test.mjs
+          node packages/proxy/test/ratelimit-test.mjs
+          node packages/proxy/test/validation-test.mjs
           node packages/cli/test/parser-test.mjs
           node packages/sdk/test/tracker-test.mjs
 
@@ -203,12 +206,14 @@ jobs:
 
       - name: verify proxy health
         run: |
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://llmkit-proxy.smigolsmigol.workers.dev/health")
-          if [ "$STATUS" -ne 200 ]; then
-            echo "::error::Proxy health check failed: got $STATUS"
-            exit 1
-          fi
-          echo "Proxy: OK ($STATUS)"
+          for i in 1 2 3; do
+            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://llmkit-proxy.smigolsmigol.workers.dev/health")
+            [ "$STATUS" -eq 200 ] && echo "Proxy: OK ($STATUS)" && exit 0
+            echo "Attempt $i: got $STATUS, retrying in 10s..."
+            sleep 10
+          done
+          echo "::error::Proxy health check failed after 3 attempts"
+          exit 1
 
       - name: verify dashboard reachable
         run: |
