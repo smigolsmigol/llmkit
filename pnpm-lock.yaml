@@ -138,7 +138,7 @@ importers:
         version: link:../shared
       hono:
         specifier: '>=4.12.7'
-        version: 4.12.9
+        version: 4.12.10
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260226.1
@@ -1336,10 +1336,6 @@ packages:
 
   hono@4.12.10:
     resolution: {integrity: sha512-mx/p18PLy5og9ufies2GOSUqep98Td9q4i/EF6X7yJgAiIopxqdfIO3jbqsi3jRgTgw88jMDEzVKi+V2EF+27w==}
-    engines: {node: '>=16.9.0'}
-
-  hono@4.12.9:
-    resolution: {integrity: sha512-wy3T8Zm2bsEvxKZM5w21VdHDDcwVS1yUFFY6i8UobSsKfFceT7TOwhbhfKsDyx7tYQlmRM5FLpIuYvNFyjctiA==}
     engines: {node: '>=16.9.0'}
 
   http-errors@2.0.1:
@@ -2896,8 +2892,6 @@ snapshots:
       function-bind: 1.1.2
 
   hono@4.12.10: {}
-
-  hono@4.12.9: {}
 
   http-errors@2.0.1:
     dependencies:
