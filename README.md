@@ -37,7 +37,7 @@ Works with Python, Ruby, Go, Rust - anything that calls the OpenAI or Anthropic 
 
 ## Get started
 
-1. **Create an account** at [llmkit-dashboard.vercel.app](https://llmkit-dashboard.vercel.app) (free while in beta)
+1. **Create an account** at [llmkit.sh](https://llmkit.sh) (free while in beta)
 2. **Create an API key** in the Keys tab
 3. **Pick a method** below
 
@@ -280,8 +280,8 @@ Per-request logging with timestamps, model attribution, cost tracking, per-end-u
 - [AgentHotspot](https://agenthotspot.com/connectors/oss/llmkit)
 - [TensorBlock awesome-mcp-servers](https://github.com/TensorBlock/awesome-mcp-servers)
 - [awesome-cloudflare](https://github.com/zhuima/awesome-cloudflare)
-- [Pricing comparison](https://llmkit-dashboard.vercel.app/pricing) - 730+ models
-- [Cost calculator](https://llmkit-dashboard.vercel.app/compare)
+- [Pricing comparison](https://llmkit.sh/pricing) - 730+ models
+- [Cost calculator](https://llmkit.sh/compare)
 
 </details>
 

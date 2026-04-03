@@ -3,7 +3,7 @@
 Base URL: `https://llmkit-proxy.smigolsmigol.workers.dev`
 
 All authenticated endpoints require a Bearer token in the `Authorization` header.
-Create API keys at [llmkit-dashboard.vercel.app](https://llmkit-dashboard.vercel.app).
+Create API keys at [llmkit.sh](https://llmkit.sh).
 
 ## Authentication
 
@@ -594,10 +594,11 @@ All errors follow this shape:
 | Code | HTTP | When |
 |------|------|------|
 | `AUTH_ERROR` | 401 | Missing or invalid API key |
-| `VALIDATION_ERROR` | 400 | Bad request body or parameters |
-| `BUDGET_EXCEEDED` | 429 | Budget limit hit |
+| `INVALID_REQUEST` | 400 | Bad request body or parameters |
+| `BUDGET_EXCEEDED` | 402 | Budget limit hit |
 | `RATE_LIMIT` | 429 | RPM limit exceeded |
-| `ALL_PROVIDERS_FAILED` | 502 | Every provider in the fallback chain failed |
+| `ALL_PROVIDERS_FAILED` | 503 | Every provider in the fallback chain failed |
+| `PROVIDER_ERROR` | 502 | Single provider returned an error |
 | `INTERNAL_ERROR` | 500 | Unexpected server error |
 
 ## Rate limiting

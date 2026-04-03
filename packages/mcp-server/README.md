@@ -22,7 +22,7 @@ Add to your `.mcp.json` (Claude Code) or `.cursor/mcp.json` (Cursor):
 }
 ```
 
-The local tools (`llmkit_local_*`) work immediately with no API key. They auto-detect Claude Code, Cline, and Cursor data on your machine. For the proxy tools, create a free key at the [dashboard](https://llmkit-dashboard.vercel.app).
+The local tools (`llmkit_local_*`) work immediately with no API key. They auto-detect Claude Code, Cline, and Cursor data on your machine. For the proxy tools, create a free key at the [dashboard](https://llmkit.sh).
 
 ## Tools
 

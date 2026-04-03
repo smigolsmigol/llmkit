@@ -2,7 +2,7 @@
 
 Get AI cost tracking running in under 5 minutes.
 
-**Prerequisites:** Create a free account at [llmkit-dashboard.vercel.app](https://llmkit-dashboard.vercel.app)
+**Prerequisites:** Create a free account at [llmkit.sh](https://llmkit.sh)
 and grab an API key from the Keys tab. Add your provider key (OpenAI, Anthropic, etc.) in the Providers tab.
 
 ---
@@ -50,16 +50,15 @@ console.log(res.cost)
 Streaming:
 
 ```typescript
-const stream = await agent.chatStream({
-  provider: 'openai',
-  model: 'gpt-4o',
-  messages: [{ role: 'user', content: 'write a haiku' }],
-})
+const stream = await llm.chatStream({
+  model: 'gpt-4.1-mini',
+  messages: [{ role: 'user', content: 'hello' }],
+});
 
-for await (const event of stream) {
-  if (event.type === 'text') process.stdout.write(event.text)
-  if (event.type === 'end') console.log('\ncost:', event.cost.totalCost)
+for await (const chunk of stream) {
+  process.stdout.write(chunk);
 }
+console.log('\ncost:', stream.cost);
 ```
 
 ### Vercel AI SDK
@@ -145,7 +144,7 @@ Cost comes back in the `x-llmkit-cost` response header.
 
 ## What's next
 
-- Open [llmkit-dashboard.vercel.app](https://llmkit-dashboard.vercel.app) to see your costs, requests, and sessions
+- Open [llmkit.sh](https://llmkit.sh) to see your costs, requests, and sessions
 - Set a budget in the dashboard to cap spend per key or per session
 - Add `x-llmkit-session-id` headers to group requests by agent run
 - Add `x-llmkit-user-id` headers to track costs per end-user

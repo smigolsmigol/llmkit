@@ -2,7 +2,7 @@
 
 ## Reporting a Vulnerability
 
-Do not open a public issue. Email security@llmkit.dev or DM @smigolsmigol on X.
+Do not open a public issue. Email security@llmkit.sh or DM @smigolsmigol on X.
 
 Include: what you found, steps to reproduce, and your assessment of impact.
 
