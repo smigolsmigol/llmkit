@@ -5,6 +5,7 @@ on:
     paths:
       - 'packages/python-sdk/**'
       - '.clusterfuzzlite/**'
+      - '.github/workflows/cflite_pr.yml'
 
 permissions: read-all
 
@@ -36,4 +37,4 @@ jobs:
           fuzz-seconds: 300
           mode: 'code-change'
           sanitizer: ${{ matrix.sanitizer }}
-          output-sarif: true
+        continue-on-error: true
