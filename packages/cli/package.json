@@ -38,7 +38,7 @@
     "@f3d1/llmkit-shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^22.0.0"
+    "@types/node": "^22.19.17"
   },
   "homepage": "https://github.com/smigolsmigol/llmkit/tree/main/packages/cli",
   "bugs": {
