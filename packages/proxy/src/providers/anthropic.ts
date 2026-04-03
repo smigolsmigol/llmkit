@@ -196,14 +196,19 @@ export class AnthropicAdapter implements ProviderAdapter {
   }
 }
 
+const CACHE_MARKER = { cache_control: { type: 'ephemeral' } };
+const MIN_CACHEABLE_LENGTH = 200;
+
 function buildBody(req: ProviderRequest, system: AnthropicContent | undefined, messages: AnthropicMessage[], stream: boolean): Record<string, unknown> {
+  const noCache = req.extra?.['x-llmkit-no-cache'] === true;
+
   const body: Record<string, unknown> = {
     model: req.model,
-    messages,
+    messages: noCache ? messages : injectCacheBreakpoints(messages),
     max_tokens: req.maxTokens || 4096,
   };
   if (stream) body.stream = true;
-  if (system) body.system = system;
+  if (system) body.system = noCache ? system : cacheSystem(system);
   if (req.temperature !== undefined) body.temperature = req.temperature;
 
   if (req.tools?.length) {
@@ -223,11 +228,54 @@ function buildBody(req: ProviderRequest, system: AnthropicContent | undefined, m
   }
 
   if (req.extra) {
-    const { 'anthropic-beta': _, anthropicBeta: _2, ...rest } = req.extra;
+    const { 'anthropic-beta': _, anthropicBeta: _2, 'x-llmkit-no-cache': _3, ...rest } = req.extra;
     Object.assign(body, rest);
   }
 
   return body;
+}
+
+function cacheSystem(system: AnthropicContent | undefined): AnthropicContent | undefined {
+  if (!system) return undefined;
+  if (typeof system === 'string') {
+    if (system.length < MIN_CACHEABLE_LENGTH) return system;
+    return [{ type: 'text', text: system, ...CACHE_MARKER }];
+  }
+  if (!Array.isArray(system) || system.length === 0) return system;
+  const last = system[system.length - 1];
+  if (last && typeof last === 'object' && !('cache_control' in last)) {
+    return [...system.slice(0, -1), { ...last, ...CACHE_MARKER }];
+  }
+  return system;
+}
+
+function injectCacheBreakpoints(messages: AnthropicMessage[]): AnthropicMessage[] {
+  if (messages.length < 2) return messages;
+
+  const result = [...messages];
+  for (let i = result.length - 1; i >= 0; i--) {
+    const msg = result[i]!;
+    if (msg.role !== 'user') continue;
+
+    const content = msg.content;
+    if (typeof content === 'string') {
+      if (content.length >= MIN_CACHEABLE_LENGTH) {
+        result[i] = { role: 'user', content: [{ type: 'text', text: content, ...CACHE_MARKER }] };
+      }
+      break;
+    }
+    if (Array.isArray(content) && content.length > 0) {
+      const last = content[content.length - 1];
+      if (last && typeof last === 'object' && !('cache_control' in last)) {
+        const patched = [...content.slice(0, -1), { ...last, ...CACHE_MARKER }];
+        result[i] = { role: 'user', content: patched as AnthropicContent };
+      }
+      break;
+    }
+    break;
+  }
+
+  return result;
 }
 
 function parseDataUri(url: string): { mimeType: string; data: string } | null {
