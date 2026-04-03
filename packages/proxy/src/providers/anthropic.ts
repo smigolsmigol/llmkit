@@ -4,14 +4,26 @@ import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } 
 const BASE_URL = 'https://api.anthropic.com/v1';
 const API_VERSION = '2023-06-01';
 
-type AnthropicContent = string | Array<
-  | { type: 'text'; text: string }
+type AnthropicContentBlock =
+  | { type: 'text'; text: string; cache_control?: { type: string } }
   | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } | { type: 'url'; url: string } }
->;
+  | { type: 'document'; source: { type: 'base64'; media_type: string; data: string } | { type: 'url'; url: string } }
+  | { type: 'tool_use'; id: string; name: string; input: unknown }
+  | { type: 'tool_result'; tool_use_id: string; content: string | AnthropicContentBlock[] }
+  | { type: 'thinking'; thinking: string };
+
+type AnthropicContent = string | AnthropicContentBlock[];
 
 interface AnthropicMessage {
   role: 'user' | 'assistant';
   content: AnthropicContent;
+}
+
+interface AnthropicUsage {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
 }
 
 interface AnthropicResponse {
@@ -19,23 +31,30 @@ interface AnthropicResponse {
   type: 'message';
   role: 'assistant';
   model: string;
-  content: Array<{ type: 'text'; text: string } | { type: 'tool_use'; id: string; name: string; input: unknown }>;
+  content: AnthropicContentBlock[];
   stop_reason: string;
-  usage: {
-    input_tokens: number;
-    output_tokens: number;
-    cache_creation_input_tokens?: number;
-    cache_read_input_tokens?: number;
-  };
+  usage: AnthropicUsage;
 }
 
 interface AnthropicStreamEvent {
   type: string;
   message?: AnthropicResponse;
-  content_block?: { type: string; id?: string; name?: string };
-  delta?: { type: string; text?: string; partial_json?: string; stop_reason?: string };
-  usage?: AnthropicResponse['usage'];
+  content_block?: { type: string; id?: string; name?: string; thinking?: string };
+  delta?: { type: string; text?: string; partial_json?: string; thinking?: string; stop_reason?: string };
+  usage?: AnthropicUsage;
   index?: number;
+  error?: { type: string; message: string };
+}
+
+function buildHeaders(apiKey: string, extra?: Record<string, unknown>): Record<string, string> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-api-key': apiKey,
+    'anthropic-version': API_VERSION,
+  };
+  const beta = extra?.['anthropic-beta'] ?? extra?.anthropicBeta;
+  if (typeof beta === 'string') headers['anthropic-beta'] = beta;
+  return headers;
 }
 
 export class AnthropicAdapter implements ProviderAdapter {
@@ -43,44 +62,20 @@ export class AnthropicAdapter implements ProviderAdapter {
 
   async chat(req: ProviderRequest): Promise<ProviderResponse> {
     const { system, messages } = splitSystem(req.messages);
-
-    const body: Record<string, unknown> = {
-      model: req.model,
-      messages,
-      max_tokens: req.maxTokens || 4096,
-    };
-    if (system) body.system = system;
-    if (req.temperature !== undefined) body.temperature = req.temperature;
-    if (req.tools?.length) {
-      body.tools = (req.tools as Array<{ function?: { name?: string; description?: string; parameters?: unknown } }>).map(t => ({
-        name: t.function?.name,
-        description: t.function?.description,
-        input_schema: t.function?.parameters,
-      }));
-    }
-    if (req.toolChoice) {
-      const tc = req.toolChoice as { type?: string; function?: { name?: string } };
-      if (tc.type === 'none') body.tool_choice = { type: 'none' };
-      else if (tc.type === 'required' || tc.type === 'any') body.tool_choice = { type: 'any' };
-      else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
-      else body.tool_choice = { type: 'auto' };
-    }
-    if (req.extra) Object.assign(body, req.extra);
+    const body = buildBody(req, system, messages, false);
+    const controller = new AbortController();
 
     const res = await fetch(`${BASE_URL}/messages`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': req.apiKey,
-        'anthropic-version': API_VERSION,
-      },
+      headers: buildHeaders(req.apiKey, req.extra),
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
       const detail = await res.text();
-      console.error(`provider error (${this.name} ${res.status}): ${detail}`);
-      throw new Error(`${this.name} returned ${res.status}`);
+      console.error(`provider error (anthropic ${res.status}): ${detail}`);
+      throw new Error(`anthropic returned ${res.status}`);
     }
 
     const data = (await res.json()) as AnthropicResponse;
@@ -89,45 +84,20 @@ export class AnthropicAdapter implements ProviderAdapter {
 
   async *chatStream(req: ProviderRequest): AsyncGenerator<StreamEvent> {
     const { system, messages } = splitSystem(req.messages);
-
-    const body: Record<string, unknown> = {
-      model: req.model,
-      messages,
-      max_tokens: req.maxTokens || 4096,
-      stream: true,
-    };
-    if (system) body.system = system;
-    if (req.temperature !== undefined) body.temperature = req.temperature;
-    if (req.tools?.length) {
-      body.tools = (req.tools as Array<{ function?: { name?: string; description?: string; parameters?: unknown } }>).map(t => ({
-        name: t.function?.name,
-        description: t.function?.description,
-        input_schema: t.function?.parameters,
-      }));
-    }
-    if (req.toolChoice) {
-      const tc = req.toolChoice as { type?: string; function?: { name?: string } };
-      if (tc.type === 'none') body.tool_choice = { type: 'none' };
-      else if (tc.type === 'required' || tc.type === 'any') body.tool_choice = { type: 'any' };
-      else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
-      else body.tool_choice = { type: 'auto' };
-    }
-    if (req.extra) Object.assign(body, req.extra);
+    const body = buildBody(req, system, messages, true);
+    const controller = new AbortController();
 
     const res = await fetch(`${BASE_URL}/messages`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': req.apiKey,
-        'anthropic-version': API_VERSION,
-      },
+      headers: buildHeaders(req.apiKey, req.extra),
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
       const detail = await res.text();
-      console.error(`provider error (${this.name} ${res.status}): ${detail}`);
-      throw new Error(`${this.name} returned ${res.status}`);
+      console.error(`provider error (anthropic ${res.status}): ${detail}`);
+      throw new Error(`anthropic returned ${res.status}`);
     }
 
     if (!res.body) throw new Error('No response body for stream');
@@ -139,8 +109,8 @@ export class AnthropicAdapter implements ProviderAdapter {
     let finishReason = 'stop';
     let messageId = '';
     let model = req.model;
+    let reasoningTokens = 0;
 
-    // tool call accumulation across content blocks
     const toolAccum = new Map<number, { id: string; name: string; args: string }>();
 
     try {
@@ -160,17 +130,24 @@ export class AnthropicAdapter implements ProviderAdapter {
           try {
             const event = JSON.parse(raw) as AnthropicStreamEvent;
 
+            if (event.type === 'error') {
+              const msg = event.error?.message ?? 'unknown stream error';
+              console.error(`anthropic stream error: ${event.error?.type} - ${msg}`);
+              throw new Error(`anthropic stream error: ${msg}`);
+            }
+
             if (event.type === 'message_start' && event.message) {
               messageId = event.message.id;
               model = event.message.model;
-              if (event.message.usage) {
-                usage = mapUsage(event.message.usage);
-              }
+              if (event.message.usage) usage = mapUsage(event.message.usage);
             }
 
-            if (event.type === 'content_block_start' && event.content_block?.type === 'tool_use') {
+            if (event.type === 'content_block_start') {
               const idx = event.index ?? 0;
-              toolAccum.set(idx, { id: event.content_block.id ?? `call_${idx}`, name: event.content_block.name ?? '', args: '' });
+              if (event.content_block?.type === 'tool_use') {
+                toolAccum.set(idx, { id: event.content_block.id ?? `call_${idx}`, name: event.content_block.name ?? '', args: '' });
+              }
+              // thinking blocks: just track that they exist (content comes via deltas)
             }
 
             if (event.type === 'content_block_delta') {
@@ -182,25 +159,30 @@ export class AnthropicAdapter implements ProviderAdapter {
                 const entry = toolAccum.get(idx);
                 if (entry) entry.args += event.delta.partial_json;
               }
+              if (event.delta?.type === 'thinking_delta' && event.delta.thinking) {
+                reasoningTokens++;
+                // thinking content not forwarded to clients (internal reasoning)
+              }
             }
 
             if (event.type === 'content_block_stop') {
               const idx = event.index ?? 0;
               const entry = toolAccum.get(idx);
               if (entry && entry.name) {
-                yield { type: 'tool' as const, toolCallId: entry.id, toolName: entry.name, toolArguments: entry.args };
+                yield { type: 'tool' as const, toolCallId: entry.id, toolName: entry.name, toolArguments: entry.args, toolIndex: idx };
               }
             }
 
             if (event.type === 'message_delta') {
               if (event.usage && usage) {
                 usage.outputTokens = event.usage.output_tokens;
-                usage.totalTokens = usage.inputTokens + usage.outputTokens;
+                usage.totalTokens = usage.inputTokens + usage.outputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0);
               }
               if (event.delta?.stop_reason) finishReason = event.delta.stop_reason;
             }
-          } catch {
-            // partial JSON from chunk boundary, next chunk will complete it
+          } catch (e) {
+            if (e instanceof Error && e.message.startsWith('anthropic stream error')) throw e;
+            // partial JSON from chunk boundary
           }
         }
       }
@@ -208,8 +190,44 @@ export class AnthropicAdapter implements ProviderAdapter {
       reader.releaseLock();
     }
 
+    if (usage && reasoningTokens > 0) usage.reasoningTokens = reasoningTokens;
+
     yield { type: 'end', usage: usage ?? undefined, finishReason, id: messageId, model };
   }
+}
+
+function buildBody(req: ProviderRequest, system: AnthropicContent | undefined, messages: AnthropicMessage[], stream: boolean): Record<string, unknown> {
+  const body: Record<string, unknown> = {
+    model: req.model,
+    messages,
+    max_tokens: req.maxTokens || 4096,
+  };
+  if (stream) body.stream = true;
+  if (system) body.system = system;
+  if (req.temperature !== undefined) body.temperature = req.temperature;
+
+  if (req.tools?.length) {
+    body.tools = (req.tools as Array<{ function?: { name?: string; description?: string; parameters?: unknown } }>).map(t => ({
+      name: t.function?.name,
+      description: t.function?.description,
+      input_schema: t.function?.parameters,
+    }));
+  }
+
+  if (req.toolChoice) {
+    const tc = req.toolChoice as { type?: string; function?: { name?: string } };
+    if (tc.type === 'none') body.tool_choice = { type: 'none' };
+    else if (tc.type === 'required' || tc.type === 'any') body.tool_choice = { type: 'any' };
+    else if (tc.type === 'function' && tc.function?.name) body.tool_choice = { type: 'tool', name: tc.function.name };
+    else body.tool_choice = { type: 'auto' };
+  }
+
+  if (req.extra) {
+    const { 'anthropic-beta': _, anthropicBeta: _2, ...rest } = req.extra;
+    Object.assign(body, rest);
+  }
+
+  return body;
 }
 
 function parseDataUri(url: string): { mimeType: string; data: string } | null {
@@ -218,43 +236,87 @@ function parseDataUri(url: string): { mimeType: string; data: string } | null {
   return { mimeType: match[1]!, data: match[2]! };
 }
 
-function toAnthropicContent(content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>): AnthropicContent {
+function toAnthropicContent(
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string }; document?: { url: string; media_type?: string } }>,
+): AnthropicContent {
   if (typeof content === 'string') return content;
 
-  return content.map((block) => {
-    if (block.type === 'text') return { type: 'text' as const, text: block.text! };
+  return content.map((block): AnthropicContentBlock => {
+    if (block.type === 'text') return { type: 'text', text: block.text! };
+
+    if (block.type === 'document' && block.document) {
+      const parsed = parseDataUri(block.document.url);
+      if (parsed) return { type: 'document', source: { type: 'base64', media_type: parsed.mimeType, data: parsed.data } };
+      return { type: 'document', source: { type: 'url', url: block.document.url } };
+    }
 
     const url = block.image_url!.url;
     const parsed = parseDataUri(url);
-    if (parsed) {
-      return { type: 'image' as const, source: { type: 'base64' as const, media_type: parsed.mimeType, data: parsed.data } };
-    }
-    return { type: 'image' as const, source: { type: 'url' as const, url } };
+    if (parsed) return { type: 'image', source: { type: 'base64', media_type: parsed.mimeType, data: parsed.data } };
+    return { type: 'image', source: { type: 'url', url } };
   });
 }
 
-function splitSystem(messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>; tool_call_id?: string }>) {
-  let system: string | undefined;
+function convertAssistantToolCalls(
+  msg: { content?: string | Array<{ type: string; text?: string }>; tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }> },
+): AnthropicContent {
+  const blocks: AnthropicContentBlock[] = [];
+
+  if (msg.content) {
+    if (typeof msg.content === 'string' && msg.content) {
+      blocks.push({ type: 'text', text: msg.content });
+    } else if (Array.isArray(msg.content)) {
+      for (const b of msg.content) {
+        if (b.type === 'text' && b.text) blocks.push({ type: 'text', text: b.text });
+      }
+    }
+  }
+
+  if (msg.tool_calls) {
+    for (const tc of msg.tool_calls) {
+      let input: unknown;
+      try { input = JSON.parse(tc.function.arguments); } catch { input = {}; }
+      blocks.push({ type: 'tool_use', id: tc.id, name: tc.function.name, input });
+    }
+  }
+
+  return blocks;
+}
+
+interface RawMessage {
+  role: string;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string }; document?: { url: string; media_type?: string } }>;
+  tool_call_id?: string;
+  tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+}
+
+function splitSystem(messages: RawMessage[]) {
+  const systemParts: string[] = [];
   const filtered: AnthropicMessage[] = [];
 
   for (const msg of messages) {
     if (msg.role === 'system' || msg.role === 'developer') {
-      system = msg.content as string;
+      systemParts.push(typeof msg.content === 'string' ? msg.content : msg.content.map(b => b.text ?? '').join(''));
     } else if (msg.role === 'tool') {
-      // convert OpenAI tool result to Anthropic tool_result content block
       filtered.push({
         role: 'user',
-        content: [{ type: 'tool_result' as const, tool_use_id: msg.tool_call_id ?? '', content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) }] as unknown as AnthropicContent,
+        content: [{ type: 'tool_result' as unknown as 'text', tool_use_id: msg.tool_call_id ?? '', content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) }] as unknown as AnthropicContent,
       });
+    } else if (msg.role === 'assistant' && msg.tool_calls?.length) {
+      filtered.push({ role: 'assistant', content: convertAssistantToolCalls(msg) });
     } else {
       filtered.push({ role: msg.role as 'user' | 'assistant', content: toAnthropicContent(msg.content) });
     }
   }
 
+  const system: AnthropicContent | undefined = systemParts.length > 1
+    ? systemParts.join('\n\n')
+    : systemParts[0] || undefined;
+
   return { system, messages: filtered };
 }
 
-function mapUsage(raw: AnthropicResponse['usage']): TokenUsage {
+function mapUsage(raw: AnthropicUsage): TokenUsage {
   const cacheRead = raw.cache_read_input_tokens || 0;
   const cacheWrite = raw.cache_creation_input_tokens || 0;
 
@@ -269,7 +331,7 @@ function mapUsage(raw: AnthropicResponse['usage']): TokenUsage {
 
 function parseResponse(data: AnthropicResponse): ProviderResponse {
   const content = data.content
-    .filter((b) => b.type === 'text')
+    .filter((b): b is { type: 'text'; text: string } => b.type === 'text')
     .map((b) => b.text)
     .join('');
 
@@ -277,11 +339,18 @@ function parseResponse(data: AnthropicResponse): ProviderResponse {
     .filter((b): b is { type: 'tool_use'; id: string; name: string; input: unknown } => b.type === 'tool_use')
     .map((b) => ({ id: b.id, name: b.name, arguments: JSON.stringify(b.input) }));
 
+  const thinkingBlocks = data.content.filter((b) => b.type === 'thinking');
+  const usage = mapUsage(data.usage);
+  if (thinkingBlocks.length > 0) {
+    const thinkingText = thinkingBlocks.map((b) => (b as { thinking: string }).thinking).join('');
+    usage.reasoningTokens = Math.ceil(thinkingText.length / 4);
+  }
+
   return {
     id: data.id,
     content,
     model: data.model,
-    usage: mapUsage(data.usage),
+    usage,
     finishReason: data.stop_reason,
     ...(toolCalls.length > 0 && { toolCalls }),
   };
