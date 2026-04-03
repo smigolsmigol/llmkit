@@ -90,6 +90,15 @@ response = client.chat.completions.create(
 
 `tracked()` wraps your HTTP client and estimates costs from token usage. No proxy needed. Works with any SDK that accepts `http_client`.
 
+**Framework integrations** (LangChain, LlamaIndex, Pydantic AI):
+
+```python
+from llmkit.integrations.langchain import LLMKitCallbackHandler
+handler = LLMKitCallbackHandler()
+chain.invoke("...", config={"callbacks": [handler]})
+print(f"${handler.total_cost:.4f}")
+```
+
 ## TypeScript
 
 ```bash
@@ -179,6 +188,12 @@ Tag requests with a session ID or end-user ID to track costs per agent, per conv
 
 Runs on Cloudflare Workers at the edge. Cache-aware pricing across 7 providers with prompt caching. 730+ models priced across all providers.
 
+**Automatic prompt caching** for Anthropic: the proxy injects cache breakpoints on system prompts and conversation history. Second request with the same system prompt costs 90% less. Zero config, zero code changes.
+
+**Framework integrations**: drop-in cost tracking for LangChain, LlamaIndex, and Pydantic AI via callback handlers. Works alongside the httpx transport for direct SDK use.
+
+**470+ tests**, ClusterFuzzLite fuzzing, 6-stage security pipeline (gitleaks, semgrep, CodeQL, bandit, pip-audit, pnpm audit). [OpenSSF Scorecard 8.3](https://scorecard.dev/viewer/?uri=github.com/smigolsmigol/llmkit) - higher than React, Django, Kubernetes, and every AI gateway competitor.
+
 **Public API endpoints** (no auth required):
 
 - [`/v1/pricing/compare`](https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=1000&output=1000) - compare cost across all 730+ models for a given token count
@@ -244,7 +259,7 @@ npx wrangler deploy
 <details>
 <summary><strong>Testing</strong></summary>
 
-280+ tests across TypeScript and Python: cost calculation, budget enforcement, crypto, reservations, pricing accuracy, streaming, transport hooks, contract tests, and integration tests. CI runs on every push with a 6-stage security pipeline.
+470+ tests across TypeScript and Python: cost calculation, budget enforcement, crypto, reservations, pricing accuracy, streaming, transport hooks, contract tests, and integration tests. CI runs on every push with a 6-stage security pipeline.
 
 </details>
 
