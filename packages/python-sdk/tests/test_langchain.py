@@ -115,7 +115,9 @@ def test_on_cost_fires_per_request():
 
 def test_chat_model_path():
     handler = LLMKitCallbackHandler()
-    result = _make_chat_result(model="claude-sonnet-4-6", input_tokens=200, output_tokens=80)
+    result = _make_chat_result(
+        model="claude-sonnet-4-6", input_tokens=200, output_tokens=80
+    )
 
     handler.on_llm_end(result, run_id=RUN_ID)
 
@@ -128,7 +130,9 @@ def test_chat_model_path():
 
 def test_unknown_model_records_tokens_but_no_cost():
     handler = LLMKitCallbackHandler()
-    result = _make_llm_result(model="totally-unknown-xyz", prompt_tokens=100, completion_tokens=50)
+    result = _make_llm_result(
+        model="totally-unknown-xyz", prompt_tokens=100, completion_tokens=50
+    )
 
     handler.on_llm_end(result, run_id=RUN_ID)
 

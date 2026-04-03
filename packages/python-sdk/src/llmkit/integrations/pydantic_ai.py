@@ -40,7 +40,9 @@ from llmkit._pricing import calculate_cost
 class LLMKitCostTracker:
     """Tracks costs across Pydantic AI agent runs via Hooks capability."""
 
-    def __init__(self, hooks: Hooks, on_cost: Callable[[float], Any] | None = None) -> None:
+    def __init__(
+        self, hooks: Hooks, on_cost: Callable[[float], Any] | None = None
+    ) -> None:
         self.on_cost = on_cost
         self.total_cost: float = 0.0
         self.total_tokens: int = 0
@@ -50,7 +52,9 @@ class LLMKitCostTracker:
         self._last_cost: float | None = None
 
         @hooks.on.after_model_request
-        async def _track_cost(usage: RequestUsage, model: Any = None, **kwargs: Any) -> None:
+        async def _track_cost(
+            usage: RequestUsage, model: Any = None, **kwargs: Any
+        ) -> None:
             self._record(usage, _extract_model(model))
 
     @property
@@ -91,7 +95,9 @@ def _extract_model(model: Any) -> str:
     return name.split(":", 1)[-1] if ":" in name else name
 
 
-def llmkit_hooks(on_cost: Callable[[float], Any] | None = None) -> tuple[Hooks, LLMKitCostTracker]:
+def llmkit_hooks(
+    on_cost: Callable[[float], Any] | None = None,
+) -> tuple[Hooks, LLMKitCostTracker]:
     """Create a Hooks capability with LLMKit cost tracking.
 
     Returns (hooks, tracker) - pass hooks to Agent capabilities,

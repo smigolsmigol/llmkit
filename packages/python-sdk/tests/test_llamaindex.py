@@ -26,7 +26,9 @@ from llmkit.integrations.llamaindex import LLMKitCallbackHandler  # noqa: E402
 
 
 def _make_response(model: str, prompt_tokens: int, completion_tokens: int):
-    usage = SimpleNamespace(prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
+    usage = SimpleNamespace(
+        prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
+    )
     raw = SimpleNamespace(usage=usage, model=model)
     return SimpleNamespace(raw=raw)
 

@@ -85,7 +85,11 @@ def _extract_tokens_from_generations(
             )
             cache_read = 0
             if details:
-                d_get = details.get if isinstance(details, dict) else getattr(details, "get", None)
+                d_get = (
+                    details.get
+                    if isinstance(details, dict)
+                    else getattr(details, "get", None)
+                )
                 if d_get:
                     cache_read = d_get("cache_read", 0) or 0
                 else:
