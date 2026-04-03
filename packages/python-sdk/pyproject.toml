@@ -62,3 +62,12 @@ Changelog = "https://github.com/smigolsmigol/llmkit/releases"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/llmkit"]
+
+[tool.mypy]
+[[tool.mypy.overrides]]
+module = [
+    "langchain_core.*",
+    "llama_index.*",
+    "pydantic_ai.*",
+]
+ignore_missing_imports = true
