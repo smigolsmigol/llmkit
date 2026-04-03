@@ -90,6 +90,15 @@ response = client.chat.completions.create(
 
 `tracked()` wraps your HTTP client and estimates costs from token usage. No proxy needed. Works with any SDK that accepts `http_client`.
 
+**Framework integrations** (LangChain, LlamaIndex, Pydantic AI):
+
+```python
+from llmkit.integrations.langchain import LLMKitCallbackHandler
+handler = LLMKitCallbackHandler()
+chain.invoke("...", config={"callbacks": [handler]})
+print(f"${handler.total_cost:.4f}")
+```
+
 ## TypeScript
 
 ```bash
@@ -244,7 +253,7 @@ npx wrangler deploy
 <details>
 <summary><strong>Testing</strong></summary>
 
-280+ tests across TypeScript and Python: cost calculation, budget enforcement, crypto, reservations, pricing accuracy, streaming, transport hooks, contract tests, and integration tests. CI runs on every push with a 6-stage security pipeline.
+470+ tests across TypeScript and Python: cost calculation, budget enforcement, crypto, reservations, pricing accuracy, streaming, transport hooks, contract tests, and integration tests. CI runs on every push with a 6-stage security pipeline.
 
 </details>
 
