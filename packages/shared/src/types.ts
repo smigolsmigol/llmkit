@@ -72,6 +72,14 @@ export interface CostBreakdown {
   currency: 'USD';
 }
 
+export interface MarginInfo {
+  revenueUsd: number;
+  costUsd: number;
+  profitUsd: number;
+  marginPct: number;
+  revenueToken?: string;
+}
+
 export interface Budget {
   id: string;
   keyId: string;
