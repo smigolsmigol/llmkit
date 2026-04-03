@@ -1,0 +1,59 @@
+{
+  "name": "@f3d1/plugin-llmkit",
+  "version": "0.0.1",
+  "license": "MIT",
+  "description": "ElizaOS plugin for LLMKit cost tracking and budget enforcement",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/smigolsmigol/llmkit.git",
+    "directory": "packages/plugin-eliza"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "keywords": [
+    "elizaos",
+    "eliza",
+    "plugin",
+    "llmkit",
+    "cost-tracking",
+    "budget",
+    "ai-agents",
+    "llm"
+  ],
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@f3d1/llmkit-shared": "workspace:*"
+  },
+  "peerDependencies": {
+    "@elizaos/core": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@elizaos/core": {
+      "optional": false
+    }
+  },
+  "homepage": "https://github.com/smigolsmigol/llmkit/tree/main/packages/plugin-eliza",
+  "bugs": {
+    "url": "https://github.com/smigolsmigol/llmkit/issues"
+  },
+  "author": {
+    "name": "f3d1",
+    "url": "https://github.com/smigolsmigol"
+  }
+}
