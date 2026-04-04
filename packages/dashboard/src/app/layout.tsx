@@ -29,7 +29,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'LLMKit - Track what your AI agents spend',
     description: 'Open-source API gateway with cost tracking and budget enforcement. 11 providers, 730+ models, budget limits that actually reject requests.',
-    url: 'https://llmkit-dashboard.vercel.app',
+    url: 'https://llmkit.sh',
     siteName: 'LLMKit',
     type: 'website',
   },
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     title: 'LLMKit - AI cost tracking and budget enforcement',
     description: 'Open-source API gateway that tracks what your AI agents cost and stops them from overspending.',
   },
-  metadataBase: new URL('https://llmkit-dashboard.vercel.app'),
+  metadataBase: new URL('https://llmkit.sh'),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

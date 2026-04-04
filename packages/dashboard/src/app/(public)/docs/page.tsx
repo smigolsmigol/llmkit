@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'LLMKit - Getting Started',
     description: 'Track AI costs in 30 seconds. MCP server, Python SDK, or CLI.',
-    url: 'https://llmkit-dashboard.vercel.app/docs',
+    url: 'https://llmkit.sh/docs',
   },
 };
 
