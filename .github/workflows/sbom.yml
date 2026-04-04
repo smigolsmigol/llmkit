@@ -17,13 +17,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: generate CycloneDX SBOM
-        uses: CycloneDX/gh-node-module-generatebom@d43a3643a67e61f459884ac1452fa9a0cb1f4ab8 # v1
+        uses: CycloneDX/gh-node-module-generatebom@27e13c2bf0fae78d66387b35ca9749d8cc853060 # v1
         with:
           path: .
           output: sbom.cdx.json
 
       - name: upload SBOM artifact
-        uses: actions/upload-artifact@ea165f8d65b6db9a6b7c67d0a148c5aea33f8735 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sbom
           path: sbom.cdx.json
