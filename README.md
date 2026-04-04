@@ -63,7 +63,7 @@ pip install llmkit-sdk
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://llmkit-proxy.smigolsmigol.workers.dev/v1",
+    base_url="https://api.llmkit.sh/v1",
     api_key="llmk_your_key_here",
 )
 
@@ -196,7 +196,7 @@ Runs on Cloudflare Workers at the edge. Cache-aware pricing across 7 providers w
 
 **Public API endpoints** (no auth required):
 
-- [`/v1/pricing/compare`](https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=1000&output=1000) - compare cost across all 730+ models for a given token count
+- [`/v1/pricing/compare`](https://api.llmkit.sh/v1/pricing/compare?input=1000&output=1000) - compare cost across all 730+ models for a given token count
 
 ## Security
 
