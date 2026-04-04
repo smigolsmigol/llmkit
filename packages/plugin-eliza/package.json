@@ -45,7 +45,7 @@
   },
   "peerDependenciesMeta": {
     "@elizaos/core": {
-      "optional": false
+      "optional": true
     }
   },
   "homepage": "https://github.com/smigolsmigol/llmkit/tree/main/packages/plugin-eliza",
