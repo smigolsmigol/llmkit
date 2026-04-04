@@ -1,0 +1,93 @@
+name: SLSA Provenance
+
+on:
+  release:
+    types: [published]
+
+permissions: read-all
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      hashes: ${{ steps.hash.outputs.hashes }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: build all publishable packages
+        run: |
+          pnpm turbo build \
+            --filter=@f3d1/llmkit-shared \
+            --filter=@f3d1/llmkit-sdk \
+            --filter=@f3d1/llmkit-cli \
+            --filter=@f3d1/llmkit-ai-sdk-provider \
+            --filter=@f3d1/llmkit-mcp-server
+
+      - name: pack tarballs
+        run: |
+          mkdir -p /tmp/tarballs
+          for pkg in shared sdk cli ai-sdk-provider mcp-server; do
+            cd packages/$pkg
+            pnpm pack --pack-destination /tmp/tarballs
+            cd ../..
+          done
+
+      - name: generate hashes
+        id: hash
+        shell: bash
+        run: |
+          cd /tmp/tarballs
+          echo "hashes=$(sha256sum *.tgz | base64 -w0)" >> "$GITHUB_OUTPUT"
+
+      - name: upload tarballs
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: packages
+          path: /tmp/tarballs/*.tgz
+          if-no-files-found: error
+          retention-days: 5
+
+  provenance:
+    needs: [build]
+    permissions:
+      actions: read
+      id-token: write
+      contents: write
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.1.0
+    with:
+      base64-subjects: "${{ needs.build.outputs.hashes }}"
+      upload-assets: true
+      upload-tag-name: "${{ github.event.release.tag_name }}"
+      provenance-name: llmkit-provenance.intoto.jsonl
+
+  upload-assets:
+    needs: [build, provenance]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: download tarballs
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: packages
+          path: /tmp/tarballs
+
+      - name: attach tarballs to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            /tmp/tarballs/*.tgz \
+            --repo "${{ github.repository }}" \
+            --clobber
