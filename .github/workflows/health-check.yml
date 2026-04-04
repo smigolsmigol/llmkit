@@ -61,7 +61,7 @@ jobs:
           }
 
           # 1. proxy health
-          check_http "Proxy" "https://llmkit-proxy.smigolsmigol.workers.dev/health"
+          check_http "Proxy" "https://api.llmkit.sh/health"
 
           # 2. dashboard reachable
           check_http "Dashboard" "https://llmkit-dashboard.vercel.app/sign-in"
