@@ -6,7 +6,7 @@ const PROVIDERS = [
 ] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = 'https://llmkit-dashboard.vercel.app';
+  const base = 'https://llmkit.sh';
   return [
     { url: base, lastModified: new Date(), priority: 1.0 },
     { url: `${base}/mcp`, lastModified: new Date(), priority: 0.8 },

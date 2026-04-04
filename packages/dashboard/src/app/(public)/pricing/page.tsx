@@ -58,7 +58,7 @@ export default async function PricingPage() {
 
         <p className="mt-2 text-sm text-zinc-500">
           Providers: {providers.join(', ')}. Data sourced from official pricing pages.
-          Use the <a href="https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=1000&output=500" className="text-violet-400 hover:text-violet-300">free API</a> for programmatic access.
+          Use the <a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500" className="text-violet-400 hover:text-violet-300">free API</a> for programmatic access.
         </p>
 
         {providers.map(provider => {
