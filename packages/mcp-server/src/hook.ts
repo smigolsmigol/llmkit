@@ -2,6 +2,7 @@
 // Parses session transcript, prints cost summary to stderr (visible to user).
 // Usage: npx @f3d1/llmkit-mcp-server --hook
 
+import { lstatSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { getSessionCost } from './claude-code.js';
@@ -9,7 +10,15 @@ import { getSessionCost } from './claude-code.js';
 function isValidTranscriptPath(p: string): boolean {
   const claudeDir = `${resolve(homedir(), '.claude').replace(/\\/g, '/')}/`;
   const norm = resolve(p).replace(/\\/g, '/');
-  return norm.startsWith(claudeDir) && norm.endsWith('.jsonl');
+  if (!norm.startsWith(claudeDir) || !norm.endsWith('.jsonl')) return false;
+  try {
+    const stat = lstatSync(p);
+    if (stat.isSymbolicLink()) return false;
+    const real = realpathSync(p).replace(/\\/g, '/');
+    return real.startsWith(claudeDir);
+  } catch {
+    return false;
+  }
 }
 
 export async function runHook(): Promise<void> {
