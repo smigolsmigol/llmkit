@@ -30,7 +30,7 @@ function calculateMargin(c: Context<Env>, costUsd: number): MarginInfo | undefin
   const revenueStr = c.req.header('x-llmkit-revenue');
   if (!revenueStr) return undefined;
   const revenueUsd = parseFloat(revenueStr);
-  if (isNaN(revenueUsd) || revenueUsd < 0) return undefined;
+  if (isNaN(revenueUsd) || revenueUsd < 0 || !isFinite(revenueUsd)) return undefined;
   const profitUsd = revenueUsd - costUsd;
   const marginPct = revenueUsd > 0 ? Math.round((profitUsd / revenueUsd) * 1000) / 10 : 0;
   const revenueToken = c.req.header('x-llmkit-revenue-token') || undefined;
@@ -43,9 +43,9 @@ function setCostHeaders(c: Context<Env>, cost: CostBreakdown, provider: string, 
   c.header('x-llmkit-latency-ms', String(latencyMs));
   if (providerCostUsd != null) c.header('x-llmkit-provider-cost', String(providerCostUsd));
   const sid = c.req.header('x-llmkit-session-id');
-  if (sid) c.header('x-llmkit-session-id', sid);
+  if (sid && /^[\w-]{1,128}$/.test(sid)) c.header('x-llmkit-session-id', sid);
   const uid = c.req.header('x-llmkit-user-id');
-  if (uid) c.header('x-llmkit-user-id', uid);
+  if (uid && /^[\w@.+-]{1,256}$/.test(uid)) c.header('x-llmkit-user-id', uid);
   const margin = calculateMargin(c, cost.totalCost);
   if (margin) c.header('x-llmkit-margin', JSON.stringify(margin));
 }
@@ -395,6 +395,9 @@ function validateBody(body: Record<string, unknown>): void {
 
   if (!Array.isArray(body.messages) || body.messages.length === 0) {
     throw new ValidationError('messages is required and must be a non-empty array');
+  }
+  if (body.messages.length > 512) {
+    throw new ValidationError('messages array exceeds maximum length of 512');
   }
 
   for (const msg of body.messages) {
