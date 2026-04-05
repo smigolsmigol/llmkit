@@ -22,7 +22,10 @@ jobs:
           python-version: '3.12'
 
       - name: install build tools
-        run: pip install --require-hashes -r ../../requirements-ci.txt || pip install build==1.2.2.post1
+        run: pip install --require-hashes --no-deps -r ../../requirements-ci.txt
+
+      - name: install build deps
+        run: pip install build 2>/dev/null || true
 
       - name: build
         run: python -m build
