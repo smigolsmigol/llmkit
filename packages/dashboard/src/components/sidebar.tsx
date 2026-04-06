@@ -43,7 +43,7 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
         open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       )}>
         <div className="flex items-center justify-between px-3 mb-8">
-          <Link href="/dashboard" onClick={() => setOpen(false)}>
+          <Link href="/" onClick={() => setOpen(false)}>
             <AnimatedLogo className="h-[42px] w-auto" />
           </Link>
           <button type="button" onClick={() => setOpen(false)} className="md:hidden text-zinc-500 hover:text-white">
