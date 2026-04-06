@@ -32,11 +32,20 @@ export const metadata: Metadata = {
     url: 'https://llmkit.sh',
     siteName: 'LLMKit',
     type: 'website',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'LLMKit - Track what your AI agents spend',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'LLMKit - AI cost tracking and budget enforcement',
     description: 'Open-source API gateway that tracks what your AI agents cost and stops them from overspending.',
+    images: ['/opengraph-image'],
   },
   metadataBase: new URL('https://llmkit.sh'),
 };
