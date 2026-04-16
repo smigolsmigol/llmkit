@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.0.0",
+    "@clerk/nextjs": "^6.39.2",
     "@f3d1/llmkit-shared": "workspace:*",
     "@supabase/supabase-js": "^2.101.1",
     "@vercel/analytics": "^2.0.1",
