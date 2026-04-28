@@ -23,6 +23,10 @@ export type Env = {
     TELEGRAM_BOT_TOKEN?: string;
     TELEGRAM_CHAT_ID?: string;
     TELEGRAM_VERBOSE?: string;
+    BENCH_ENABLED?: string;
+    BENCH_INSTALL_ID?: string;
+    BENCH_INSTALL_HMAC?: string;
+    BENCH_INGEST_URL?: string;
   };
   Variables: {
     apiKey: string;

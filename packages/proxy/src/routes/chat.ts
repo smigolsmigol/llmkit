@@ -12,6 +12,7 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { stream } from 'hono/streaming';
 import type { StreamingApi } from 'hono/utils/stream';
+import { emitBeacon } from '../bench';
 import { decrypt } from '../crypto';
 import { findProviderKey } from '../db';
 import type { Env, ResponseMeta } from '../env';
@@ -163,6 +164,18 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
         providerCostUsd: result.providerCostUsd,
       };
       c.set('llmkit_response', meta);
+
+      c.executionCtx.waitUntil(
+        emitBeacon(c.env, {
+          model: result.model,
+          provider: providerName,
+          status_code: 200,
+          latency_ms_total: latency,
+          input_tokens: result.usage.inputTokens,
+          output_tokens: result.usage.outputTokens,
+          cost_usd_estimate: cost.totalCost,
+        }),
+      );
 
       if (wantsLLMKitFormat(c)) {
         const margin = calculateMargin(c, cost.totalCost);
