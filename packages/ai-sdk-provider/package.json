@@ -37,7 +37,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@ai-sdk/provider": "^3.0.0"
+    "@ai-sdk/provider": "^3.0.10"
   },
   "peerDependencies": {
     "ai": ">=6.0.0"
