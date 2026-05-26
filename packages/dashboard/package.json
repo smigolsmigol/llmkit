@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.39.2",
+    "@clerk/nextjs": "^6.39.4",
     "@f3d1/llmkit-shared": "workspace:*",
     "@supabase/supabase-js": "^2.101.1",
     "@vercel/analytics": "^2.0.1",
@@ -20,14 +20,14 @@
     "echarts": "^6.0.0",
     "echarts-for-react": "^3.0.6",
     "lucide-react": "^0.577.0",
-    "next": "15.5.15",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "next": "15.5.18",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
-    "@types/react": "^19.0.0",
+    "@types/react": "^19.2.15",
     "@types/react-dom": "^19.0.0",
     "postcss": "^8.4.0",
     "tailwindcss": "^4.0.0",
