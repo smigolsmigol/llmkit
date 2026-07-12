@@ -23,6 +23,9 @@ the proxy enforces it before forwarding the request.
 | `x-llmkit-provider-key` | no | Pass a provider API key directly instead of using one stored in the dashboard. |
 | `x-llmkit-fallback` | no | Comma-separated fallback chain, e.g. `anthropic,openai,gemini`. Tried in order. |
 | `x-llmkit-session-id` | no | Tag requests with a session/conversation ID for grouped analytics. |
+| `x-llmkit-customer-id` | no | Attribute spend to a customer or tenant. Use an opaque internal ID, not personal data. |
+| `x-llmkit-feature-id` | no | Attribute spend to a product feature or workflow. |
+| `x-llmkit-agent-id` | no | Attribute spend to an agent or automation. |
 | `x-llmkit-user-id` | no | Tag requests with an end-user ID for per-user cost attribution. |
 | `x-llmkit-format` | no | Set to `llmkit` to get LLMKit's native response format instead of OpenAI-compatible format. |
 
@@ -458,7 +461,7 @@ Cost breakdown grouped by a dimension.
 
 | Param | Type | Default | Description |
 |-------|------|---------|-------------|
-| `groupBy` | string | `provider` | One of: `provider`, `model`, `session`, `day` |
+| `groupBy` | string | `provider` | One of: `provider`, `model`, `session`, `customer`, `feature`, `agent`, `day` |
 | `days` | number | 30 | Lookback window in days (max 365) |
 | `provider` | string | - | Filter to a specific provider |
 | `model` | string | - | Filter to a specific model |

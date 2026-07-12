@@ -20,6 +20,9 @@ def _build_headers(
     provider: str | None,
     session_id: str | None,
     fallback: str | None,
+    customer_id: str | None = None,
+    feature_id: str | None = None,
+    agent_id: str | None = None,
 ) -> dict[str, str]:
     headers: dict[str, str] = {}
     if provider_key:
@@ -30,6 +33,12 @@ def _build_headers(
         headers["x-llmkit-session-id"] = session_id
     if fallback:
         headers["x-llmkit-fallback"] = fallback
+    if customer_id:
+        headers["x-llmkit-customer-id"] = customer_id
+    if feature_id:
+        headers["x-llmkit-feature-id"] = feature_id
+    if agent_id:
+        headers["x-llmkit-agent-id"] = agent_id
     return headers
 
 
@@ -81,6 +90,9 @@ class LLMKit:
         provider: str | None = None,
         session_id: str | None = None,
         fallback: str | None = None,
+        customer_id: str | None = None,
+        feature_id: str | None = None,
+        agent_id: str | None = None,
         on_cost: Callable[[CostInfo], Any] | None = None,
         **openai_kwargs: Any,
     ) -> None:
@@ -92,11 +104,14 @@ class LLMKit:
         self._provider_key = provider_key
         self._provider = provider
         self._fallback = fallback
+        self._customer_id = customer_id
+        self._feature_id = feature_id
+        self._agent_id = agent_id
         self._base_url = base_url or os.environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL
         self._on_cost = on_cost
         self._stats = SessionStats(session_id=session_id or "")
 
-        headers = _build_headers(provider_key, provider, session_id, fallback)
+        headers = _build_headers(provider_key, provider, session_id, fallback, customer_id, feature_id, agent_id)
 
         self.openai = OpenAI(
             api_key=resolved_key,
@@ -129,6 +144,9 @@ class LLMKit:
             fallback=self._fallback,
             on_cost=self._on_cost,
             session_id=sid,
+            customer_id=self._customer_id,
+            feature_id=self._feature_id,
+            agent_id=self._agent_id,
         )
 
     def chat(self, **kwargs: Any) -> tuple[ChatCompletion, CostInfo]:
@@ -216,6 +234,9 @@ class AsyncLLMKit:
         provider: str | None = None,
         session_id: str | None = None,
         fallback: str | None = None,
+        customer_id: str | None = None,
+        feature_id: str | None = None,
+        agent_id: str | None = None,
         on_cost: Callable[[CostInfo], Any] | None = None,
         **openai_kwargs: Any,
     ) -> None:
@@ -227,11 +248,14 @@ class AsyncLLMKit:
         self._provider_key = provider_key
         self._provider = provider
         self._fallback = fallback
+        self._customer_id = customer_id
+        self._feature_id = feature_id
+        self._agent_id = agent_id
         self._base_url = base_url or os.environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL
         self._on_cost = on_cost
         self._stats = SessionStats(session_id=session_id or "")
 
-        headers = _build_headers(provider_key, provider, session_id, fallback)
+        headers = _build_headers(provider_key, provider, session_id, fallback, customer_id, feature_id, agent_id)
 
         self.openai = AsyncOpenAI(
             api_key=resolved_key,
@@ -264,6 +288,9 @@ class AsyncLLMKit:
             fallback=self._fallback,
             on_cost=self._on_cost,
             session_id=sid,
+            customer_id=self._customer_id,
+            feature_id=self._feature_id,
+            agent_id=self._agent_id,
         )
 
     async def chat(self, **kwargs: Any) -> tuple[ChatCompletion, CostInfo]:

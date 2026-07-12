@@ -2,7 +2,7 @@
   <img src=".github/logo-wordmark-animated.svg" width="280" alt="LLMKit" />
 </p>
 
-<h3 align="center">Know what your AI agents cost.</h3>
+<h3 align="center">Know which customers your AI costs money.</h3>
 
 <p align="center">
   <a href="https://github.com/smigolsmigol/llmkit/actions/workflows/ci.yml"><img src="https://github.com/smigolsmigol/llmkit/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  Open-source API gateway for AI providers. Logs every request with token counts and dollar costs.<br>
+  Agent FinOps for AI products. Attribute spend to customers, features, and agents.<br>
   Budget limits reject requests before they reach the provider, not after.
 </p>
 
@@ -34,6 +34,9 @@ $ npx @f3d1/llmkit-cli -- python my_agent.py
 ```
 
 Works with Python, Ruby, Go, Rust - anything that calls the OpenAI or Anthropic API. One command, no code changes.
+
+Running AI in production? The [14-day Agent Cost-Control Pilot](docs/commercial/PILOT_PLAYBOOK.md)
+instruments a real workflow, identifies cost leaks, and installs hard safeguards.
 
 ## Get started
 
@@ -108,7 +111,12 @@ npm install @f3d1/llmkit-sdk
 ```typescript
 import { LLMKit } from '@f3d1/llmkit-sdk'
 
-const kit = new LLMKit({ apiKey: process.env.LLMKIT_KEY })
+const kit = new LLMKit({
+  apiKey: process.env.LLMKIT_KEY,
+  customerId: 'tenant-acme',
+  featureId: 'document-summary',
+  agentId: 'research-agent',
+})
 const agent = kit.session()
 
 const res = await agent.chat({

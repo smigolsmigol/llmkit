@@ -144,5 +144,8 @@ export interface LLMKitConfig {
   defaultProvider?: ProviderName;
   fallback?: FallbackConfig;
   sessionId?: string;
+  customerId?: string;
+  featureId?: string;
+  agentId?: string;
   budgetId?: string;
 }

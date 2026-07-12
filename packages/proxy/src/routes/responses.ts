@@ -118,6 +118,9 @@ responsesRouter.post('/responses', async (c) => {
   await trackRequest({
     sessionId: c.req.header('x-llmkit-session-id') || undefined,
     endUserId: c.req.header('x-llmkit-user-id') || undefined,
+    customerId: c.req.header('x-llmkit-customer-id') || undefined,
+    featureId: c.req.header('x-llmkit-feature-id') || undefined,
+    agentId: c.req.header('x-llmkit-agent-id') || undefined,
     toolCalls,
     providerCostUsd: undefined,
     apiKey: c.get('apiKey'),

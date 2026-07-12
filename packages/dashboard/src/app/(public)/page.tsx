@@ -8,11 +8,11 @@ import { TrackClick } from '@/components/track-event';
 import { TerminalDemo } from '@/components/terminal-demo';
 
 export const metadata: Metadata = {
-  title: 'LLMKit - Know what your AI agents cost',
-  description: 'Open-source API gateway that tracks every AI request with token counts and dollar costs. Budget limits reject requests before reaching the provider. 11 providers, 730+ models.',
+  title: 'LLMKit - Agent cost control before the invoice arrives',
+  description: 'Attribute AI spend to every customer, feature, and agent. Stop runaway workflows before they reach the provider.',
   openGraph: {
-    title: 'LLMKit - Know what your AI agents cost',
-    description: 'Track spend, enforce budgets, and log every request across OpenAI, Anthropic, Gemini, xAI, and 7 more providers.',
+    title: 'LLMKit - Agent FinOps for AI products',
+    description: 'See which customers and agents generate AI costs, enforce hard budgets, and protect product margins.',
   },
 };
 
@@ -33,7 +33,6 @@ const providers = [
 
 export default function Home() {
   const ctaHref = '/sign-up';
-  const ctaLabel = 'Get started free';
   return (
     <div className="relative min-h-screen bg-[#0a0a0a] text-white selection:bg-violet-500/30">
       <div
@@ -57,21 +56,21 @@ export default function Home() {
               </div>
 
               <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                Track what your<br />AI agents{' '}
-                <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">spend</span>.
+                Know which customers<br />your AI costs{' '}
+                <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">money</span>.
               </h1>
 
               <p className="mt-6 max-w-md text-lg leading-relaxed text-zinc-400">
-                Set a dollar limit per key, session, or user.
-                Requests get rejected before they reach the provider.
+                Attribute spend to every customer, feature, and agent. Stop runaway
+                workflows before they reach the provider—and protect your margins.
               </p>
 
               <div className="mt-8 flex items-center gap-3">
                 <Link
-                  href={ctaHref}
+                  href="/pilot"
                   className="rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-500 transition"
                 >
-                  {ctaLabel}
+                  Apply for a pilot
                 </Link>
                 <TrackClick
                   event="cta_click"
@@ -179,7 +178,7 @@ export default function Home() {
               </div>
               <h3 className="text-base font-semibold">Dashboard</h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Spend by model, provider, and session. Request log with full cost breakdown. API key management, budget configuration, anomaly detection.
+                Spend by customer, feature, agent, model, and session. See exactly which parts of your product create cost and margin risk.
               </p>
               <p className="mt-4 text-xs text-amber-400 group-hover:text-amber-300 transition">
                 Try it free {'->'}

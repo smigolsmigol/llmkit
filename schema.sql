@@ -28,6 +28,9 @@ create table requests (
   id uuid primary key default gen_random_uuid(),
   api_key_id uuid not null references api_keys(id),
   session_id text,
+  customer_id text,
+  feature_id text,
+  agent_id text,
   provider text not null,
   model text not null,
   input_tokens integer not null default 0,
@@ -68,6 +71,9 @@ create table accounts (
 create index idx_api_keys_user_id on api_keys(user_id);
 create index idx_requests_api_key on requests(api_key_id);
 create index idx_requests_session on requests(session_id) where session_id is not null;
+create index idx_requests_customer on requests(customer_id) where customer_id is not null;
+create index idx_requests_feature on requests(feature_id) where feature_id is not null;
+create index idx_requests_agent on requests(agent_id) where agent_id is not null;
 create index idx_requests_created on requests(created_at);
 create index idx_provider_keys_user on provider_keys(user_id, provider)
   where revoked_at is null;

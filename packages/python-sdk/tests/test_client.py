@@ -54,12 +54,18 @@ def test_client_headers():
             provider="anthropic",
             session_id="sess-1",
             fallback="openai",
+            customer_id="tenant-acme",
+            feature_id="support-copilot",
+            agent_id="refund-agent",
         )
         headers = mock_openai.call_args.kwargs["default_headers"]
         assert headers["x-llmkit-provider-key"] == "sk-abc"
         assert headers["x-llmkit-provider"] == "anthropic"
         assert headers["x-llmkit-session-id"] == "sess-1"
         assert headers["x-llmkit-fallback"] == "openai"
+        assert headers["x-llmkit-customer-id"] == "tenant-acme"
+        assert headers["x-llmkit-feature-id"] == "support-copilot"
+        assert headers["x-llmkit-agent-id"] == "refund-agent"
 
 
 def test_client_no_optional_headers():
@@ -93,11 +99,17 @@ def test_session_inherits_config():
             provider_key="sk-abc",
             provider="anthropic",
             fallback="openai",
+            customer_id="tenant-acme",
+            feature_id="support-copilot",
+            agent_id="refund-agent",
         )
         client.session("s1")
         child_headers = mock_openai.call_args.kwargs["default_headers"]
         assert child_headers["x-llmkit-provider-key"] == "sk-abc"
         assert child_headers["x-llmkit-provider"] == "anthropic"
+        assert child_headers["x-llmkit-customer-id"] == "tenant-acme"
+        assert child_headers["x-llmkit-feature-id"] == "support-copilot"
+        assert child_headers["x-llmkit-agent-id"] == "refund-agent"
         assert child_headers["x-llmkit-fallback"] == "openai"
         assert child_headers["x-llmkit-session-id"] == "s1"
 

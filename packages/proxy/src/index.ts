@@ -90,7 +90,7 @@ const app = new Hono<Env>();
 
 app.use('*', cors({
   origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-format', 'x-llmkit-revenue', 'x-llmkit-revenue-token'],
+  allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-customer-id', 'x-llmkit-feature-id', 'x-llmkit-agent-id', 'x-llmkit-format', 'x-llmkit-revenue', 'x-llmkit-revenue-token'],
   exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-provider-cost', 'x-llmkit-extra-costs', 'x-llmkit-margin', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
   allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'],
 }));
@@ -111,6 +111,9 @@ app.onError(async (err, c) => {
         api_key_id: apiKeyId,
         session_id: sanitizeHeader(c.req.header('x-llmkit-session-id'), /^[\w-]{1,128}$/),
         end_user_id: sanitizeHeader(c.req.header('x-llmkit-user-id'), /^[\w@.+-]{1,256}$/),
+        customer_id: sanitizeHeader(c.req.header('x-llmkit-customer-id'), /^[\w@.+:-]{1,128}$/),
+        feature_id: sanitizeHeader(c.req.header('x-llmkit-feature-id'), /^[\w.+:-]{1,128}$/),
+        agent_id: sanitizeHeader(c.req.header('x-llmkit-agent-id'), /^[\w.+:-]{1,128}$/),
         provider: ctx.provider,
         model: ctx.model,
         input_tokens: 0,

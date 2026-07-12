@@ -12,6 +12,9 @@ export interface RequestRow {
   api_key_id: string;
   session_id: string | null;
   end_user_id: string | null;
+  customer_id: string | null;
+  feature_id: string | null;
+  agent_id: string | null;
   provider: string;
   model: string;
   input_tokens: number;
@@ -130,6 +133,9 @@ export interface RequestFilters {
   model?: string;
   status?: string;
   sessionId?: string;
+  customerId?: string;
+  featureId?: string;
+  agentId?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
 }
@@ -159,6 +165,9 @@ export async function getRequestsPaginated(
   if (filters.provider) query = query.eq('provider', filters.provider);
   if (filters.model) query = query.eq('model', filters.model);
   if (filters.sessionId) query = query.eq('session_id', filters.sessionId);
+  if (filters.customerId) query = query.eq('customer_id', filters.customerId);
+  if (filters.featureId) query = query.eq('feature_id', filters.featureId);
+  if (filters.agentId) query = query.eq('agent_id', filters.agentId);
   if (filters.status === 'error') query = query.not('error_code', 'is', null);
   if (filters.status === 'ok') query = query.is('error_code', null);
 

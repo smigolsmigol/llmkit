@@ -274,6 +274,9 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
           await trackRequest({
             sessionId: c.req.header('x-llmkit-session-id') || undefined,
             endUserId: c.req.header('x-llmkit-user-id') || undefined,
+            customerId: c.req.header('x-llmkit-customer-id') || undefined,
+            featureId: c.req.header('x-llmkit-feature-id') || undefined,
+            agentId: c.req.header('x-llmkit-agent-id') || undefined,
             toolCalls: undefined,
             providerCostUsd: usage.providerCostUsd,
             apiKey: c.get('apiKey'),

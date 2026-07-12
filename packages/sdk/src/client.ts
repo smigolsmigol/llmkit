@@ -7,6 +7,7 @@ type ChatRequest = Omit<LLMRequest, 'provider'> & { provider?: string };
 export class LLMKit {
   private config: Required<Pick<LLMKitConfig, 'apiKey' | 'baseUrl'>>;
   private sessionId?: string;
+  private attribution: Pick<LLMKitConfig, 'customerId' | 'featureId' | 'agentId'>;
 
   constructor(config: LLMKitConfig) {
     this.config = {
@@ -14,12 +15,18 @@ export class LLMKit {
       baseUrl: config.baseUrl || DEFAULT_BASE_URL,
     };
     this.sessionId = config.sessionId;
+    this.attribution = {
+      customerId: config.customerId,
+      featureId: config.featureId,
+      agentId: config.agentId,
+    };
   }
 
   session(id?: string): LLMKit {
     const clone = new LLMKit({
       ...this.config,
       sessionId: id || crypto.randomUUID(),
+      ...this.attribution,
     });
     return clone;
   }
@@ -58,6 +65,9 @@ export class LLMKit {
     if (this.sessionId) {
       headers['x-llmkit-session-id'] = this.sessionId;
     }
+    if (this.attribution.customerId) headers['x-llmkit-customer-id'] = this.attribution.customerId;
+    if (this.attribution.featureId) headers['x-llmkit-feature-id'] = this.attribution.featureId;
+    if (this.attribution.agentId) headers['x-llmkit-agent-id'] = this.attribution.agentId;
     if (req.provider) {
       headers['x-llmkit-provider'] = req.provider;
     }

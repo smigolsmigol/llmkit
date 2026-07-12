@@ -9,6 +9,11 @@ import { recordUsage, sendAlert } from './budget';
 // per-isolate dedup (warm-start only, DB check is source of truth)
 const seenUsers = new Set<string>();
 
+function attributionTag(value: string | undefined): string | undefined {
+  if (!value || value.length > 128) return undefined;
+  return /^[\w@.+:-]+$/.test(value) ? value : undefined;
+}
+
 async function hasSuccessfulRequest(supabaseUrl: string, supabaseKey: string, apiKeyId: string): Promise<boolean> {
   try {
     const res = await fetch(
@@ -25,6 +30,9 @@ async function hasSuccessfulRequest(supabaseUrl: string, supabaseKey: string, ap
 export interface TrackParams {
   sessionId: string | undefined;
   endUserId: string | undefined;
+  customerId: string | undefined;
+  featureId: string | undefined;
+  agentId: string | undefined;
   toolCalls: { name: string }[] | undefined;
   providerCostUsd: number | undefined;
   apiKey: string | undefined;
@@ -92,6 +100,9 @@ function persistAndNotify(p: TrackParams & { userId: string; apiKeyId: string })
     api_key_id: p.apiKeyId,
     session_id: p.sessionId || null,
     end_user_id: p.endUserId || null,
+    customer_id: attributionTag(p.customerId) || null,
+    feature_id: attributionTag(p.featureId) || null,
+    agent_id: attributionTag(p.agentId) || null,
     provider: p.provider,
     model: p.model,
     input_tokens: p.usage.inputTokens,
@@ -142,6 +153,9 @@ export function costLogger() {
     await trackRequest({
       sessionId: c.req.header('x-llmkit-session-id') || undefined,
       endUserId: c.req.header('x-llmkit-user-id') || undefined,
+      customerId: c.req.header('x-llmkit-customer-id') || undefined,
+      featureId: c.req.header('x-llmkit-feature-id') || undefined,
+      agentId: c.req.header('x-llmkit-agent-id') || undefined,
       toolCalls: meta.toolCalls,
       providerCostUsd: meta.providerCostUsd,
       apiKey: c.get('apiKey'),

@@ -37,6 +37,9 @@ export interface RequestInsert {
   api_key_id: string;
   session_id: string | null;
   end_user_id: string | null;
+  customer_id: string | null;
+  feature_id: string | null;
+  agent_id: string | null;
   provider: string;
   model: string;
   input_tokens: number;

@@ -9,6 +9,9 @@ const postgrest = (url: string, key: string, path: string, extra?: HeadersInit) 
 interface RequestRow {
   api_key_id: string;
   session_id: string | null;
+  customer_id: string | null;
+  feature_id: string | null;
+  agent_id: string | null;
   provider: string;
   model: string;
   input_tokens: number;
@@ -141,6 +144,9 @@ analyticsRouter.get('/analytics/costs', async (c) => {
     switch (groupBy) {
       case 'model': key = req.model; break;
       case 'session': key = req.session_id || 'no-session'; break;
+      case 'customer': key = req.customer_id || 'unattributed'; break;
+      case 'feature': key = req.feature_id || 'unattributed'; break;
+      case 'agent': key = req.agent_id || 'unattributed'; break;
       case 'day': key = req.created_at.slice(0, 10); break;
       default: key = req.provider;
     }
