@@ -5,6 +5,7 @@ const scripts = [
   'scripts/run-ts-quality.mjs',
   'scripts/run-quality-gate.mjs',
   'scripts/assert-scorecard-supply-chain.mjs',
+  'packages/proxy/test/database-compatibility-runtime-proof.mjs',
 ];
 
 for (const script of scripts) {

@@ -46,6 +46,31 @@ function run(command, args, options = {}) {
   return result;
 }
 
+function dockerReady(command, runner = spawnSync) {
+  const result = runner(command, ['version'], {
+    cwd: root,
+    stdio: 'ignore',
+    windowsHide: true,
+  });
+  return !result.error && result.status === 0;
+}
+
+function runSelfTest() {
+  assert(
+    dockerReady('docker', () => ({ status: 0 })),
+    'A ready Docker PATH command was rejected.',
+  );
+  assert(
+    !dockerReady('docker', () => ({ status: 1 })),
+    'A failing Docker daemon probe was accepted.',
+  );
+  assert(
+    !dockerReady('docker', () => ({ status: null, error: new Error('missing') })),
+    'A missing Docker command was accepted.',
+  );
+  console.log('WORKER_DATABASE_PREREQUISITE_SELF_TEST PASS (ready + unavailable fixtures)');
+}
+
 function readLocalStatus() {
   const result = run(process.execPath, [supabaseLauncher, 'status', '--output', 'json']);
   const status = JSON.parse(result.stdout);
@@ -219,8 +244,8 @@ async function fetchUsage(baseUrl, key) {
 }
 
 async function main() {
-  if (!existsSync(supabaseLauncher) || !existsSync(wranglerLauncher) || !existsSync(docker)) {
-    throw new Error('Pinned Supabase CLI, Wrangler, and Docker are required.');
+  if (!existsSync(supabaseLauncher) || !existsSync(wranglerLauncher) || !dockerReady(docker)) {
+    throw new Error('Pinned Supabase CLI, Wrangler, and a ready Docker daemon are required.');
   }
 
   const { url, serviceKey } = readLocalStatus();
@@ -288,7 +313,11 @@ async function main() {
   if (proofError) throw proofError;
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+if (process.argv.includes('--self-test')) {
+  runSelfTest();
+} else {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
