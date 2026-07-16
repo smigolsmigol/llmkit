@@ -57,14 +57,16 @@ jobs:
           DL_MCP=$(curl -s "https://api.npmjs.org/downloads/point/last-week/@f3d1/llmkit-mcp-server" | jq '.downloads // 0')
           TOTAL_DL=$((DL_SHARED + DL_SDK + DL_CLI + DL_AI + DL_MCP))
 
-          echo "stars=$STARS" >> "$GITHUB_OUTPUT"
-          echo "new_stars=$NEW_STARS" >> "$GITHUB_OUTPUT"
-          echo "forks=$FORKS" >> "$GITHUB_OUTPUT"
-          echo "issues_opened=$OPENED" >> "$GITHUB_OUTPUT"
-          echo "issues_closed=$CLOSED" >> "$GITHUB_OUTPUT"
-          echo "prs_merged=$MERGED" >> "$GITHUB_OUTPUT"
-          echo "commits=$COMMITS" >> "$GITHUB_OUTPUT"
-          echo "npm_downloads=$TOTAL_DL" >> "$GITHUB_OUTPUT"
+          {
+            echo "stars=$STARS"
+            echo "new_stars=$NEW_STARS"
+            echo "forks=$FORKS"
+            echo "issues_opened=$OPENED"
+            echo "issues_closed=$CLOSED"
+            echo "prs_merged=$MERGED"
+            echo "commits=$COMMITS"
+            echo "npm_downloads=$TOTAL_DL"
+          } >> "$GITHUB_OUTPUT"
 
       - name: send recap
         run: |

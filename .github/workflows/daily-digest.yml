@@ -52,14 +52,16 @@ jobs:
           COMMITS=$(curl -s -H "Authorization: token $GH_TOKEN" \
             "https://api.github.com/repos/$REPO/commits?since=$YESTERDAY&per_page=100" | jq 'length')
 
-          echo "stars=$STARS" >> "$GITHUB_OUTPUT"
-          echo "new_stars=$NEW_STARS" >> "$GITHUB_OUTPUT"
-          echo "forks=$FORKS" >> "$GITHUB_OUTPUT"
-          echo "watchers=$WATCHERS" >> "$GITHUB_OUTPUT"
-          echo "open_issues=$OPEN_ISSUES" >> "$GITHUB_OUTPUT"
-          echo "open_prs=$OPEN_PRS" >> "$GITHUB_OUTPUT"
-          echo "npm_downloads=$TOTAL_DL" >> "$GITHUB_OUTPUT"
-          echo "commits=$COMMITS" >> "$GITHUB_OUTPUT"
+          {
+            echo "stars=$STARS"
+            echo "new_stars=$NEW_STARS"
+            echo "forks=$FORKS"
+            echo "watchers=$WATCHERS"
+            echo "open_issues=$OPEN_ISSUES"
+            echo "open_prs=$OPEN_PRS"
+            echo "npm_downloads=$TOTAL_DL"
+            echo "commits=$COMMITS"
+          } >> "$GITHUB_OUTPUT"
 
       - name: send digest
         run: |

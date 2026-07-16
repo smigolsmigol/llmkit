@@ -20,7 +20,7 @@ jobs:
         env:
           ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
-          TITLE=$(echo "$ISSUE_TITLE" | sed 's/[<>&]//g')
+          TITLE=${ISSUE_TITLE//[<>&]/}
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
@@ -31,7 +31,7 @@ jobs:
         env:
           ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
-          TITLE=$(echo "$ISSUE_TITLE" | sed 's/[<>&]//g')
+          TITLE=${ISSUE_TITLE//[<>&]/}
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
@@ -43,8 +43,9 @@ jobs:
           COMMENT_BODY: ${{ github.event.comment.body }}
           ISSUE_TITLE: ${{ github.event.issue.title }}
         run: |
-          BODY=$(echo "$COMMENT_BODY" | head -c 200 | sed 's/[<>&]//g')
-          TITLE=$(echo "$ISSUE_TITLE" | sed 's/[<>&]//g')
+          BODY=${COMMENT_BODY:0:200}
+          BODY=${BODY//[<>&]/}
+          TITLE=${ISSUE_TITLE//[<>&]/}
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
@@ -55,7 +56,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE=$(echo "$PR_TITLE" | sed 's/[<>&]//g')
+          TITLE=${PR_TITLE//[<>&]/}
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
@@ -66,7 +67,7 @@ jobs:
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: |
-          TITLE=$(echo "$PR_TITLE" | sed 's/[<>&]//g')
+          TITLE=${PR_TITLE//[<>&]/}
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             -d parse_mode="HTML" \
