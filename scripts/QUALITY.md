@@ -22,6 +22,9 @@ proof. No quality command deploys or mutates the hosted Supabase project.
 | `quality:static` | Fast gate plus workspace build/typecheck, Knip, Publint, generated pricing check, strict Mypy, Semgrep rules and scan, and KeyGuard fixtures. |
 | `quality:pr` | Static gate plus deterministic JavaScript tests, Python tests and fuzzing, Python statement/branch coverage, zero-known-vulnerability npm and Python audits, the local data-preserving Supabase migration proof, and a real Worker/database compatibility request. |
 
+`quality:pr` expects the local Supabase proof stack to be running. GitHub CI owns that lifecycle with
+`db:start` before the contract and an always-run `db:stop` cleanup step.
+
 GitHub CI also runs two repository-manifest supply-chain proofs. The current OSV scanner must find
 zero vulnerabilities, and the exact OpenSSF workflow engine must score both Vulnerabilities and
 Pinned-Dependencies at 10/10. This closes the gap where an installed Python environment is clean

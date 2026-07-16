@@ -30,13 +30,31 @@ const requiredWorkflowFragments = [
   'python -m pip install --require-hashes --only-binary=:all:',
   'python -m build --no-isolation',
   'needs: [quality, python-floor, scorecard-supply-chain, osv]',
+  'name: start local database proof stack',
+  'run: corepack pnpm@9.15.4 db:start',
+  'name: stop local database proof stack',
+  'run: corepack pnpm@9.15.4 db:stop',
 ];
+
+const databaseStopContract = `- name: stop local database proof stack
+        if: always()
+        run: corepack pnpm@9.15.4 db:stop`;
 
 function assertWorkflowContract(workflow) {
   for (const fragment of requiredWorkflowFragments) {
     if (!workflow.includes(fragment)) {
-      throw new Error(`CI supply-chain contract is missing: ${fragment}`);
+      throw new Error(`CI workflow contract is missing: ${fragment}`);
     }
+  }
+
+  const databaseStart = workflow.indexOf('name: start local database proof stack');
+  const qualityRun = workflow.indexOf('name: run the local pre-PR contract');
+  const databaseStop = workflow.indexOf('name: stop local database proof stack');
+  if (!(databaseStart < qualityRun && qualityRun < databaseStop)) {
+    throw new Error('CI database lifecycle must wrap the local pre-PR contract.');
+  }
+  if (!workflow.includes(databaseStopContract)) {
+    throw new Error('CI database cleanup must run after every quality outcome.');
   }
 }
 
@@ -52,6 +70,20 @@ try {
 }
 if (!blocked) {
   throw new Error('CI workflow violation fixture was accepted.');
+}
+
+const databaseLifecycleViolation = workflow.replace(databaseStopContract, databaseStopContract.replace(
+  'if: always()',
+  'if: success()',
+));
+blocked = false;
+try {
+  assertWorkflowContract(databaseLifecycleViolation);
+} catch {
+  blocked = true;
+}
+if (!blocked) {
+  throw new Error('CI database cleanup violation fixture was accepted.');
 }
 
 const reproducibilityContracts = new Map([

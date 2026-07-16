@@ -72,8 +72,15 @@ jobs:
           done
           test "$found" -eq 0
 
+      - name: start local database proof stack
+        run: corepack pnpm@9.15.4 db:start
+
       - name: run the local pre-PR contract
         run: corepack pnpm@9.15.4 quality:pr
+
+      - name: stop local database proof stack
+        if: always()
+        run: corepack pnpm@9.15.4 db:stop
 
   python-floor:
     name: python-3.11-floor
