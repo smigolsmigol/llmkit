@@ -62,6 +62,21 @@ def test_pricing(rng: random.Random) -> int:
 
 def test_sse_scanner(rng: random.Random) -> int:
     errors = 0
+    malformed_lines = [
+        b"data: 1\n\n",
+        b"data: []\n\n",
+        b'data: {"model":"gpt-4o","usage":1}\n\n',
+        b'data: {"model":"gpt-4o","usage":{"prompt_tokens_details":1}}\n\n',
+    ]
+    for line in malformed_lines:
+        scanner = _SSEScanner()
+        try:
+            scanner.feed(line)
+            scanner.result()
+        except Exception as e:
+            print(f"  FAIL: _SSEScanner rejected-input fixture crashed: {e}")
+            errors += 1
+
     for _ in range(N_ITERATIONS):
         scanner = _SSEScanner()
         n_chunks = rng.randint(1, 10)
@@ -88,6 +103,19 @@ def test_sse_scanner(rng: random.Random) -> int:
 
 def test_json_extract(rng: random.Random) -> int:
     errors = 0
+    malformed_payloads = [
+        b"1",
+        b"[]",
+        b'{"model":"gpt-4o","usage":1}',
+        b'{"model":"gpt-4o","usage":{"prompt_tokens_details":1}}',
+    ]
+    for raw in malformed_payloads:
+        try:
+            _extract_cost_from_json(raw)
+        except Exception as e:
+            print(f"  FAIL: _extract_cost_from_json rejected-input fixture crashed: {e}")
+            errors += 1
+
     for _ in range(N_ITERATIONS):
         raw = rand_bytes(rng, 2048)
         try:

@@ -3,6 +3,8 @@
 bandit[toml]==1.9.4
 build==1.2.2.post1
 coverage[toml]==7.15.1
+# Security constraint for pre-commit's virtualenv dependency.
+filelock==3.30.0
 mypy==1.19.1
 pip-audit==2.10.0
 pre-commit==4.6.0

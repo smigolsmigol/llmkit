@@ -72,6 +72,29 @@ def test_extract_cost_malformed_json():
     assert _extract_cost_from_json(b"not json") is None
 
 
+def test_extract_cost_rejects_non_object_and_malformed_usage():
+    assert _extract_cost_from_json(b"1") is None
+    assert _extract_cost_from_json(b"[]") is None
+    assert _extract_cost_from_json(b'{"model":"gpt-4o","usage":1}') is None
+
+
+def test_extract_cost_sanitizes_nested_token_types():
+    body = json.dumps(
+        {
+            "model": "gpt-4o",
+            "usage": {
+                "prompt_tokens": 10,
+                "completion_tokens": "invalid",
+                "prompt_tokens_details": 1,
+                "cache_creation_input_tokens": -5,
+            },
+        }
+    ).encode()
+    cost = _extract_cost_from_json(body)
+    assert cost is not None
+    assert cost.total_cost == (10 / 1_000_000) * 2.5
+
+
 def test_extract_cost_unknown_model():
     body = json.dumps(
         {
@@ -152,6 +175,19 @@ def test_scanner_ignores_non_data_lines():
     scanner.feed(b'data: {"model":"gpt-4o","usage":{"prompt_tokens":5,"completion_tokens":3}}\n\n')
     cost = scanner.result()
     assert cost is not None
+
+
+def test_scanner_rejects_non_object_and_malformed_usage():
+    scanner = _SSEScanner()
+    scanner.feed(b"data: 1\n\n")
+    scanner.feed(b'data: {"model":"gpt-4o","usage":1}\n\n')
+    scanner.feed(
+        b'data: {"model":"gpt-4o","usage":{"prompt_tokens":10,'
+        b'"completion_tokens":{},"prompt_tokens_details":1}}\n\n'
+    )
+    cost = scanner.result()
+    assert cost is not None
+    assert cost.total_cost == (10 / 1_000_000) * 2.5
 
 
 # --- mock transport for integration tests ---

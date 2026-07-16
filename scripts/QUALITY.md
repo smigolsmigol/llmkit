@@ -22,6 +22,11 @@ proof. No quality command deploys or mutates the hosted Supabase project.
 | `quality:static` | Fast gate plus workspace build/typecheck, Knip, Publint, generated pricing check, strict Mypy, Semgrep rules and scan, and KeyGuard fixtures. |
 | `quality:pr` | Static gate plus deterministic JavaScript tests, Python tests and fuzzing, Python statement/branch coverage, zero-known-vulnerability npm and Python audits, the local data-preserving Supabase migration proof, and a real Worker/database compatibility request. |
 
+GitHub CI also runs two repository-manifest supply-chain proofs. The current OSV scanner must find
+zero vulnerabilities, and the exact OpenSSF workflow engine must score both Vulnerabilities and
+Pinned-Dependencies at 10/10. This closes the gap where an installed Python environment is clean
+while a declared transitive dependency remains affected.
+
 The Python gate independently requires at least 90% statement and branch coverage. Repository-wide
 JavaScript coverage is not yet at the required 90% statements, branches, functions, and lines, so a
 green `quality:pr` is a foundation-PR contract, not proof that the final coverage objective is met.
@@ -38,6 +43,7 @@ exceptions require the same narrow explanation and a real execution gate.
 ```bash
 node scripts/run-quality-gate.mjs --self-test
 node scripts/run-ts-quality.mjs --self-test
+node scripts/assert-scorecard-supply-chain.mjs --self-test
 node packages/proxy/test/worker-deploy-guard-test.mjs
 ```
 

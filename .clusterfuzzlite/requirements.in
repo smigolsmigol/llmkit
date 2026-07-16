@@ -1,0 +1,5 @@
+# ClusterFuzzLite uses the immutable Python 3.11 builder image declared in Dockerfile.
+# Compile this file with hashes whenever a direct dependency changes.
+atheris==3.0.0
+httpx==0.28.1
+openai==2.45.0

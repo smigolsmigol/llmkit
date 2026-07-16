@@ -101,9 +101,38 @@ jobs:
           python -m pytest tests
           python fuzz/run_local.py
 
+  scorecard-supply-chain:
+    name: scorecard-supply-chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: results.json
+          results_format: json
+          publish_results: false
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: require pinned dependencies and zero vulnerabilities
+        run: node scripts/assert-scorecard-supply-chain.mjs results.json
+
+  osv:
+    name: osv-zero-vulnerabilities
+    permissions:
+      actions: read
+      contents: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+    with:
+      fail-on-vuln: true
+      upload-sarif: false
+
   deploy:
     name: deploy-production-api
-    needs: [quality, python-floor]
+    needs: [quality, python-floor, scorecard-supply-chain, osv]
     if: >-
       github.ref == 'refs/heads/main' &&
       github.event_name == 'workflow_dispatch' &&
@@ -179,7 +208,7 @@ jobs:
 
   notify-failure:
     name: notify-ci-failure
-    needs: [quality, python-floor, deploy, post-deploy-verify]
+    needs: [quality, python-floor, scorecard-supply-chain, osv, deploy, post-deploy-verify]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
