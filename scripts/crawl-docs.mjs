@@ -13,8 +13,8 @@
  * Output: docs/external/<name>/ directory with one .md per page + INDEX.md
  */
 
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -61,8 +61,7 @@ function slugify(url) {
 function extractLinks(html, baseUrl) {
   const links = [];
   const re = /href="([^"]*?)"/g;
-  let m;
-  while ((m = re.exec(html)) !== null) {
+  for (const m of html.matchAll(re)) {
     try {
       const abs = new URL(m[1], baseUrl).href;
       const parsed = new URL(abs);
@@ -177,7 +176,7 @@ async function crawl() {
 
     const slug = slugify(url);
     const title = (html.match(/<title[^>]*>(.*?)<\/title>/i)?.[1] || slug)
-      .replace(/\s*[|\\-]\s*.*$/, '').trim();
+      .replace(/\s*[|-]\s*.*$/, '').trim();
 
     const filePath = join(outDir, `${slug}.md`);
     const frontmatter = [

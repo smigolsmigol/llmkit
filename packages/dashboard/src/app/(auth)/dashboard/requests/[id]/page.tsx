@@ -1,12 +1,12 @@
 export const dynamic = 'force-dynamic';
 
 import { auth } from '@clerk/nextjs/server';
-import { notFound } from 'next/navigation';
+import { calculateCostFromPricing, getModelPricing, type ProviderName } from '@f3d1/llmkit-shared';
 import Link from 'next/link';
-import { getRequestById } from '@/lib/queries';
-import { formatCents } from '@/lib/format';
+import { notFound } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { getModelPricing, type ProviderName, calculateCostFromPricing } from '@f3d1/llmkit-shared';
+import { formatCents } from '@/lib/format';
+import { getRequestById } from '@/lib/queries';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -48,7 +48,18 @@ export default async function RequestDetailPage({ params }: PageProps) {
   const ok = !req.error_code;
   const totalTokens = req.input_tokens + req.output_tokens;
   const pricing = getModelPricing(req.provider as ProviderName, req.model);
-  const toolCallCount = req.tool_calls?.length ?? 0;
+  const toolCallRows: Array<{ key: string; label: string; name: string }> = [];
+  const toolCallOccurrences = new Map<string, number>();
+  for (const [ordinal, toolCall] of (req.tool_calls ?? []).entries()) {
+    const occurrence = (toolCallOccurrences.get(toolCall.name) ?? 0) + 1;
+    toolCallOccurrences.set(toolCall.name, occurrence);
+    toolCallRows.push({
+      key: `${toolCall.name}:${occurrence}`,
+      label: `#${ordinal + 1}`,
+      name: toolCall.name,
+    });
+  }
+  const toolCallCount = toolCallRows.length;
   const costBreakdown = pricing
     ? calculateCostFromPricing(pricing, {
         inputTokens: req.input_tokens,
@@ -131,11 +142,11 @@ export default async function RequestDetailPage({ params }: PageProps) {
         )}
       </div>
 
-      {toolCallCount > 0 && req.tool_calls && (
+      {toolCallCount > 0 && (
         <div className="rounded-lg border border-border bg-card p-5 space-y-1">
           <h2 className="text-sm font-medium text-muted-foreground mb-3">Tool Calls ({toolCallCount})</h2>
-          {req.tool_calls.map((tc, i) => (
-            <Row key={i} label={`#${i + 1}`}>{tc.name}</Row>
+          {toolCallRows.map((toolCall) => (
+            <Row key={toolCall.key} label={toolCall.label}>{toolCall.name}</Row>
           ))}
         </div>
       )}

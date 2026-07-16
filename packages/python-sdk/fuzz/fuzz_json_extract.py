@@ -5,6 +5,7 @@ valid-ish JSON, truncated payloads, and pure noise.
 """
 
 import sys
+
 import atheris
 
 with atheris.instrument_imports():
@@ -50,9 +51,7 @@ def fuzz_structured(data: bytes) -> None:
         if fdp.ConsumeBool():
             usage["cache_creation_input_tokens"] = fdp.ConsumeIntInRange(0, 1_000_000)
         if fdp.ConsumeBool():
-            usage["prompt_tokens_details"] = {
-                "cached_tokens": fdp.ConsumeIntInRange(0, 1_000_000)
-            }
+            usage["prompt_tokens_details"] = {"cached_tokens": fdp.ConsumeIntInRange(0, 1_000_000)}
         payload["usage"] = usage
 
     body = json.dumps(payload).encode()

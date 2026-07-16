@@ -1,5 +1,5 @@
 import { inferProvider, LLMKitError } from '@f3d1/llmkit-shared';
-import { Hono } from 'hono';
+import { Hono, type ExecutionContext as HonoExecutionContext } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { logRequest } from './db';
@@ -56,7 +56,7 @@ async function resolveModelFromBody(c: { req: { json(): Promise<Record<string, u
 }
 
 function sendErrorNotifications(
-  ctx: ExecutionContext,
+  ctx: HonoExecutionContext,
   env: Env['Bindings'],
   userId: string,
   apiKeyId: string,

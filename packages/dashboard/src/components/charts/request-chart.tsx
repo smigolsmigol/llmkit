@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import { useMemo } from 'react';
 import echarts from '@/lib/echarts';
-import { type TimeseriesPoint, bucketByHour, dataBounds, dataZoomConfig, baseTooltip } from './types';
+import { asTooltipData, baseTooltip, bucketByHour, dataBounds, dataZoomConfig, type TimeseriesPoint } from './types';
 
 export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
   const option = useMemo(() => {
@@ -33,12 +33,12 @@ export function RequestChart({ data }: { data: TimeseriesPoint[] }) {
       },
       tooltip: {
         ...baseTooltip,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        formatter: (params: any) => {
-          if (!Array.isArray(params) || !params.length) return '';
-          const date = new Date(params[0].value[0]);
+        formatter: (params: unknown) => {
+          const dataPoints = asTooltipData(params);
+          if (!dataPoints.length) return '';
+          const date = new Date(dataPoints[0].value[0]);
           const label = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
-          const count = params[0].value[1];
+          const count = dataPoints[0].value[1];
           return `<div style="font-size:10px;color:#888;margin-bottom:2px">${label}</div>` +
             `<div style="font-size:11px;font-family:monospace;font-weight:600;color:#14b8a6">${count} request${count !== 1 ? 's' : ''}</div>`;
         },

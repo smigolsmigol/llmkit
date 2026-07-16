@@ -15,7 +15,8 @@ Requires: pip install llama-index-core
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 try:
     from llama_index.core.callbacks.base_handler import BaseCallbackHandler
@@ -52,7 +53,7 @@ class LLMKitCallbackHandler(BaseCallbackHandler):
     def on_event_start(
         self,
         event_type: CBEventType,
-        payload: dict | None = None,
+        payload: dict[str, Any] | None = None,
         event_id: str = "",
         parent_id: str = "",
         **kwargs: Any,
@@ -62,7 +63,7 @@ class LLMKitCallbackHandler(BaseCallbackHandler):
     def on_event_end(
         self,
         event_type: CBEventType,
-        payload: dict | None = None,
+        payload: dict[str, Any] | None = None,
         event_id: str = "",
         **kwargs: Any,
     ) -> None:
@@ -112,4 +113,8 @@ class LLMKitCallbackHandler(BaseCallbackHandler):
         pass
 
     def __repr__(self) -> str:
-        return f"LLMKitCallbackHandler(requests={self.request_count}, cost=${self.total_cost:.4f}, tokens={self.total_tokens})"
+        return (
+            "LLMKitCallbackHandler("
+            f"requests={self.request_count}, cost=${self.total_cost:.4f}, "
+            f"tokens={self.total_tokens})"
+        )

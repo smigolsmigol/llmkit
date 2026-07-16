@@ -1,6 +1,6 @@
 """Tests for pricing lookup and cost calculation."""
 
-from llmkit._pricing import lookup_pricing, calculate_cost, TokenRates
+from llmkit._pricing import TokenRates, calculate_cost, lookup_pricing
 
 
 def test_exact_match():
@@ -48,9 +48,7 @@ def test_calculate_cost_with_cache():
         cache_write_tokens=100,
     )
     assert cost is not None
-    expected = (
-        (1000 / 1e6) * 5.0 + (500 / 1e6) * 25.0 + (200 / 1e6) * 0.5 + (100 / 1e6) * 6.25
-    )
+    expected = (1000 / 1e6) * 5.0 + (500 / 1e6) * 25.0 + (200 / 1e6) * 0.5 + (100 / 1e6) * 6.25
     assert abs(cost - expected) < 1e-10
 
 

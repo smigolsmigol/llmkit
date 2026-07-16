@@ -1,6 +1,7 @@
 """Fuzz target for pricing lookup and cost calculation."""
 
 import sys
+
 import atheris
 
 with atheris.instrument_imports():
@@ -32,9 +33,7 @@ def fuzz_calculate(data: bytes) -> None:
 
     result = calculate_cost(model, input_t, output_t, cache_read, cache_write, extra)
     if result is not None:
-        assert result >= 0 or extra is not None, (
-            "cost should never be negative without extra_usage"
-        )
+        assert result >= 0 or extra is not None, "cost should never be negative without extra_usage"
 
 
 def fuzz_strip_date(data: bytes) -> None:

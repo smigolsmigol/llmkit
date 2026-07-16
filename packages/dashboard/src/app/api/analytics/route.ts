@@ -2,6 +2,22 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { getAccountPlan } from '@/lib/queries';
 
+type JsonObject = Record<string, unknown>;
+
+function asObject(value: unknown): JsonObject {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as JsonObject)
+    : {};
+}
+
+function asNumber(value: unknown): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
+function asString(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
 export async function GET() {
   const { userId } = await auth();
   if (!userId) {
@@ -40,19 +56,30 @@ export async function GET() {
       );
     }
 
-    const raw = await res.json();
+    const responseBody: unknown = await res.json();
+    const raw = asObject(responseBody);
+    const npmPayload = asObject(raw.npm);
 
     // normalize npm from {pkgName: {last_week, last_month, daily}} to [{name, weekly, total, recent, daily}]
-    const npm = Object.entries(raw.npm || {})
+    const npm = Object.entries(npmPayload)
       .filter(([name]) => name !== 'collected_at')
-      .map(([name, stats]: [string, any]) => {
-        const daily: Array<{day: string; count: number; organic?: number; ci_noise?: number}> = stats.daily ?? [];
+      .map(([name, value]) => {
+        const stats = asObject(value);
+        const daily = (Array.isArray(stats.daily) ? stats.daily : []).map((entry) => {
+          const item = asObject(entry);
+          return {
+            day: asString(item.day),
+            count: asNumber(item.count),
+            organic: typeof item.organic === 'number' ? item.organic : undefined,
+            ci_noise: typeof item.ci_noise === 'number' ? item.ci_noise : undefined,
+          };
+        });
         const last = daily.length > 0 ? daily[daily.length - 1] : null;
         return {
           name,
-          weekly: stats.organic_week ?? stats.last_week ?? 0,
-          weeklyRaw: stats.last_week ?? 0,
-          total: stats.organic_month ?? stats.last_month ?? 0,
+          weekly: asNumber(stats.organic_week ?? stats.last_week),
+          weeklyRaw: asNumber(stats.last_week),
+          total: asNumber(stats.organic_month ?? stats.last_month),
           recent: last?.organic ?? last?.count ?? 0,
           recentDay: last?.day ?? '',
           daily: daily.slice(-14).map(d => ({
@@ -65,42 +92,55 @@ export async function GET() {
       });
 
     // normalize health from {service: {status, latency_ms}, collected_at} to [{service, status, latencyMs, lastCheck}]
-    const healthCollectedAt = raw.health?.collected_at ?? new Date().toISOString();
-    const health = Object.entries(raw.health || {})
+    const healthPayload = asObject(raw.health);
+    const healthCollectedAt = asString(healthPayload.collected_at, new Date().toISOString());
+    const health = Object.entries(healthPayload)
       .filter(([key]) => key !== 'collected_at')
-      .map(([service, stats]: [string, any]) => ({
-        service,
-        status: stats.status === 'up' ? 'up' : stats.status === 'degraded' ? 'degraded' : 'down',
-        latencyMs: stats.latency_ms ?? 0,
-        lastCheck: healthCollectedAt,
-      }));
+      .map(([service, value]) => {
+        const stats = asObject(value);
+        return {
+          service,
+          status: stats.status === 'up' ? 'up' : stats.status === 'degraded' ? 'degraded' : 'down',
+          latencyMs: asNumber(stats.latency_ms),
+          lastCheck: healthCollectedAt,
+        };
+      });
 
     // normalize github
-    const gh = raw.github || {};
+    const gh = asObject(raw.github);
     const github = {
-      stars: gh.stars ?? 0,
-      forks: gh.forks ?? 0,
-      openIssues: gh.open_issues ?? 0,
-      watchers: gh.watchers ?? 0,
+      stars: asNumber(gh.stars),
+      forks: asNumber(gh.forks),
+      openIssues: asNumber(gh.open_issues),
+      watchers: asNumber(gh.watchers),
     };
 
+    const pypiPayload = asObject(raw.pypi);
     const pypi = {
       name: 'llmkit-sdk',
-      weekly: raw.pypi?.last_week ?? 0,
-      total: raw.pypi?.last_month ?? 0,
+      weekly: asNumber(pypiPayload.last_week),
+      total: asNumber(pypiPayload.last_month),
     };
 
-    const updatedAt = raw.npm?.collected_at ?? raw.health?.collected_at ?? new Date().toISOString();
+    const updatedAt = asString(
+      npmPayload.collected_at,
+      asString(healthPayload.collected_at, new Date().toISOString()),
+    );
 
     // v2 fields from upgraded Hetzner collector
+    const freshnessPayload = asObject(raw.freshness);
     const freshness = raw.freshness ? {
-      lastCollection: raw.freshness.last_success ?? raw.freshness.collected_at,
-      version: raw.freshness.version ?? '1.0',
+      lastCollection: asString(
+        freshnessPayload.last_success,
+        asString(freshnessPayload.collected_at),
+      ),
+      version: asString(freshnessPayload.version, '1.0'),
     } : null;
 
+    const accountsPayload = asObject(raw.accounts);
     const accounts = raw.accounts ? {
-      total: raw.accounts.total ?? 0,
-      list: raw.accounts.accounts ?? [],
+      total: asNumber(accountsPayload.total),
+      list: Array.isArray(accountsPayload.accounts) ? accountsPayload.accounts : [],
     } : null;
 
     // fetch alerts separately (not in overview response)
@@ -113,8 +153,17 @@ export async function GET() {
         next: { revalidate: 60 },
       });
       if (alertRes.ok) {
-        const alertData = await alertRes.json();
-        alerts = alertData.alerts ?? [];
+        const alertBody: unknown = await alertRes.json();
+        const alertData = asObject(alertBody);
+        alerts = (Array.isArray(alertData.alerts) ? alertData.alerts : []).flatMap((entry) => {
+          const alert = asObject(entry);
+          const type = asString(alert.type);
+          const message = asString(alert.message);
+          const createdAt = asString(alert.created_at);
+          return type && message && createdAt
+            ? [{ type, message, created_at: createdAt }]
+            : [];
+        });
       }
     } catch { /* alerts are optional */ }
 

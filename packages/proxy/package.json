@@ -7,18 +7,23 @@
   "main": "./src/index.ts",
   "scripts": {
     "dev": "wrangler dev --local",
+    "test": "node test/log-secret-boundary-test.mjs && node test/log-secret-runtime-proof.mjs",
+    "test:security": "node test/log-secret-boundary-test.mjs && node test/log-secret-runtime-proof.mjs",
     "test:e2e": "node test/e2e.mjs",
-    "build": "wrangler deploy --dry-run",
-    "deploy": "wrangler deploy",
+    "build": "node ../../scripts/run-worker-deploy.mjs --target staging --dry-run",
+    "build:production": "node ../../scripts/run-worker-deploy.mjs --target production --dry-run",
+    "deploy": "node ../../scripts/run-worker-deploy.mjs",
+    "deploy:staging": "node ../../scripts/run-worker-deploy.mjs --target staging",
+    "deploy:production": "node ../../scripts/run-worker-deploy.mjs --target production",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .wrangler"
   },
   "dependencies": {
     "@f3d1/llmkit-shared": "workspace:*",
-    "hono": "^4.12.10"
+    "hono": "^4.12.30"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260226.1",
-    "wrangler": "^4.71.0"
+    "@cloudflare/workers-types": "^5.20260716.1",
+    "wrangler": "^4.111.0"
   }
 }

@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { track } from '@vercel/analytics';
-import { addProviderKey, revokeProviderKey } from './actions';
-import { formatCents } from '@/lib/format';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { ProviderIcon } from '@/components/provider-icons';
-import type { ProviderKeyRow, ProviderActivity } from '@/lib/queries';
+import { formatCents } from '@/lib/format';
+import type { ProviderActivity, ProviderKeyRow } from '@/lib/queries';
+import { addProviderKey, revokeProviderKey } from './actions';
 
 const ALL_PROVIDERS = [
   { id: 'openai', name: 'OpenAI', letter: 'O', badge: 'bg-emerald-500/15 text-emerald-400' },
@@ -166,6 +166,7 @@ function AddKeyInline({ provider, onDone }: { provider: string; onDone: () => vo
 
   return (
     <form onSubmit={handleSubmit} className="mt-2 space-y-2 border-t border-border/30 pt-2">
+      {/* biome-ignore-start lint/a11y/noAutofocus: The user explicitly opened this inline form. */}
       <input
         type="password"
         value={key}
@@ -174,6 +175,7 @@ function AddKeyInline({ provider, onDone }: { provider: string; onDone: () => vo
         className="w-full rounded border border-border bg-secondary px-2 py-1 text-xs"
         autoFocus
       />
+      {/* biome-ignore-end lint/a11y/noAutofocus: The user explicitly opened this inline form. */}
       <input
         type="text"
         value={name}

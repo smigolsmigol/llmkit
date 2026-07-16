@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import { useMemo } from 'react';
 import echarts from '@/lib/echarts';
-import { baseTooltip } from './types';
+import { asTooltipData, baseTooltip } from './types';
 
 const COLORS = ['#7c3aed', '#14b8a6', '#3b82f6', '#a855f7', '#06b6d4'];
 
@@ -47,11 +47,12 @@ export function ProviderChart({ data }: { data: DataPoint[] }) {
       },
       tooltip: {
         ...baseTooltip,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        formatter: (params: any) => {
-          if (!Array.isArray(params) || !params.length) return '';
-          const idx = params[0].dataIndex;
+        formatter: (params: unknown) => {
+          const dataPoints = asTooltipData(params);
+          if (!dataPoints.length) return '';
+          const idx = dataPoints[0].dataIndex;
           const d = data[idx];
+          if (!d) return '';
           return `<div style="font-size:11px;font-weight:500;margin-bottom:2px">${d.provider}</div>` +
             `<div style="font-family:monospace;color:#7c3aed">${formatCost(d.cost)}</div>` +
             `<div style="font-size:10px;color:#888">${d.count} requests</div>`;

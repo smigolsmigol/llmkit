@@ -51,7 +51,7 @@ async function collectNpm() {
       results[pkg] = {
         last_week: week.downloads,
         last_month: month.downloads,
-        daily: (daily.downloads || []).map(function(d) { return { day: d.day, count: d.downloads }; }),
+        daily: (daily.downloads || []).map((d) => ({ day: d.day, count: d.downloads })),
       };
     } catch (e) {
       console.error("npm " + pkg + ": " + e.message);
@@ -85,7 +85,7 @@ async function collectPypi() {
 
 async function collectGithub() {
   if (!GITHUB_TOKEN) return { error: "no token" };
-  var gh = function(url) { return fetchJson(url, { Authorization: "Bearer " + GITHUB_TOKEN }); };
+  var gh = (url) => fetchJson(url, { Authorization: "Bearer " + GITHUB_TOKEN });
   try {
     const repo = await gh("https://api.github.com/repos/smigolsmigol/llmkit");
     let traffic = null;
@@ -137,7 +137,7 @@ async function collectAccounts() {
     });
     if (!res.ok) return null;
     const accounts = await res.json();
-    return { total: accounts.length, accounts: accounts.map(function(a) { return { plan: a.plan, created: a.created_at }; }) };
+    return { total: accounts.length, accounts: accounts.map((a) => ({ plan: a.plan, created: a.created_at })) };
   } catch (e) {
     return null;
   }
@@ -167,14 +167,14 @@ async function sendTelegram(text) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: TG_CHAT, parse_mode: "HTML", text: text }),
-  }).catch(function(e) { console.error("telegram failed: " + e.message); });
+  }).catch((e) => { console.error("telegram failed: " + e.message); });
 }
 
 async function checkAnomalies(npm, health, accounts) {
   // service health
   var failures = Object.entries(health)
-    .filter(function(e) { return e[1].status !== "up"; })
-    .map(function(e) { return e[0] + ": " + e[1].status + " (" + (e[1].code || e[1].error || "?") + ")"; });
+    .filter((e) => e[1].status !== "up")
+    .map((e) => e[0] + ": " + e[1].status + " (" + (e[1].code || e[1].error || "?") + ")");
   if (failures.length > 0) {
     await sendTelegram("<b>Service Down</b>\n" + failures.join("\n"));
   }
@@ -233,7 +233,7 @@ async function run() {
   var accounts = results[4].status === "fulfilled" ? results[4].value : null;
 
   // log any rejected promises
-  results.forEach(function(r, i) {
+  results.forEach((r, i) => {
     if (r.status === "rejected") console.error("collector " + i + " failed: " + r.reason);
   });
 
@@ -253,7 +253,7 @@ async function run() {
   console.log("total rows: " + count.n);
 }
 
-run().catch(async function(e) {
+run().catch(async (e) => {
   console.error("collection failed: " + e);
   await sendTelegram("<b>Collection FAILED</b>\n" + e.message);
   process.exit(1);

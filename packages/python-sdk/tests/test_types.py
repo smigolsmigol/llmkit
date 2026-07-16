@@ -1,5 +1,7 @@
 """Tests for CostInfo and SessionStats."""
 
+import pytest
+
 from llmkit import CostInfo, SessionStats
 
 
@@ -44,11 +46,8 @@ def test_cost_info_estimated_flag():
 
 def test_cost_info_is_frozen():
     cost = CostInfo(total_cost=0.5)
-    try:
+    with pytest.raises(AttributeError):
         cost.total_cost = 1.0  # type: ignore[misc]
-        assert False, "should have raised"
-    except AttributeError:
-        pass
 
 
 def test_session_stats_record():

@@ -1,17 +1,18 @@
 """Tests for tracked() httpx transport cost extraction."""
 
+import asyncio
 import json
 
 import httpx
 
 from llmkit import CostInfo, tracked, tracked_async
 from llmkit._transport import (
+    AsyncCostTrackingTransport,
     CostTrackingTransport,
-    _SSEScanner,
     _extract_cost_from_json,
     _is_chat_endpoint,
+    _SSEScanner,
 )
-
 
 # --- pure function tests ---
 
@@ -90,7 +91,10 @@ def test_scanner_openai_stream():
     scanner = _SSEScanner()
     chunks = [
         b'data: {"id":"c1","model":"gpt-4o","choices":[{"delta":{"content":"Hi"}}]}\n\n',
-        b'data: {"id":"c1","model":"gpt-4o","choices":[],"usage":{"prompt_tokens":10,"completion_tokens":5}}\n\n',
+        (
+            b'data: {"id":"c1","model":"gpt-4o","choices":[],"usage":'
+            b'{"prompt_tokens":10,"completion_tokens":5}}\n\n'
+        ),
         b"data: [DONE]\n\n",
     ]
     for chunk in chunks:
@@ -105,9 +109,15 @@ def test_scanner_openai_stream():
 def test_scanner_anthropic_stream():
     scanner = _SSEScanner()
     chunks = [
-        b'data: {"type":"message_start","message":{"model":"claude-sonnet-4-6","usage":{"input_tokens":50}}}\n\n',
+        (
+            b'data: {"type":"message_start","message":'
+            b'{"model":"claude-sonnet-4-6","usage":{"input_tokens":50}}}\n\n'
+        ),
         b'data: {"type":"content_block_delta","delta":{"text":"Hello"}}\n\n',
-        b'data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":20}}\n\n',
+        (
+            b'data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},'
+            b'"usage":{"output_tokens":20}}\n\n'
+        ),
     ]
     for chunk in chunks:
         scanner.feed(chunk)
@@ -139,9 +149,7 @@ def test_scanner_split_across_chunks():
 def test_scanner_ignores_non_data_lines():
     scanner = _SSEScanner()
     scanner.feed(b"event: message_start\n")
-    scanner.feed(
-        b'data: {"model":"gpt-4o","usage":{"prompt_tokens":5,"completion_tokens":3}}\n\n'
-    )
+    scanner.feed(b'data: {"model":"gpt-4o","usage":{"prompt_tokens":5,"completion_tokens":3}}\n\n')
     cost = scanner.result()
     assert cost is not None
 
@@ -168,6 +176,31 @@ class _MockStream:
 
     def close(self):
         pass
+
+
+class _MockAsyncTransport(httpx.AsyncBaseTransport):
+    def __init__(self, response: httpx.Response) -> None:
+        self._response = response
+        self.closed = False
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return self._response
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+
+class _MockAsyncStream(httpx.AsyncByteStream):
+    def __init__(self, chunks: list[bytes]) -> None:
+        self._chunks = chunks
+        self.closed = False
+
+    async def __aiter__(self):
+        for chunk in self._chunks:
+            yield chunk
+
+    async def aclose(self) -> None:
+        self.closed = True
 
 
 def _make_json_response(
@@ -206,7 +239,10 @@ def test_transport_non_streaming():
 def test_transport_streaming():
     chunks = [
         b'data: {"id":"c1","model":"gpt-4o","choices":[{"delta":{"content":"Hi"}}]}\n\n',
-        b'data: {"id":"c1","model":"gpt-4o","choices":[],"usage":{"prompt_tokens":20,"completion_tokens":10}}\n\n',
+        (
+            b'data: {"id":"c1","model":"gpt-4o","choices":[],"usage":'
+            b'{"prompt_tokens":20,"completion_tokens":10}}\n\n'
+        ),
         b"data: [DONE]\n\n",
     ]
     request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
@@ -230,6 +266,16 @@ def test_transport_streaming():
     assert len(costs) == 1
     expected = (20 / 1_000_000) * 2.5 + (10 / 1_000_000) * 10.0
     assert abs(costs[0].total_cost - expected) < 1e-10
+    result.stream.close()
+
+    no_callback_response = httpx.Response(
+        200,
+        headers={"content-type": "text/event-stream"},
+        stream=_MockStream(chunks),
+        request=request,
+    )
+    no_callback = CostTrackingTransport(_MockTransport(no_callback_response))
+    assert len(list(no_callback.handle_request(request).stream)) == 3
 
 
 def test_transport_skips_errors():
@@ -314,3 +360,85 @@ def test_transport_anthropic_non_streaming():
     assert len(costs) == 1
     expected = (300 / 1_000_000) * 3.0 + (150 / 1_000_000) * 15.0
     assert abs(costs[0].total_cost - expected) < 1e-10
+
+
+def test_async_transport_non_streaming_and_close():
+    async def exercise() -> None:
+        body = {
+            "model": "gpt-4o",
+            "usage": {"prompt_tokens": 100, "completion_tokens": 50},
+        }
+        response, request = _make_json_response(body)
+        inner = _MockAsyncTransport(response)
+        costs: list[CostInfo] = []
+        transport = AsyncCostTrackingTransport(inner, on_cost=costs.append)
+
+        result = await transport.handle_async_request(request)
+        assert result.status_code == 200
+        assert len(costs) == 1
+        assert costs[0].total_cost is not None
+
+        await transport.aclose()
+        assert inner.closed is True
+
+    asyncio.run(exercise())
+
+
+def test_async_transport_streaming():
+    async def exercise() -> None:
+        chunks = [
+            b'data: {"model":"gpt-4o","choices":[]}\n\n',
+            (b'data: {"model":"gpt-4o","usage":{"prompt_tokens":20,"completion_tokens":10}}\n\n'),
+            b"data: [DONE]\n\n",
+        ]
+        request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+        source = _MockAsyncStream(chunks)
+        response = httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=source,
+            request=request,
+        )
+        costs: list[CostInfo] = []
+        transport = AsyncCostTrackingTransport(
+            _MockAsyncTransport(response),
+            on_cost=costs.append,
+        )
+
+        result = await transport.handle_async_request(request)
+        collected = [chunk async for chunk in result.stream]
+        assert collected == chunks
+        assert len(costs) == 1
+        await result.stream.aclose()
+        assert source.closed is True
+
+        no_callback_source = _MockAsyncStream(chunks)
+        no_callback_response = httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            stream=no_callback_source,
+            request=request,
+        )
+        no_callback = AsyncCostTrackingTransport(_MockAsyncTransport(no_callback_response))
+        no_callback_result = await no_callback.handle_async_request(request)
+        assert len([chunk async for chunk in no_callback_result.stream]) == 3
+
+    asyncio.run(exercise())
+
+
+def test_async_transport_skip_and_no_callback_paths():
+    async def exercise() -> None:
+        error_request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
+        error_response = httpx.Response(429, content=b"{}", request=error_request)
+        error_transport = AsyncCostTrackingTransport(_MockAsyncTransport(error_response))
+        assert (await error_transport.handle_async_request(error_request)).status_code == 429
+
+        body = {
+            "model": "gpt-4o",
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5},
+        }
+        response, request = _make_json_response(body)
+        transport = AsyncCostTrackingTransport(_MockAsyncTransport(response))
+        assert (await transport.handle_async_request(request)).status_code == 200
+
+    asyncio.run(exercise())

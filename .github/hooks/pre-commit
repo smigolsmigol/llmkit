@@ -12,6 +12,9 @@ BLOCKED=0
 # 1. Block known credential file patterns
 while IFS= read -r file; do
   case "$file" in
+    .env.example|packages/proxy/test/log-secret-boundary-test.mjs|packages/proxy/test/log-secret-runtime-proof.mjs)
+      # These exact tracked fixtures are safe by role; their contents are still scanned below.
+      ;;
     *.pem|*.key|*.p12|*.pfx|*.keystore|*_token|*_secret)
       echo "BLOCKED: credential file staged: $file"
       BLOCKED=1
@@ -96,4 +99,16 @@ if command -v gitleaks &>/dev/null; then
   fi
 fi
 
-exit 0
+ROOT=$(git rev-parse --show-toplevel)
+export PRE_COMMIT_HOME="$ROOT/.cache/pre-commit"
+if [ -x "$ROOT/.venv/Scripts/python.exe" ]; then
+  QUALITY_PYTHON="$ROOT/.venv/Scripts/python.exe"
+elif [ -x "$ROOT/.venv/bin/python" ]; then
+  QUALITY_PYTHON="$ROOT/.venv/bin/python"
+else
+  echo "BLOCKED: pinned pre-commit environment is missing."
+  echo "Run: corepack pnpm@9.15.4 quality:bootstrap"
+  exit 1
+fi
+
+"$QUALITY_PYTHON" -m pre_commit run --hook-stage pre-commit

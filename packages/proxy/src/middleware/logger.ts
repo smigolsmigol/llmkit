@@ -1,4 +1,5 @@
 import type { CostBreakdown, TokenUsage } from '@f3d1/llmkit-shared';
+import type { ExecutionContext as HonoExecutionContext } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import type { RequestInsert } from '../db';
 import { logRequest } from '../db';
@@ -27,7 +28,6 @@ export interface TrackParams {
   endUserId: string | undefined;
   toolCalls: { name: string }[] | undefined;
   providerCostUsd: number | undefined;
-  apiKey: string | undefined;
   apiKeyId: string | undefined;
   userId: string | undefined;
   budgetId: string | undefined;
@@ -38,14 +38,13 @@ export interface TrackParams {
   cost: CostBreakdown;
   latencyMs: number;
   env: Env['Bindings'];
-  ctx: ExecutionContext;
+  ctx: HonoExecutionContext;
 }
 
 export async function trackRequest(p: TrackParams): Promise<void> {
   console.log(JSON.stringify({
     timestamp: new Date().toISOString(),
     sessionId: p.sessionId,
-    apiKey: p.apiKey,
     provider: p.provider,
     model: p.model,
     latencyMs: p.latencyMs,
@@ -144,7 +143,6 @@ export function costLogger() {
       endUserId: c.req.header('x-llmkit-user-id') || undefined,
       toolCalls: meta.toolCalls,
       providerCostUsd: meta.providerCostUsd,
-      apiKey: c.get('apiKey'),
       apiKeyId: c.get('apiKeyId'),
       userId: c.get('userId'),
       budgetId: c.get('budgetId'),

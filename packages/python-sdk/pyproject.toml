@@ -9,15 +9,13 @@ description = "AI API gateway SDK with cost tracking, budget enforcement, and mu
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "f3d1" }]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = ["openai>=1.0", "httpx>=0.24"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -63,7 +61,51 @@ Changelog = "https://github.com/smigolsmigol/llmkit/releases"
 [tool.hatch.build.targets.wheel]
 packages = ["src/llmkit"]
 
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "A",
+    "B",
+    "C4",
+    "E",
+    "F",
+    "G",
+    "I",
+    "N",
+    "PIE",
+    "RET",
+    "RUF",
+    "S",
+    "SIM",
+    "UP",
+    "W",
+]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"packages/python-sdk/tests/**" = ["S101"]
+"fuzz/**" = ["S101", "S311"]
+"packages/python-sdk/fuzz/**" = ["S101", "S311"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
 [tool.mypy]
+# Static analysis runs against the pinned Python 3.12 quality environment.
+# The declared Python 3.11 floor is a separate clean-environment CI/runtime gate.
+python_version = "3.12"
+strict = true
+warn_unused_configs = true
+mypy_path = "src"
+packages = ["llmkit"]
+cache_dir = "../../.cache/mypy-python-sdk"
+
 [[tool.mypy.overrides]]
 module = [
     "langchain_core.*",
@@ -71,3 +113,38 @@ module = [
     "pydantic_ai.*",
 ]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "llmkit.integrations.langchain",
+    "llmkit.integrations.llamaindex",
+]
+# Optional framework packages are absent from the core SDK typecheck
+# environment, so their callback base classes resolve to Any. Method bodies
+# and public signatures remain under strict checking.
+disable_error_code = ["misc"]
+
+[[tool.mypy.overrides]]
+module = "llmkit.integrations.pydantic_ai"
+# Pydantic AI's runtime hook decorator is intentionally untyped upstream.
+disable_error_code = ["untyped-decorator"]
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "build", "dist"]
+
+[tool.coverage.run]
+source = ["llmkit"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+skip_covered = true
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers -p no:cacheprovider"

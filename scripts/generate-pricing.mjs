@@ -12,17 +12,20 @@
 //   node scripts/generate-pricing.mjs          # generate files
 //   node scripts/generate-pricing.mjs --check  # verify files match (CI mode)
 
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 const check = process.argv.includes('--check');
+const qualityPython = process.env.LLMKIT_QUALITY_PYTHON
+  || (process.platform === 'win32' ? 'python' : 'python3');
 
 const pricingPath = join(root, 'packages/shared/pricing.json');
 const pricing = JSON.parse(readFileSync(pricingPath, 'utf8'));
+const pythonConfig = join(root, 'packages', 'python-sdk', 'pyproject.toml');
 
 const HEADER_TS = `// AUTO-GENERATED from packages/shared/pricing.json
 // Do not edit manually. Run: node scripts/generate-pricing.mjs
@@ -86,7 +89,8 @@ function generatePythonData() {
 
   lines.push('# 5-tuple: (input, output, cacheRead, cacheWrite, extraRates)');
   lines.push('# extraRates is dict[str, tuple[rate, per]] or None');
-  lines.push('PRICING: dict[str, dict[str, tuple]] = {');
+  lines.push('PricingEntry = tuple[float, float, float, float, dict[str, tuple[float, float]] | None]');
+  lines.push('PRICING: dict[str, dict[str, PricingEntry]] = {');
   for (const [provider, models] of Object.entries(pricing.providers)) {
     if (Object.keys(models).length === 0) continue;
     lines.push(`    "${provider}": {`);
@@ -107,6 +111,32 @@ function generatePythonData() {
   lines.push(']\n');
 
   return lines.join('\n');
+}
+
+function formatPython(content) {
+  try {
+    return execFileSync(
+      qualityPython,
+      [
+        '-m',
+        'ruff',
+        'format',
+        '--quiet',
+        '--config',
+        pythonConfig,
+        '--stdin-filename',
+        'pricing_data.py',
+        '-',
+      ],
+      { input: content, encoding: 'utf8' },
+    );
+  } catch (error) {
+    throw new Error(
+      `Python pricing formatting requires the pinned Ruff environment (${qualityPython}). `
+      + 'Run: corepack pnpm@9.15.4 quality:bootstrap',
+      { cause: error },
+    );
+  }
 }
 
 // --- MCP server pricing data (Claude models only) ---
@@ -142,20 +172,11 @@ for (const { path, content } of outputs) {
       failures++;
       continue;
     }
-    let existing = readFileSync(path, 'utf8');
+    const existing = readFileSync(path, 'utf8');
     let expected = content;
     // for Python files, compare formatted versions (ruff may reformat lines)
     if (path.endsWith('.py')) {
-      try {
-        expected = execSync('ruff format --quiet --stdin-filename x.py', { input: content, encoding: 'utf8' });
-      } catch {
-        // ruff not installed - also try matching existing (already formatted) file
-        if (existing !== content) {
-          // can't format, but file might be ruff-formatted already - skip this check
-          console.log(`  OK  ${rel} (ruff unavailable, skipping format check)`);
-          continue;
-        }
-      }
+      expected = formatPython(content);
     }
     if (existing !== expected) {
       console.error(`STALE: ${rel} (run: node scripts/generate-pricing.mjs)`);
@@ -165,9 +186,9 @@ for (const { path, content } of outputs) {
     }
   } else {
     writeFileSync(path, content);
-    // auto-format Python files with ruff if available
+    // Generated Python is always normalized by the pinned formatter.
     if (path.endsWith('.py')) {
-      try { execSync(`ruff format "${path}"`, { stdio: 'pipe' }); } catch {}
+      writeFileSync(path, formatPython(content));
     }
     console.log(`  GEN  ${rel}`);
   }

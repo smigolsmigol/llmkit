@@ -5,8 +5,9 @@
 ```bash
 git clone https://github.com/smigolsmigol/llmkit.git
 cd llmkit
-pnpm install          # installs deps + activates pre-commit hooks
-pnpm check-all        # typecheck + lint + dead code + publish validation
+corepack pnpm@9.15.4 install --frozen-lockfile
+corepack pnpm@9.15.4 quality:bootstrap:all
+corepack pnpm@9.15.4 quality:pr
 ```
 
 `pnpm install` runs the `prepare` script which sets `core.hooksPath` to `.github/hooks/`. The pre-commit hook scans staged files for secrets and credential patterns before every commit.
@@ -33,7 +34,7 @@ Always branch from `main`. Keep branches short-lived.
 
 ## Pull requests
 
-1. Run `pnpm check-all` before pushing (CI runs the same checks)
+1. Run `corepack pnpm@9.15.4 quality:pr` before pushing (CI runs the same contract)
 2. Keep PRs focused: one feature or fix per PR
 3. Write a clear description: what changed, why, how to test
 4. Link the GitHub Issue if there is one
@@ -45,10 +46,13 @@ Every PR must pass:
 - `biome check` (lint + format)
 - `knip` (no dead exports or unused deps)
 - `publint` (package.json correctness for published packages)
-- 270+ tests across TS and Python (unit, smoke, integration, contract)
-- Security: gitleaks, semgrep, keyguard, pnpm audit, pip-audit, bandit
+- Deterministic JavaScript programs plus Python tests and fuzzing
+- Python statement and branch coverage at or above 90%
+- Security: gitleaks, Semgrep, KeyGuard, zero-known-vulnerability dependency audits, and Bandit
+- Data-preserving local Supabase migration fixtures, pgTAP, and schema lint
 
-Run the TS quality gate locally: `pnpm check-all`
+The exact commands, gate levels, and current JavaScript coverage boundary are documented in
+[`scripts/QUALITY.md`](scripts/QUALITY.md).
 
 ## Security
 

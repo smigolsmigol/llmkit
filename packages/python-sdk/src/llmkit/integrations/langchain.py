@@ -5,7 +5,8 @@ Requires langchain-core >= 0.1.0 (optional dependency).
 
 from __future__ import annotations
 
-from typing import Any, Callable, Sequence
+from collections.abc import Callable, Sequence
+from typing import Any, cast
 from uuid import UUID
 
 try:
@@ -26,7 +27,7 @@ def _extract_model(response: LLMResult) -> str | None:
     # llm_output is the standard place for OpenAI-style LLMs
     llm_out = response.llm_output or {}
     if model := llm_out.get("model_name") or llm_out.get("model"):
-        return model
+        return cast(str, model)
 
     # chat models: dig into the first generation's message metadata
     for gen_list in response.generations:
@@ -34,9 +35,9 @@ def _extract_model(response: LLMResult) -> str | None:
             msg = getattr(gen, "message", None)
             if not msg:
                 continue
-            meta = getattr(msg, "response_metadata", None) or {}
-            if model := meta.get("model_name") or meta.get("model"):
-                return model
+        meta = getattr(msg, "response_metadata", None) or {}
+        if model := meta.get("model_name") or meta.get("model"):
+            return cast(str, model)
 
     return None
 
@@ -85,11 +86,7 @@ def _extract_tokens_from_generations(
             )
             cache_read = 0
             if details:
-                d_get = (
-                    details.get
-                    if isinstance(details, dict)
-                    else getattr(details, "get", None)
-                )
+                d_get = details.get if isinstance(details, dict) else getattr(details, "get", None)
                 if d_get:
                     cache_read = d_get("cache_read", 0) or 0
                 else:
@@ -159,9 +156,7 @@ class LLMKitCallbackHandler(BaseCallbackHandler):
 
         cost_value = None
         if model:
-            cost_value = calculate_cost(
-                model, input_t, output_t, cache_read, cache_write
-            )
+            cost_value = calculate_cost(model, input_t, output_t, cache_read, cache_write)
 
         if cost_value is not None:
             self.total_cost += cost_value

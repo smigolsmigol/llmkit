@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import Any
 
 import httpx
 
@@ -42,7 +43,7 @@ def _extract_cost_from_json(body: bytes) -> CostInfo | None:
 
 
 def _is_chat_endpoint(path: str) -> bool:
-    return path.endswith("/chat/completions") or path.endswith("/messages")
+    return path.endswith(("/chat/completions", "/messages"))
 
 
 def _is_sse(response: httpx.Response) -> bool:
@@ -89,9 +90,7 @@ class _SSEScanner:
             usage = data.get("usage")
             if isinstance(usage, dict):
                 self.has_usage = True
-                cached = (usage.get("prompt_tokens_details") or {}).get(
-                    "cached_tokens"
-                ) or 0
+                cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
                 raw_input = usage.get("prompt_tokens") or usage.get("input_tokens") or 0
                 self.input_tokens += raw_input - cached if cached else raw_input
                 self.output_tokens += (
@@ -106,9 +105,7 @@ class _SSEScanner:
                 self.input_tokens += msg_usage.get("input_tokens") or 0
                 self.output_tokens += msg_usage.get("output_tokens") or 0
                 self.cache_read_tokens += msg_usage.get("cache_read_input_tokens") or 0
-                self.cache_write_tokens += (
-                    msg_usage.get("cache_creation_input_tokens") or 0
-                )
+                self.cache_write_tokens += msg_usage.get("cache_creation_input_tokens") or 0
 
     def result(self) -> CostInfo | None:
         if not self.model or not self.has_usage:

@@ -1,7 +1,24 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.4.2/schema.json",
   "files": {
-    "includes": ["packages/*/src/**/*.ts", "packages/*/src/**/*.tsx"]
+    "includes": [
+      "packages/*/src/**/*.ts",
+      "packages/*/src/**/*.tsx",
+      "packages/*/test/**/*.js",
+      "packages/*/test/**/*.jsx",
+      "packages/*/test/**/*.mjs",
+      "packages/*/test/**/*.cjs",
+      "packages/*/test/**/*.ts",
+      "packages/*/test/**/*.tsx",
+      "scripts/**/*.js",
+      "scripts/**/*.mjs",
+      "scripts/**/*.cjs",
+      "scripts/**/*.ts",
+      "test/**/*.js",
+      "test/**/*.mjs",
+      "test/**/*.cjs",
+      "test/**/*.ts"
+    ]
   },
   "linter": {
     "enabled": true,
@@ -20,6 +37,18 @@
       }
     }
   },
+  "overrides": [
+    {
+      "includes": ["scripts/collect-v2.js", "scripts/collect-v2.1.js"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noInnerDeclarations": "off"
+          }
+        }
+      }
+    }
+  ],
   "formatter": {
     "enabled": false
   }

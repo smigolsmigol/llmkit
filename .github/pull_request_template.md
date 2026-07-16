@@ -12,6 +12,7 @@
 
 ## Checklist
 
-- [ ] `pnpm check-all` passes (tsc + biome + knip + publint)
+- [ ] `corepack pnpm@9.15.4 quality:pr` passes
 - [ ] Tested locally
 - [ ] No secrets or .env files included
+- [ ] No deployment or hosted-database mutation is bundled into this PR
