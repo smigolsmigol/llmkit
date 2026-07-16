@@ -27,6 +27,8 @@ const requiredWorkflowFragments = [
   'google/osv-scanner-action/osv-scanner-action@8dc09193bb540e09b23da07ad7e30bd33bf87018',
   'google/osv-scanner-action/osv-reporter-action@8dc09193bb540e09b23da07ad7e30bd33bf87018',
   '--fail-on-vuln=true',
+  'python -m pip install --require-hashes --only-binary=:all:',
+  'python -m build --no-isolation',
   'needs: [quality, python-floor, scorecard-supply-chain, osv]',
 ];
 
@@ -50,6 +52,58 @@ try {
 }
 if (!blocked) {
   throw new Error('CI workflow violation fixture was accepted.');
+}
+
+const reproducibilityContracts = new Map([
+  [
+    'scripts/bootstrap-quality.mjs',
+    ["'--require-hashes'", "'--no-build-isolation'", "'--no-deps'"],
+  ],
+  [
+    '.github/workflows/publish-pypi.yml',
+    ['--require-hashes --only-binary=:all:', 'python -m build --no-isolation'],
+  ],
+  [
+    '.github/workflows/slsa-provenance.yml',
+    [
+      'slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a',
+    ],
+  ],
+  ['requirements-ci.txt', ['--generate-hashes', 'idna==3.18', 'pip==26.1.2']],
+  ['packages/python-sdk/pyproject.toml', ['hatchling==1.31.0']],
+]);
+
+function assertReproducibilityContracts(contentsByPath) {
+  for (const [path, fragments] of reproducibilityContracts) {
+    const contents = contentsByPath.get(path);
+    for (const fragment of fragments) {
+      if (!contents?.includes(fragment)) {
+        throw new Error(`${path} is missing reproducibility contract: ${fragment}`);
+      }
+    }
+  }
+}
+
+const reproducibilityContents = new Map(
+  [...reproducibilityContracts.keys()].map((path) => [path, readFileSync(path, 'utf8')]),
+);
+assertReproducibilityContracts(reproducibilityContents);
+
+const reproducibilityViolation = new Map(reproducibilityContents);
+reproducibilityViolation.set(
+  '.github/workflows/slsa-provenance.yml',
+  reproducibilityContents
+    .get('.github/workflows/slsa-provenance.yml')
+    .replace('f7dd8c54c2067bafc12ca7a55595d5ee9b75204a', 'v2.1.0'),
+);
+blocked = false;
+try {
+  assertReproducibilityContracts(reproducibilityViolation);
+} catch {
+  blocked = true;
+}
+if (!blocked) {
+  throw new Error('Build reproducibility violation fixture was accepted.');
 }
 
 console.log('QUALITY_GATE_CONTRACT PASS');

@@ -30,6 +30,11 @@ while a declared transitive dependency remains affected.
 The Python gate independently requires at least 90% statement and branch coverage. Repository-wide
 JavaScript coverage is not yet at the required 90% statements, branches, functions, and lines, so a
 green `quality:pr` is a foundation-PR contract, not proof that the final coverage objective is met.
+The Python environment is resolved from `requirements-ci.in` into the hash-locked
+`requirements-ci.txt`; editable SDK installation and wheel builds run without dependency or build
+isolation fetches. Regenerate the lock with pip-tools 7.5.3 in the immutable Python 3.11 builder
+declared by `.clusterfuzzlite/Dockerfile`, then prove it in clean Python 3.11 and Windows
+environments before committing it.
 
 ## Intentional Knip boundaries
 

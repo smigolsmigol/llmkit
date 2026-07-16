@@ -51,12 +51,23 @@ function bootstrapPython() {
     run('create-python-environment', systemPython, ['-m', 'venv', venv]);
   }
 
-  run('pin-pip', venvPython, ['-m', 'pip', 'install', '--upgrade', 'pip==26.1']);
   run('install-quality-tools', venvPython, [
-    '-m', 'pip', 'install', '--requirement', 'requirements-ci.txt',
+    '-m',
+    'pip',
+    'install',
+    '--require-hashes',
+    '--only-binary=:all:',
+    '--requirement',
+    'requirements-ci.txt',
   ]);
   run('install-python-sdk', venvPython, [
-    '-m', 'pip', 'install', '--editable', 'packages/python-sdk',
+    '-m',
+    'pip',
+    'install',
+    '--no-build-isolation',
+    '--no-deps',
+    '--editable',
+    'packages/python-sdk',
   ]);
   run('verify-python-environment', venvPython, ['-m', 'pip', 'check']);
   run('install-versioned-git-hooks', process.execPath, ['scripts/install-git-hooks.mjs']);

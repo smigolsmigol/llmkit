@@ -132,6 +132,7 @@ function runPythonStatic() {
 
 function runPythonProof() {
   const sdk = join(root, 'packages', 'python-sdk');
+  python(['-m', 'build', '--wheel', '--no-isolation'], sdk);
   python(['-m', 'coverage', 'erase'], sdk);
   python(['-m', 'coverage', 'run', '--branch', '-m', 'pytest', 'tests'], sdk);
   python(['-m', 'coverage', 'run', '--branch', '--append', 'fuzz/run_local.py'], sdk);

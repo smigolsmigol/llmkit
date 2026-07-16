@@ -90,13 +90,16 @@ jobs:
 
       - name: install declared floor
         run: |
-          python -m pip install --upgrade pip==26.1
-          python -m pip install ./packages/python-sdk pytest==9.1.1
+          python -m pip install --require-hashes --only-binary=:all: \
+            --requirement requirements-ci.txt
           python -m pip check
 
       - name: prove declared floor
         working-directory: packages/python-sdk
+        env:
+          PYTHONPATH: src
         run: |
+          python -m build --no-isolation
           python -m compileall -q src
           python -m pytest tests
           python fuzz/run_local.py
