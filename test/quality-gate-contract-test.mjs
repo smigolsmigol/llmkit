@@ -24,7 +24,9 @@ const requiredWorkflowFragments = [
   'name: scorecard-supply-chain',
   'node scripts/assert-scorecard-supply-chain.mjs results.json',
   'name: osv-zero-vulnerabilities',
-  'google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2',
+  'google/osv-scanner-action/osv-scanner-action@8dc09193bb540e09b23da07ad7e30bd33bf87018',
+  'google/osv-scanner-action/osv-reporter-action@8dc09193bb540e09b23da07ad7e30bd33bf87018',
+  '--fail-on-vuln=true',
   'needs: [quality, python-floor, scorecard-supply-chain, osv]',
 ];
 
