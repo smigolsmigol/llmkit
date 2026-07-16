@@ -19,6 +19,8 @@ export function AnimatedLogo({ className }: { className?: string }) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
+      role="img"
+      aria-label="LLMKit"
       viewBox="0 0 290 115"
       fill="none"
       className={className}

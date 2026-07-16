@@ -1,7 +1,7 @@
 
 import type { Metadata } from 'next';
-import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
+import { PublicNavStatic } from '@/components/public-nav-static';
 
 export const metadata: Metadata = {
   title: 'MCP Server - LLMKit',

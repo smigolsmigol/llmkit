@@ -47,6 +47,7 @@ export function AlertsPanel() {
       <div className="rounded-lg border border-border bg-card p-8 text-center">
         <div className="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/10">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+            <title>Healthy</title>
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
@@ -70,8 +71,8 @@ export function AlertsPanel() {
         <div key={day}>
           <p className="mb-1 text-[10px] font-medium uppercase tracking-wider text-zinc-600">{day}</p>
           <div className="space-y-1">
-            {dayAlerts.map((a, i) => (
-              <div key={i} className="flex items-start justify-between rounded-lg border border-border bg-card px-3 py-2">
+            {dayAlerts.map((a) => (
+              <div key={`${a.type}:${a.created_at}:${a.message}`} className="flex items-start justify-between rounded-lg border border-border bg-card px-3 py-2">
                 <div className="flex items-start gap-2">
                   <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
                   <span className="text-xs text-zinc-300">{a.message}</span>

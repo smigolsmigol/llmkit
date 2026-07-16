@@ -1,12 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { updateAccount } from './actions';
 import type { AccountRow } from '@/lib/queries';
+import { updateAccount } from './actions';
 
 const plans = ['free', 'beta', 'pro', 'enterprise', 'admin'] as const;
 
-function AccountRow({ account }: { account: AccountRow }) {
+function AccountTableRow({ account }: { account: AccountRow }) {
   const [plan, setPlan] = useState(account.plan);
   const [expires, setExpires] = useState(account.plan_expires_at?.slice(0, 10) || '');
   const [note, setNote] = useState(account.note || '');
@@ -111,7 +111,7 @@ export function AccountTable({ accounts }: { accounts: AccountRow[] }) {
         </thead>
         <tbody>
           {accounts.map((acc) => (
-            <AccountRow key={acc.user_id} account={acc} />
+            <AccountTableRow key={acc.user_id} account={acc} />
           ))}
         </tbody>
       </table></div>

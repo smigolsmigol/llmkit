@@ -1,8 +1,8 @@
 
-import { PublicNavStatic } from '@/components/public-nav-static';
-import { PublicFooter } from '@/components/public-footer';
-import { TrackClick } from '@/components/track-event';
 import type { Metadata } from 'next';
+import { PublicFooter } from '@/components/public-footer';
+import { PublicNavStatic } from '@/components/public-nav-static';
+import { TrackClick } from '@/components/track-event';
 
 export const metadata: Metadata = {
   title: 'LLM API Pricing Comparison 2026 - 730+ Models, 11 Providers | LLMKit',

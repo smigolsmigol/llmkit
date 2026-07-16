@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
-import { getProviderKeys, getProviderActivity } from '@/lib/queries';
+import type { Metadata } from 'next';
+import { getProviderActivity, getProviderKeys } from '@/lib/queries';
 
 export const metadata: Metadata = { title: 'Providers - LLMKit' };
+
 import { ProviderGrid } from './provider-grid';
 
 export default async function ProvidersPage() {

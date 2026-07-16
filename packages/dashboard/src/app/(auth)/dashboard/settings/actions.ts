@@ -1,8 +1,8 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { createServerClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import { createServerClient } from '@/lib/supabase';
 
 const VALID_PERIODS = ['daily', 'weekly', 'monthly'] as const;
 const VALID_SCOPES = ['key', 'session'] as const;

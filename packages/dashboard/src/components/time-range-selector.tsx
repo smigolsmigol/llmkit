@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -40,6 +40,7 @@ export function TimeRangeSelector() {
       {ranges.map(({ label, days }) => (
         <button
           key={days}
+          type="button"
           onClick={() => setRange(days)}
           className={cn(
             'rounded-md px-2.5 py-1 text-xs font-medium transition-colors',

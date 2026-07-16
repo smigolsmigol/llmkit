@@ -1,11 +1,11 @@
 
-import Link from 'next/link';
 import type { Metadata } from 'next';
-import { PublicNavStatic } from '@/components/public-nav-static';
-import { PublicFooter } from '@/components/public-footer';
+import Link from 'next/link';
 import { ProviderIcon } from '@/components/provider-icons';
-import { TrackClick } from '@/components/track-event';
+import { PublicFooter } from '@/components/public-footer';
+import { PublicNavStatic } from '@/components/public-nav-static';
 import { TerminalDemo } from '@/components/terminal-demo';
+import { TrackClick } from '@/components/track-event';
 
 export const metadata: Metadata = {
   title: 'LLMKit - Know what your AI agents cost',
@@ -143,7 +143,7 @@ export default function Home() {
           <Link href="/mcp" className="group">
             <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition hover:border-violet-500/20 hover:bg-white/[0.04]">
               <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
               </div>
               <h3 className="text-base font-semibold">MCP Server</h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
@@ -159,7 +159,7 @@ export default function Home() {
           <Link href="/docs" className="group">
             <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition hover:border-cyan-500/20 hover:bg-white/[0.04]">
               <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
               </div>
               <h3 className="text-base font-semibold">API Gateway</h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
@@ -175,7 +175,7 @@ export default function Home() {
           <Link href={ctaHref} className="group">
             <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition hover:border-amber-500/20 hover:bg-white/[0.04]">
               <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
               </div>
               <h3 className="text-base font-semibold">Dashboard</h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">

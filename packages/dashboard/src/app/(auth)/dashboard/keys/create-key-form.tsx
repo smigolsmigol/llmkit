@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
 import { track } from '@vercel/analytics';
+import { useState } from 'react';
 import { createApiKey } from './actions';
 
 const PROXY_URL = 'https://llmkit-proxy.smigolsmigol.workers.dev/v1';

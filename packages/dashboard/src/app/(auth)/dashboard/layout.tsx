@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
-import { Sidebar } from '@/components/sidebar';
 import { Header } from '@/components/header';
+import { Sidebar } from '@/components/sidebar';
 import { SupportWidget } from '@/components/support-widget';
 import { ensureAccount } from '@/lib/queries';
 

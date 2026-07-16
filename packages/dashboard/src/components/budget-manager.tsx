@@ -22,7 +22,7 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
   function handleCreate() {
     if (!name.trim() || !limit) return;
     const limitCents = Math.round(parseFloat(limit) * 100);
-    if (isNaN(limitCents) || limitCents <= 0) return;
+    if (Number.isNaN(limitCents) || limitCents <= 0) return;
 
     setError(null);
     startTransition(async () => {
@@ -71,8 +71,9 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
         <div className="rounded-lg border border-border bg-background p-4 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Name</label>
+              <label htmlFor="budget-name" className="mb-1 block text-xs text-muted-foreground">Name</label>
               <input
+                id="budget-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Production"
@@ -80,8 +81,9 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Limit ($)</label>
+              <label htmlFor="budget-limit" className="mb-1 block text-xs text-muted-foreground">Limit ($)</label>
               <input
+                id="budget-limit"
                 type="number"
                 value={limit}
                 onChange={(e) => setLimit(e.target.value)}
@@ -92,8 +94,9 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Period</label>
+              <label htmlFor="budget-period" className="mb-1 block text-xs text-muted-foreground">Period</label>
               <select
+                id="budget-period"
                 value={period}
                 onChange={(e) => setPeriod(e.target.value)}
                 className="w-full rounded-md border border-border bg-secondary px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
@@ -107,7 +110,7 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Scope</label>
+              <span className="mb-1 block text-xs text-muted-foreground">Scope</span>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -139,8 +142,9 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
               )}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Alert webhook (optional)</label>
+              <label htmlFor="budget-alert-url" className="mb-1 block text-xs text-muted-foreground">Alert webhook (optional)</label>
               <input
+                id="budget-alert-url"
                 value={alertUrl}
                 onChange={(e) => setAlertUrl(e.target.value)}
                 placeholder="https://hooks.slack.com/..."
@@ -175,6 +179,7 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
             </p>
             <div className="mt-3 flex justify-end">
               <button
+                type="button"
                 onClick={() => handleDelete(b.id)}
                 disabled={pending}
                 className="text-xs text-muted-foreground transition-colors hover:text-red-400"

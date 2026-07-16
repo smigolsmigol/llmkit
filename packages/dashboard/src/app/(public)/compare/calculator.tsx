@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 interface ModelPrice {
   provider: string;
@@ -65,8 +65,9 @@ export function Calculator({ models, providers }: Props) {
       {/* Token inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Input tokens per request</label>
+          <label htmlFor="calculator-input-tokens" className="block text-xs text-zinc-500 mb-1">Input tokens per request</label>
           <input
+            id="calculator-input-tokens"
             type="number"
             value={inputTokens}
             onChange={e => setInputTokens(Math.max(0, Number(e.target.value) || 0))}
@@ -74,8 +75,9 @@ export function Calculator({ models, providers }: Props) {
           />
         </div>
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Output tokens per request</label>
+          <label htmlFor="calculator-output-tokens" className="block text-xs text-zinc-500 mb-1">Output tokens per request</label>
           <input
+            id="calculator-output-tokens"
             type="number"
             value={outputTokens}
             onChange={e => setOutputTokens(Math.max(0, Number(e.target.value) || 0))}
@@ -83,8 +85,9 @@ export function Calculator({ models, providers }: Props) {
           />
         </div>
         <div>
-          <label className="block text-xs text-zinc-500 mb-1">Requests per month</label>
+          <label htmlFor="calculator-monthly-requests" className="block text-xs text-zinc-500 mb-1">Requests per month</label>
           <input
+            id="calculator-monthly-requests"
             type="number"
             value={monthlyRequests}
             onChange={e => setMonthlyRequests(Math.max(0, Number(e.target.value) || 0))}
@@ -98,6 +101,7 @@ export function Calculator({ models, providers }: Props) {
         {PRESETS.map(p => (
           <button
             key={p.label}
+            type="button"
             onClick={() => { setInputTokens(p.input); setOutputTokens(p.output); }}
             className="rounded-md border border-white/[0.08] bg-white/[0.02] px-3 py-1 text-xs text-zinc-400 hover:bg-white/[0.06] hover:text-white transition"
           >
@@ -118,6 +122,7 @@ export function Calculator({ models, providers }: Props) {
           {providers.map(p => (
             <button
               key={p}
+              type="button"
               onClick={() => toggleProvider(p)}
               className={`rounded-md px-2 py-1 text-xs transition capitalize ${
                 selectedProviders.has(p)
