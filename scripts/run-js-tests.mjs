@@ -23,6 +23,7 @@ const tests = [
   'packages/proxy/test/log-secret-runtime-proof.mjs',
   'packages/proxy/test/worker-deploy-guard-test.mjs',
   'packages/dashboard/test/recovery-boundary-test.mjs',
+  'packages/dashboard/test/https-redirect-runtime-test.mjs',
   'packages/cli/test/parser-test.mjs',
   'packages/sdk/test/tracker-test.mjs',
   'packages/mcp-server/test/smoke-test.mjs',
