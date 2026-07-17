@@ -1,0 +1,64 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import {
+  classifyRecoveryPath,
+  RECOVERY_BLOCKED_API_PREFIXES,
+  RECOVERY_BLOCKED_UI_PREFIXES,
+} from '../src/lib/public-recovery.ts';
+
+const packageRoot = fileURLToPath(new URL('..', import.meta.url));
+
+const violationFixtures = [
+  ['/dashboard', 'blocked-ui'],
+  ['/dashboard/requests/abc', 'blocked-ui'],
+  ['/sign-in', 'blocked-ui'],
+  ['/sign-up/continue', 'blocked-ui'],
+  ['/api/analytics', 'blocked-api'],
+  ['/api/export/csv', 'blocked-api'],
+  ['/api/pricing', 'blocked-api'],
+];
+
+for (const [pathname, expected] of violationFixtures) {
+  assert.equal(classifyRecoveryPath(pathname), expected, pathname);
+}
+
+for (const pathname of ['/', '/docs', '/pricing', '/compare', '/mcp']) {
+  assert.equal(classifyRecoveryPath(pathname), 'public', pathname);
+}
+
+assert.equal(classifyRecoveryPath('/dashboardish'), 'public');
+assert.equal(classifyRecoveryPath('/api/exported'), 'public');
+assert.deepEqual(RECOVERY_BLOCKED_UI_PREFIXES, ['/dashboard', '/sign-in', '/sign-up']);
+assert.deepEqual(RECOVERY_BLOCKED_API_PREFIXES, [
+  '/api/analytics',
+  '/api/export',
+  '/api/pricing',
+]);
+
+const wrangler = JSON.parse(readFileSync(`${packageRoot}/wrangler.jsonc`, 'utf8'));
+assert.equal(wrangler.name, 'llmkit-web');
+assert.equal(wrangler.main, 'cloudflare-worker.ts');
+assert.equal(wrangler.workers_dev, false);
+assert.equal(wrangler.preview_urls, false);
+assert.deepEqual(
+  wrangler.routes.map((route) => [route.pattern, route.custom_domain]),
+  [
+    ['llmkit.sh', true],
+    ['www.llmkit.sh', true],
+  ],
+);
+assert.equal(wrangler.env.staging.workers_dev, true);
+assert.equal(wrangler.env.staging.preview_urls, true);
+assert.deepEqual(wrangler.env.staging.routes, []);
+
+const deploymentContract = readFileSync(`${packageRoot}/wrangler.jsonc`, 'utf8');
+assert.doesNotMatch(deploymentContract, /SUPABASE_SERVICE_KEY|CLERK_SECRET_KEY|ANALYTICS_API_KEY/);
+
+const worker = readFileSync(`${packageRoot}/cloudflare-worker.ts`, 'utf8');
+assert.doesNotMatch(worker, /@clerk\/nextjs|SUPABASE_SERVICE_KEY/);
+assert.match(worker, /status:\s*503/);
+assert.match(worker, /Retry-After/);
+assert.match(worker, /Content-Security-Policy/);
+
+console.log('RECOVERY_BOUNDARY PASS (blocked tenant surfaces, public routes, isolated staging)');

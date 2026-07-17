@@ -59,6 +59,7 @@ htmlcov/
 
 # next.js
 .next/
+.open-next/
 out/
 
 # test

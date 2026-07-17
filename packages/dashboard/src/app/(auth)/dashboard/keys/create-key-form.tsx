@@ -1,6 +1,5 @@
 'use client';
 
-import { track } from '@vercel/analytics';
 import { useState } from 'react';
 import { createApiKey } from './actions';
 
@@ -46,7 +45,6 @@ export function CreateKeyForm({ budgets = [] }: { budgets?: Budget[] }) {
       setNewKey(result.key);
       setName('');
       setBudgetId('');
-      track('api_key_created');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create key');
     } finally {
@@ -65,7 +63,6 @@ export function CreateKeyForm({ budgets = [] }: { budgets?: Budget[] }) {
   function copyText(text: string) {
     navigator.clipboard.writeText(text);
     setCopied(true);
-    track('snippet_copied', { type: text.includes('python') ? 'python' : text.includes('curl') ? 'curl' : 'other' });
     setTimeout(() => setCopied(false), 2000);
   }
 

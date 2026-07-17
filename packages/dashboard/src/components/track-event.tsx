@@ -1,12 +1,7 @@
 'use client';
 
-import { track } from '@vercel/analytics';
-import { useEffect } from 'react';
-
 export function TrackPageView({ page }: { page: string }) {
-  useEffect(() => {
-    track('page_view', { page });
-  }, [page]);
+  void page;
   return null;
 }
 
@@ -27,13 +22,15 @@ export function TrackClick({
   target?: string;
   rel?: string;
 }) {
+  void event;
+  void properties;
+
   return (
     <a
       href={href}
       target={target}
       rel={rel}
       className={className}
-      onClick={() => track(event, properties)}
     >
       {children}
     </a>
