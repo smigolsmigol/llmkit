@@ -1,8 +1,8 @@
 
-import { PublicNavStatic } from '@/components/public-nav-static';
-import { PublicFooter } from '@/components/public-footer';
-import { Calculator } from './calculator';
 import type { Metadata } from 'next';
+import { PublicFooter } from '@/components/public-footer';
+import { PublicNavStatic } from '@/components/public-nav-static';
+import { Calculator } from './calculator';
 
 export const metadata: Metadata = {
   title: 'LLM Cost Calculator - Compare AI API Costs Across Models | LLMKit',

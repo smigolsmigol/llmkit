@@ -5,298 +5,251 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      confirm_production:
+        description: "Type production:api.llmkit.sh only when authorizing the exact production target"
+        required: false
+        type: string
 
 permissions:
   contents: read
 
 jobs:
-  secrets-scan:
+  quality:
+    name: quality-pr
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
+        with:
+          version: 9.15.4
+          run_install: false
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
+
+      - name: enable exact package manager
+        run: corepack enable
+
+      - name: install workspace
+        run: corepack pnpm@9.15.4 install --frozen-lockfile
+
+      - name: bootstrap pinned quality tools
+        run: corepack pnpm@9.15.4 quality:bootstrap:all
+
+      - name: optional private-pattern boundary
+        shell: bash
+        env:
+          PRIVATE_PATTERNS: ${{ secrets.PRIVATE_PATTERNS }}
+        run: |
+          if [ -z "$PRIVATE_PATTERNS" ]; then
+            echo "PRIVATE_PATTERNS is not configured; repository secret gates remain mandatory."
+            exit 0
+          fi
+
+          found=0
+          IFS=',' read -r -a patterns <<< "$PRIVATE_PATTERNS"
+          for pattern in "${patterns[@]}"; do
+            if git grep -Ili -e "$pattern" -- . \
+              ':(exclude).github/workflows/**' \
+              ':(exclude).github/hooks/**'; then
+              echo "::error::A configured private pattern was found in tracked files."
+              found=1
+            fi
+          done
+          test "$found" -eq 0
+
+      - name: start local database proof stack
+        run: corepack pnpm@9.15.4 db:start
+
+      - name: run the local pre-PR contract
+        run: corepack pnpm@9.15.4 quality:pr
+
+      - name: stop local database proof stack
+        if: always()
+        run: corepack pnpm@9.15.4 db:stop
+
+  python-floor:
+    name: python-3.11-floor
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: packages/python-sdk/pyproject.toml
+
+      - name: install declared floor
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: \
+            --requirement requirements-ci.txt
+          python -m pip check
+
+      - name: prove declared floor
+        working-directory: packages/python-sdk
+        env:
+          PYTHONPATH: src
+        run: |
+          python -m build --no-isolation
+          python -m compileall -q src
+          python -m pytest tests
+          python fuzz/run_local.py
+
+  scorecard-supply-chain:
+    name: scorecard-supply-chain
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3
+        with:
+          results_file: results.json
+          results_format: json
+          publish_results: false
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: require pinned dependencies and zero vulnerabilities
+        run: node scripts/assert-scorecard-supply-chain.mjs results.json
+
+  osv:
+    name: osv-zero-vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: scan repository manifests
+        uses: google/osv-scanner-action/osv-scanner-action@8dc09193bb540e09b23da07ad7e30bd33bf87018 # v2.3.8
+        continue-on-error: true
+        with:
+          scan-args: |-
+            --format=json
+            --output=results.json
+            -r
+            ./
+
+      - name: require zero known vulnerabilities
+        uses: google/osv-scanner-action/osv-reporter-action@8dc09193bb540e09b23da07ad7e30bd33bf87018 # v2.3.8
+        with:
+          scan-args: |-
+            --output=results.sarif
+            --new=results.json
+            --gh-annotations=true
+            --fail-on-vuln=true
+
+  deploy:
+    name: deploy-production-api
+    needs: [quality, python-floor, scorecard-supply-chain, osv]
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'workflow_dispatch' &&
+      inputs.confirm_production == 'production:api.llmkit.sh'
+    environment: production
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
-      - name: block private info leaks
-        run: |
-          PATTERNS="${{ secrets.PRIVATE_PATTERNS }}"
-          [ -z "$PATTERNS" ] && echo "PRIVATE_PATTERNS secret not set, skipping" && exit 0
-          FOUND=0
-          for pat in $(echo "$PATTERNS" | tr ',' ' '); do
-            if git grep -rli "$pat" -- ':!.github/workflows/' ':!.github/hooks/' 2>/dev/null; then
-              echo "::error::Private pattern '$pat' found in tracked files"
-              FOUND=1
-            fi
-          done
-          [ "$FOUND" -ne 0 ] && exit 1 || exit 0
-
-      - name: gitleaks
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  semgrep:
-    runs-on: ubuntu-latest
-    container:
-      image: semgrep/semgrep:1.156.0
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: security audit + secrets scan
-        run: semgrep scan --config p/security-audit --config p/secrets --error
-
-  check-and-test:
-    needs: secrets-scan
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
+        with:
+          version: 9.15.4
+          run_install: false
 
       - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
         with:
-          node-version: 20
+          node-version: 24
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
-
-      - name: audit dependencies
-        run: pnpm audit --audit-level=high
-
-      - name: typecheck
-        run: pnpm typecheck
-
-      - name: typecheck dashboard
-        run: pnpm turbo typecheck --filter=@f3d1/llmkit-dashboard
-
-      - name: biome
-        run: npx biome check packages/proxy/src packages/sdk/src packages/cli/src packages/shared/src packages/ai-sdk-provider/src packages/mcp-server/src
-
-      - name: knip
-        run: npx knip --exclude types,exports
-
-      - name: build publishable packages
-        run: pnpm turbo build --filter=@f3d1/llmkit-shared --filter=@f3d1/llmkit-sdk --filter=@f3d1/llmkit-cli --filter=@f3d1/llmkit-ai-sdk-provider --filter=@f3d1/llmkit-mcp-server
-
-      - name: publint
+      - name: install exact workspace
         run: |
-          npx publint packages/shared
-          npx publint packages/sdk
-          npx publint packages/cli
-          npx publint packages/ai-sdk-provider
-          npx publint packages/mcp-server
+          corepack enable
+          corepack pnpm@9.15.4 install --frozen-lockfile
 
-      - name: security (keyguard)
-        run: npx kguard scan --no-color
-        continue-on-error: true
+      - name: build shared package
+        run: corepack pnpm@9.15.4 --filter @f3d1/llmkit-shared build
 
-      - name: test (unit)
-        run: |
-          node packages/proxy/test/unit-test.mjs
-          node packages/proxy/test/crypto-test.mjs
-          node packages/proxy/test/budget-test.mjs
-          node packages/proxy/test/reservation-test.mjs
-          node packages/proxy/test/budget-bypass-test.mjs
-          node packages/proxy/test/xai-cost-test.mjs
-          node packages/proxy/test/openai-adapter-test.mjs
-          node packages/proxy/test/auth-test.mjs
-          node packages/proxy/test/ratelimit-test.mjs
-          node packages/proxy/test/validation-test.mjs
-          node packages/cli/test/parser-test.mjs
-          node packages/sdk/test/tracker-test.mjs
-
-      - name: test (smoke)
-        run: |
-          node packages/mcp-server/test/smoke-test.mjs
-          node packages/ai-sdk-provider/test/smoke-test.mjs
-          node packages/cli/test/smoke-test.mjs
-          node packages/mcp-server/test/unit-test.mjs
-          node packages/ai-sdk-provider/test/unit-test.mjs
-          node packages/shared/test/exports-test.mjs
-
-      - name: test (integration + contract)
-        run: |
-          node packages/mcp-server/test/integration-test.mjs
-          node test/contract-test.mjs
-
-  check-python:
-    needs: secrets-scan
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: packages/python-sdk
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: '3.12'
-          cache: pip
-
-      - name: upgrade pip past CVE-2026-3219
-        run: python -m pip install --upgrade 'pip>=26.1'
-
-      - name: install sdk
-        run: pip install -e ".[dev]" 2>/dev/null || pip install -e .
-
-      - name: install ci tools
-        run: pip install --require-hashes --no-deps -r ../../requirements-ci.txt
-
-      - name: install ci tool deps
-        run: pip install pytest ruff mypy bandit pip-audit 2>/dev/null || true
-
-      - name: ruff check
-        run: ruff check src/ tests/
-
-      - name: ruff format
-        run: ruff format --check src/ tests/
-
-      - name: mypy
-        run: mypy src/llmkit/
-
-      - name: bandit
-        run: bandit -r src/
-
-      - name: pip-audit
-        run: pip-audit --ignore-vuln CVE-2026-4539  # pygments, no fix released yet
-
-      - name: pytest
-        run: python -m pytest tests/ -v
-
-      - name: fuzz smoke test
-        run: python fuzz/run_local.py
-
-  deploy:
-    needs: [secrets-scan, semgrep, check-and-test, check-python]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
-
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      - name: build shared
-        run: pnpm --filter @f3d1/llmkit-shared run build
-
-      - name: deploy proxy
-        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          workingDirectory: packages/proxy
-
-      - name: notify deploy
-        if: success()
+      - name: deploy exact production API target
         env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          LLMKIT_DEPLOY_APPROVED: production:api.llmkit.sh
+        run: >-
+          node scripts/run-worker-deploy.mjs
+          --target production
+          --confirm production:api.llmkit.sh
+
+      - name: notify successful deploy
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
+        shell: bash
         run: |
-          FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
-          FIRST_LINE=$(echo "$FIRST_LINE" | sed 's/[<>&]//g')
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+          first_line=$(printf '%s' "$COMMIT_MSG" | head -1 | tr -d '<>&')
+          curl --fail-with-body --silent --show-error \
+            --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=<b>Deployed to CF Workers</b>%0A%0A<code>${FIRST_LINE}</code>%0Aby ${{ github.actor }}"
+            --data-urlencode "text=<b>Deployed to Cloudflare Workers</b>%0A%0A<code>${first_line}</code>%0Aby ${{ github.actor }}"
 
   post-deploy-verify:
+    name: verify-production-api
     needs: deploy
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: wait for deploys to settle
-        run: sleep 30
-
-      - name: verify proxy health
+      - name: verify API health
+        shell: bash
         run: |
-          for i in 1 2 3; do
-            STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 "https://api.llmkit.sh/health")
-            [ "$STATUS" -eq 200 ] && echo "Proxy: OK ($STATUS)" && exit 0
-            echo "Attempt $i: got $STATUS, retrying in 10s..."
+          for attempt in 1 2 3; do
+            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              --max-time 30 "https://api.llmkit.sh/health")
+            if [ "$status" -eq 200 ]; then
+              echo "Production API health: $status"
+              exit 0
+            fi
+            echo "Attempt ${attempt}: health returned ${status}."
             sleep 10
           done
-          echo "::error::Proxy health check failed after 3 attempts"
+          echo "::error::Production API health failed after three attempts."
           exit 1
 
-      - name: verify dashboard reachable
-        run: |
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 15 "https://llmkit-dashboard.vercel.app/sign-in")
-          if [ "$STATUS" -eq 404 ] || [ "$STATUS" -eq 500 ] || [ "$STATUS" -eq 000 ]; then
-            echo "::error::Dashboard check failed: got $STATUS"
-            exit 1
-          fi
-          echo "Dashboard: OK ($STATUS)"
-
-      - name: verify npm packages resolve
-        run: |
-          for pkg in "@f3d1/llmkit-sdk" "@f3d1/llmkit-cli" "@f3d1/llmkit-mcp-server" "@f3d1/llmkit-ai-sdk-provider" "@f3d1/llmkit-shared"; do
-            VER=$(npm view "$pkg" version 2>&1)
-            if [ $? -ne 0 ] || [ -z "$VER" ]; then
-              echo "::error::npm package $pkg not found on registry"
-              exit 1
-            fi
-            echo "$pkg: $VER"
-          done
-
-      - name: verify pypi package
-        run: |
-          STATUS=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://pypi.org/pypi/llmkit-sdk/json")
-          if [ "$STATUS" -ne 200 ]; then
-            echo "::error::PyPI llmkit-sdk not found: got $STATUS"
-            exit 1
-          fi
-          echo "PyPI llmkit-sdk: OK"
-
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - name: verify pricing tables in sync
-        run: node scripts/generate-pricing.mjs --check
-
-      - name: verify no phantom URLs in SDK
-        run: |
-          if grep -r "api\.llmkit\.dev" packages/sdk/src/ packages/ai-sdk-provider/src/ 2>/dev/null; then
-            echo "::error::Phantom URL api.llmkit.dev found in SDK source"
-            exit 1
-          fi
-          echo "SDK URLs: OK"
-
-      - name: verify no private info in repo
-        run: |
-          PATTERNS="${{ secrets.PRIVATE_PATTERNS }}"
-          if [ -n "$PATTERNS" ]; then
-            for pat in $(echo "$PATTERNS" | tr ',' ' '); do
-              if git grep -rli "$pat" -- ':!.github/workflows/' ':!.github/hooks/' ':!.claude/' 2>/dev/null; then
-                echo "::error::Private pattern found in repo"
-                exit 1
-              fi
-            done
-          fi
-          echo "Private info: CLEAN"
-
-      - name: alert on failure
-        if: failure()
-        run: |
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
-            --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=<b>Post-deploy verification FAILED</b>%0A%0ASomething is broken in production.%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
-
   notify-failure:
-    needs: [secrets-scan, semgrep, check-and-test, check-python, deploy]
-    if: failure()
+    name: notify-ci-failure
+    needs: [quality, python-floor, scorecard-supply-chain, osv, deploy, post-deploy-verify]
+    if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     steps:
       - name: notify failure
         env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
+        shell: bash
         run: |
-          FIRST_LINE=$(echo "$COMMIT_MSG" | head -1)
-          FIRST_LINE=$(echo "$FIRST_LINE" | sed 's/[<>&]//g')
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
-            --data-urlencode "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+          first_line=$(printf '%s' "$COMMIT_MSG" | head -1 | tr -d '<>&')
+          curl --fail-with-body --silent --show-error \
+            --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
             --data-urlencode "parse_mode=HTML" \
-            --data-urlencode "text=<b>CI failed</b>%0A%0A<code>${FIRST_LINE}</code>%0Aby ${{ github.actor }}%0A%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"
+            --data-urlencode "text=<b>CI failed</b>%0A%0A<code>${first_line}</code>%0Aby ${{ github.actor }}%0A%0A<a href='https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'>View logs</a>"

@@ -1,0 +1,16 @@
+# Direct quality, packaging, and SDK runtime dependencies.
+bandit[toml]==1.9.4
+build==1.2.2.post1
+colorama==0.4.6
+coverage[toml]==7.15.1
+editables==0.5
+filelock==3.30.0
+hatchling==1.31.0
+httpx==0.28.1
+mypy==1.19.1
+openai==2.45.0
+pip==26.1.2
+pip-audit==2.10.0
+pre-commit==4.6.0
+pytest==9.1.1
+ruff==0.15.20

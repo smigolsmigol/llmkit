@@ -1,6 +1,7 @@
 """Fuzz target for CostInfo.from_headers and SessionStats."""
 
 import sys
+
 import atheris
 
 with atheris.instrument_imports():
@@ -43,7 +44,7 @@ def fuzz_session_stats(data: bytes) -> None:
 
     assert stats.request_count == n
     str(stats)  # __str__ shouldn't crash
-    stats.avg_cost  # property access shouldn't crash
+    _ = stats.avg_cost  # property access shouldn't crash
 
 
 def fuzz_one(data: bytes) -> None:

@@ -98,10 +98,7 @@ def test_model_prefix_stripping():
     from llmkit.integrations.pydantic_ai import _extract_model
 
     assert _extract_model("openai:gpt-4.1-mini") == "gpt-4.1-mini"
-    assert (
-        _extract_model("anthropic:claude-sonnet-4-20250514")
-        == "claude-sonnet-4-20250514"
-    )
+    assert _extract_model("anthropic:claude-sonnet-4-20250514") == "claude-sonnet-4-20250514"
     assert _extract_model("gpt-4.1-mini") == "gpt-4.1-mini"
     assert _extract_model(None) == ""
 

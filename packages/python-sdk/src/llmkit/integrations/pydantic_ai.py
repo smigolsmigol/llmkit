@@ -23,15 +23,15 @@ Requires: pip install pydantic-ai
 
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 try:
     from pydantic_ai.capabilities import Hooks
     from pydantic_ai.usage import RequestUsage
 except ImportError as e:
     raise ImportError(
-        "pydantic-ai is required for this integration. "
-        "Install it with: pip install pydantic-ai"
+        "pydantic-ai is required for this integration. Install it with: pip install pydantic-ai"
     ) from e
 
 from llmkit._pricing import calculate_cost
@@ -40,9 +40,7 @@ from llmkit._pricing import calculate_cost
 class LLMKitCostTracker:
     """Tracks costs across Pydantic AI agent runs via Hooks capability."""
 
-    def __init__(
-        self, hooks: Hooks, on_cost: Callable[[float], Any] | None = None
-    ) -> None:
+    def __init__(self, hooks: Hooks, on_cost: Callable[[float], Any] | None = None) -> None:
         self.on_cost = on_cost
         self.total_cost: float = 0.0
         self.total_tokens: int = 0
@@ -52,9 +50,7 @@ class LLMKitCostTracker:
         self._last_cost: float | None = None
 
         @hooks.on.after_model_request
-        async def _track_cost(
-            usage: RequestUsage, model: Any = None, **kwargs: Any
-        ) -> None:
+        async def _track_cost(usage: RequestUsage, model: Any = None, **kwargs: Any) -> None:
             self._record(usage, _extract_model(model))
 
     @property
@@ -82,7 +78,11 @@ class LLMKitCostTracker:
             self.on_cost(cost_value)
 
     def __repr__(self) -> str:
-        return f"LLMKitCostTracker(requests={self.request_count}, cost=${self.total_cost:.4f}, tokens={self.total_tokens})"
+        return (
+            "LLMKitCostTracker("
+            f"requests={self.request_count}, cost=${self.total_cost:.4f}, "
+            f"tokens={self.total_tokens})"
+        )
 
 
 def _extract_model(model: Any) -> str:

@@ -13,6 +13,37 @@ export interface HourBucket {
   count: number;
 }
 
+export interface TooltipDatum {
+  color: string;
+  dataIndex: number;
+  seriesName: string;
+  value: [number, number];
+}
+
+export function asTooltipData(params: unknown): TooltipDatum[] {
+  if (!Array.isArray(params)) return [];
+
+  return params.flatMap((entry) => {
+    if (entry === null || typeof entry !== 'object') return [];
+    const item = entry as Record<string, unknown>;
+    const value = item.value;
+    if (
+      !Array.isArray(value) ||
+      typeof value[0] !== 'number' ||
+      typeof value[1] !== 'number'
+    ) {
+      return [];
+    }
+
+    return [{
+      color: typeof item.color === 'string' ? item.color : 'currentColor',
+      dataIndex: typeof item.dataIndex === 'number' ? item.dataIndex : -1,
+      seriesName: typeof item.seriesName === 'string' ? item.seriesName : '',
+      value: [value[0], value[1]],
+    }];
+  });
+}
+
 const HOUR_MS = 3600_000;
 
 export function bucketByHour(data: TimeseriesPoint[]): HourBucket[] {

@@ -1,16 +1,17 @@
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 
 export const metadata: Metadata = { title: 'Requests - LLMKit' };
-import { getRequestsPaginated, getDistinctProviders, getDistinctModels, getRequestSummary } from '@/lib/queries';
-import type { RequestFilters } from '@/lib/queries';
-import { formatCents, formatDate } from '@/lib/format';
-import { Badge } from '@/components/ui/badge';
-import { RequestFilters as Filters } from '@/components/request-filters';
+
 import { Pagination } from '@/components/pagination';
+import { RequestFilters as Filters } from '@/components/request-filters';
+import { Badge } from '@/components/ui/badge';
+import { formatCents, formatDate } from '@/lib/format';
+import type { RequestFilters } from '@/lib/queries';
+import { getDistinctModels, getDistinctProviders, getRequestSummary, getRequestsPaginated } from '@/lib/queries';
 
 interface PageProps {
   searchParams: Promise<Record<string, string | undefined>>;

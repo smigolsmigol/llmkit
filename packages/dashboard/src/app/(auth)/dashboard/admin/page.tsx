@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { TimeRangeSelector } from '@/components/time-range-selector';
 import { AnalyticsStatus } from '@/components/analytics-status';
+import { TimeRangeSelector } from '@/components/time-range-selector';
 import {
   getAccountPlan,
   getAdminProviderHealth,

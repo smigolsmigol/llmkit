@@ -6,11 +6,11 @@ const DEFAULT_RPM = 60;
 
 export function rateLimit() {
   return createMiddleware<Env>(async (c, next) => {
-    const apiKey = c.get('apiKey');
-    if (!apiKey) return await next();
+    const identity = c.get('apiKeyId') || c.get('apiKey');
+    if (!identity) return await next();
 
     const limit = c.get('rpmLimit') || DEFAULT_RPM;
-    const stub = c.env.RATE_LIMIT_DO.get(c.env.RATE_LIMIT_DO.idFromName(apiKey));
+    const stub = c.env.RATE_LIMIT_DO.get(c.env.RATE_LIMIT_DO.idFromName(identity));
     const result = await stub.hit({ limit });
 
     c.header('X-RateLimit-Limit', String(result.limit));

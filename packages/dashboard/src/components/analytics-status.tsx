@@ -72,8 +72,8 @@ export function AnalyticsStatus() {
         <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
           <p className="mb-2 text-xs font-medium text-amber-400">Recent alerts</p>
           <div className="space-y-1">
-            {data.alerts.slice(0, 5).map((a, i) => (
-              <div key={i} className="flex items-start justify-between text-xs">
+            {data.alerts.slice(0, 5).map((a) => (
+              <div key={`${a.type}:${a.created_at}:${a.message}`} className="flex items-start justify-between text-xs">
                 <span className="text-zinc-400">{a.message}</span>
                 <span className="shrink-0 ml-3 text-zinc-600">{timeAgo(a.created_at)}</span>
               </div>

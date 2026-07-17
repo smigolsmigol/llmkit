@@ -41,7 +41,7 @@ function validateSessionId(sessionId) {
 }
 
 function validateEndUserId(endUserId) {
-  if (endUserId && !/^[\w@.+\-]{1,256}$/.test(endUserId)) {
+  if (endUserId && !/^[\w@.+-]{1,256}$/.test(endUserId)) {
     throw new Error('invalid end user ID format');
   }
 }

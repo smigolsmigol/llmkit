@@ -1,0 +1,25 @@
+rules:
+  - id: llmkit.no-plaintext-api-key-in-track-request
+    message: Pass API-key identity into persistence, never the plaintext bearer key.
+    severity: ERROR
+    languages: [typescript]
+    pattern-either:
+      - pattern: 'trackRequest({..., apiKey: $KEY, ...})'
+      - pattern: 'trackRequest({..., apiKey, ...})'
+    paths:
+      include:
+        - /packages/proxy/src/
+
+  - id: llmkit.no-plaintext-api-key-console
+    message: Secret-bearing identifiers must never reach console output.
+    severity: ERROR
+    languages: [typescript]
+    pattern-either:
+      - pattern: 'console.$METHOD(..., apiKey, ...)'
+      - pattern: 'console.$METHOD(..., { ..., apiKey: $VALUE, ... }, ...)'
+      - pattern: 'console.$METHOD(..., { ..., apiKey, ... }, ...)'
+      - pattern: 'console.$METHOD(..., providerKey, ...)'
+      - pattern: 'console.$METHOD(..., serviceKey, ...)'
+    paths:
+      include:
+        - /packages/

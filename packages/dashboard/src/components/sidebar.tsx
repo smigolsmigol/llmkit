@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { ArrowLeft, Key, LayoutDashboard, List, Menu, Plug, Settings, Shield, X } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { AnimatedLogo } from './animated-logo';
 
@@ -35,7 +35,12 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
 
       {/* backdrop */}
       {open && (
-        <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setOpen(false)} />
+        <button
+          type="button"
+          aria-label="Close navigation"
+          className="fixed inset-0 z-40 bg-black/60 md:hidden"
+          onClick={() => setOpen(false)}
+        />
       )}
 
       <aside className={cn(
@@ -46,7 +51,7 @@ export function Sidebar({ isAdmin }: { isAdmin?: boolean }) {
           <Link href="/" onClick={() => setOpen(false)}>
             <AnimatedLogo className="h-[42px] w-auto" />
           </Link>
-          <button type="button" onClick={() => setOpen(false)} className="md:hidden text-zinc-500 hover:text-white">
+          <button type="button" aria-label="Close navigation" onClick={() => setOpen(false)} className="md:hidden text-zinc-500 hover:text-white">
             <X className="h-5 w-5" />
           </button>
         </div>

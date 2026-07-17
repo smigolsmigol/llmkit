@@ -3,23 +3,47 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "prepare": "git config core.hooksPath .github/hooks 2>/dev/null || true",
+    "prepare": "node scripts/install-git-hooks.mjs",
     "build": "turbo build",
     "dev": "turbo dev",
+    "db:start": "node scripts/run-local-supabase-cli.mjs start --exclude edge-runtime,imgproxy,logflare,mailpit,postgres-meta,realtime,storage-api,studio,supavisor,vector",
+    "db:stop": "node scripts/run-local-supabase-cli.mjs stop",
+    "db:reset": "node scripts/run-local-supabase-cli.mjs db reset --local --no-seed",
+    "db:test": "node scripts/run-local-supabase-cli.mjs test db --local supabase/tests/database",
+    "db:lint": "node scripts/run-local-supabase-cli.mjs db lint --local --schema public --level warning --fail-on warning",
+    "db:migration-proof": "node scripts/run-populated-migration-proof.mjs",
+    "db:verify": "node scripts/run-populated-migration-proof.mjs && node scripts/run-local-supabase-cli.mjs test db --local supabase/tests/database && node scripts/run-local-supabase-cli.mjs db lint --local --schema public --level warning --fail-on warning",
     "lint": "turbo lint",
-    "test": "turbo test",
+    "test": "node scripts/run-js-tests.mjs",
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
-    "check-all": "pnpm typecheck && biome check packages/proxy/src packages/sdk/src packages/cli/src packages/shared/src packages/ai-sdk-provider/src packages/mcp-server/src && knip --exclude types,exports && publint packages/shared && publint packages/sdk && publint packages/cli && publint packages/ai-sdk-provider && publint packages/mcp-server"
+    "quality:bootstrap": "node scripts/bootstrap-quality.mjs python",
+    "quality:bootstrap:hooks": "node scripts/bootstrap-quality.mjs hooks",
+    "quality:bootstrap:semgrep": "node scripts/bootstrap-quality.mjs semgrep",
+    "quality:bootstrap:all": "node scripts/bootstrap-quality.mjs all",
+    "quality:ts": "node scripts/run-ts-quality.mjs",
+    "quality:fast": "node scripts/run-quality-gate.mjs fast",
+    "quality:static": "node scripts/run-quality-gate.mjs static",
+    "quality:pr": "node scripts/run-quality-gate.mjs pr",
+    "security:semgrep:test": "node scripts/run-semgrep.mjs test",
+    "security:semgrep": "node scripts/run-semgrep.mjs scan",
+    "check-all": "node scripts/run-ts-quality.mjs"
   },
   "pnpm": {
     "overrides": {
-      "hono": ">=4.12.7",
-      "undici": ">=7.24.0",
+      "hono": "4.12.30",
+      "undici": "7.28.0",
       "express-rate-limit": ">=8.2.2",
-      "@hono/node-server": ">=1.19.10",
+      "@hono/node-server": "1.19.13",
       "path-to-regexp": ">=8.4.0",
-      "elliptic": ">=6.6.1"
+      "elliptic": ">=6.6.1",
+      "fast-uri": "3.1.2",
+      "ip-address": "10.2.0",
+      "js-cookie": "3.0.7",
+      "js-yaml": "4.3.0",
+      "postcss": "8.5.19",
+      "qs": "6.15.3",
+      "ws": "8.21.0"
     }
   },
   "devDependencies": {
@@ -27,7 +51,8 @@
     "kguard": "^0.1.0",
     "knip": "^5.85.0",
     "publint": "^0.3.18",
-    "turbo": "^2.4.0",
+    "supabase": "2.109.1",
+    "turbo": "^2.10.5",
     "typescript": "^5.7.0"
   }
 }

@@ -1,0 +1,69 @@
+minimum_pre_commit_version: "4.6.0"
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: detect-private-key
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.9.4
+    hooks:
+      - id: bandit
+        args: [-c, packages/python-sdk/pyproject.toml, -r, packages/python-sdk/src, packages/python-sdk/fuzz, -ll]
+        files: ^packages/python-sdk/(src|fuzz)/.*\.py$
+        pass_filenames: false
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff Python lint
+        entry: node scripts/run-python-files.mjs check
+        language: system
+        files: ^packages/python-sdk/(src|tests|fuzz)/.*\.py$
+      - id: ruff-format
+        name: ruff Python format
+        entry: node scripts/run-python-files.mjs format
+        language: system
+        files: ^packages/python-sdk/(src|tests|fuzz)/.*\.py$
+      - id: biome
+        name: biome TypeScript lint
+        entry: node scripts/run-biome-files.mjs
+        language: system
+        files: ^packages/[^/]+/src/.*\.(ts|tsx)$
+      - id: dormant-package-boundary
+        name: block unverified dormant package changes
+        entry: node scripts/run-ts-quality.mjs --dormant-boundary
+        language: system
+        files: ^packages/plugin-eliza/
+        pass_filenames: false
+      - id: npmrc-policy
+        name: enforce non-secret package-manager config
+        entry: node scripts/check-npmrc.mjs
+        language: system
+        files: ^\.npmrc$
+        pass_filenames: false
+      - id: log-secret-boundary
+        name: proxy secret logging boundary
+        entry: node packages/proxy/test/log-secret-boundary-test.mjs
+        language: system
+        files: ^packages/proxy/(src|test)/.*\.(ts|mjs)$
+        pass_filenames: false

@@ -1,8 +1,8 @@
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { PublicNavStatic } from '@/components/public-nav-static';
 import { PublicFooter } from '@/components/public-footer';
+import { PublicNavStatic } from '@/components/public-nav-static';
 
 export const metadata: Metadata = {
   title: 'Getting Started - LLMKit',

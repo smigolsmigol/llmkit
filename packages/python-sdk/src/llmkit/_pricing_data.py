@@ -5,7 +5,8 @@ UPDATED_AT = "2026-03-25"
 
 # 5-tuple: (input, output, cacheRead, cacheWrite, extraRates)
 # extraRates is dict[str, tuple[rate, per]] or None
-PRICING: dict[str, dict[str, tuple]] = {
+PricingEntry = tuple[float, float, float, float, dict[str, tuple[float, float]] | None]
+PRICING: dict[str, dict[str, PricingEntry]] = {
     "anthropic": {
         "claude-opus-4-6": (5, 25, 0.5, 6.25, None),
         "claude-sonnet-4-6": (3, 15, 0.3, 3.75, None),

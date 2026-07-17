@@ -15,7 +15,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from llmkit._pricing import _strip_date_suffix, calculate_cost, lookup_pricing
-from llmkit._transport import _SSEScanner, _extract_cost_from_json
+from llmkit._transport import _extract_cost_from_json, _SSEScanner
 from llmkit._types import CostInfo, SessionStats
 
 SEED = 42
@@ -62,6 +62,21 @@ def test_pricing(rng: random.Random) -> int:
 
 def test_sse_scanner(rng: random.Random) -> int:
     errors = 0
+    malformed_lines = [
+        b"data: 1\n\n",
+        b"data: []\n\n",
+        b'data: {"model":"gpt-4o","usage":1}\n\n',
+        b'data: {"model":"gpt-4o","usage":{"prompt_tokens_details":1}}\n\n',
+    ]
+    for line in malformed_lines:
+        scanner = _SSEScanner()
+        try:
+            scanner.feed(line)
+            scanner.result()
+        except Exception as e:
+            print(f"  FAIL: _SSEScanner rejected-input fixture crashed: {e}")
+            errors += 1
+
     for _ in range(N_ITERATIONS):
         scanner = _SSEScanner()
         n_chunks = rng.randint(1, 10)
@@ -80,9 +95,7 @@ def test_sse_scanner(rng: random.Random) -> int:
 
     # valid SSE stream
     scanner = _SSEScanner()
-    scanner.feed(
-        b'data: {"model":"gpt-4o","usage":{"prompt_tokens":10,"completion_tokens":5}}\n\n'
-    )
+    scanner.feed(b'data: {"model":"gpt-4o","usage":{"prompt_tokens":10,"completion_tokens":5}}\n\n')
     r = scanner.result()
     assert r is not None and r.total_cost is not None
     return errors
@@ -90,6 +103,19 @@ def test_sse_scanner(rng: random.Random) -> int:
 
 def test_json_extract(rng: random.Random) -> int:
     errors = 0
+    malformed_payloads = [
+        b"1",
+        b"[]",
+        b'{"model":"gpt-4o","usage":1}',
+        b'{"model":"gpt-4o","usage":{"prompt_tokens_details":1}}',
+    ]
+    for raw in malformed_payloads:
+        try:
+            _extract_cost_from_json(raw)
+        except Exception as e:
+            print(f"  FAIL: _extract_cost_from_json rejected-input fixture crashed: {e}")
+            errors += 1
+
     for _ in range(N_ITERATIONS):
         raw = rand_bytes(rng, 2048)
         try:
@@ -102,9 +128,7 @@ def test_json_extract(rng: random.Random) -> int:
     for _ in range(N_ITERATIONS):
         payload: dict = {}
         if rng.random() > 0.3:
-            payload["model"] = rng.choice(
-                ["gpt-4o", "claude-sonnet-4-6", rand_str(rng, 64)]
-            )
+            payload["model"] = rng.choice(["gpt-4o", "claude-sonnet-4-6", rand_str(rng, 64)])
         if rng.random() > 0.3:
             usage: dict = {}
             for key in [
@@ -116,9 +140,7 @@ def test_json_extract(rng: random.Random) -> int:
                 if rng.random() > 0.5:
                     usage[key] = rng.randint(-100, 5_000_000)
             if rng.random() > 0.7:
-                usage["prompt_tokens_details"] = {
-                    "cached_tokens": rng.randint(0, 1_000_000)
-                }
+                usage["prompt_tokens_details"] = {"cached_tokens": rng.randint(0, 1_000_000)}
             payload["usage"] = usage
         try:
             _extract_cost_from_json(json.dumps(payload).encode())
@@ -155,7 +177,7 @@ def test_types(rng: random.Random) -> int:
             stats.record(CostInfo(total_cost=cost_val, estimated=rng.random() > 0.5))
         try:
             str(stats)
-            stats.avg_cost
+            _ = stats.avg_cost
         except Exception as e:
             print(f"  FAIL: SessionStats method crashed: {e}")
             errors += 1

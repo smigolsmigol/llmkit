@@ -13,6 +13,7 @@
         "NEXT_PUBLIC_CLERK_SIGN_UP_URL",
         "PRICING_API_URL",
         "SUPABASE_URL",
+        "SUPABASE_PUBLISHABLE_KEY",
         "SUPABASE_SERVICE_KEY",
         "ENCRYPTION_KEY"
       ]

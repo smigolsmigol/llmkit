@@ -75,17 +75,17 @@ async function collectNpm(ciRunsByDay) {
       var week = await fetchJson("https://api.npmjs.org/downloads/point/last-week/" + encoded);
       var month = await fetchJson("https://api.npmjs.org/downloads/point/last-month/" + encoded);
       var daily = await fetchJson("https://api.npmjs.org/downloads/range/last-month/" + encoded);
-      var rawDaily = (daily.downloads || []).map(function(d) { return { day: d.day, count: d.downloads }; });
+      var rawDaily = (daily.downloads || []).map((d) => ({ day: d.day, count: d.downloads }));
 
-      var organicDaily = rawDaily.map(function(d) {
+      var organicDaily = rawDaily.map((d) => {
         var ciRuns = ciRunsByDay[d.day] || 0;
         var noise = Math.round(ciRuns * INSTALLS_PER_CI_RUN / NPM_PACKAGES.length);
         var organic = Math.max(0, d.count - noise);
         return { day: d.day, count: d.count, organic: organic, ci_noise: noise };
       });
 
-      var organicWeek = organicDaily.slice(-7).reduce(function(s, d) { return s + d.organic; }, 0);
-      var organicMonth = organicDaily.reduce(function(s, d) { return s + d.organic; }, 0);
+      var organicWeek = organicDaily.slice(-7).reduce((s, d) => s + d.organic, 0);
+      var organicMonth = organicDaily.reduce((s, d) => s + d.organic, 0);
 
       results[pkg] = {
         last_week: week.downloads,
@@ -123,7 +123,7 @@ async function collectPypi() {
 
 async function collectGithub() {
   if (!GITHUB_TOKEN) return { error: "no token" };
-  var gh = function(url) { return fetchJson(url, { Authorization: "Bearer " + GITHUB_TOKEN }); };
+  var gh = (url) => fetchJson(url, { Authorization: "Bearer " + GITHUB_TOKEN });
   try {
     var repo = await gh("https://api.github.com/repos/smigolsmigol/llmkit");
     var traffic = null;
@@ -171,7 +171,7 @@ async function collectAccounts() {
     });
     if (!res.ok) return null;
     var accounts = await res.json();
-    return { total: accounts.length, accounts: accounts.map(function(a) { return { plan: a.plan, created: a.created_at }; }) };
+    return { total: accounts.length, accounts: accounts.map((a) => ({ plan: a.plan, created: a.created_at })) };
   } catch (e) {
     return null;
   }
@@ -201,13 +201,13 @@ async function sendTelegram(text) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ chat_id: TG_CHAT, parse_mode: "HTML", text: text }),
-  }).catch(function(e) { console.error("telegram failed: " + e.message); });
+  }).catch((e) => { console.error("telegram failed: " + e.message); });
 }
 
 async function checkAnomalies(npm, health, accounts) {
   var failures = Object.entries(health)
-    .filter(function(e) { return e[1].status !== "up"; })
-    .map(function(e) { return e[0] + ": " + e[1].status + " (" + (e[1].code || e[1].error || "?") + ")"; });
+    .filter((e) => e[1].status !== "up")
+    .map((e) => e[0] + ": " + e[1].status + " (" + (e[1].code || e[1].error || "?") + ")");
   if (failures.length > 0) {
     await sendTelegram("<b>Service Down</b>\n" + failures.join("\n"));
   }
@@ -259,7 +259,7 @@ async function run() {
   var health = results[3].status === "fulfilled" ? results[3].value : {};
   var accounts = results[4].status === "fulfilled" ? results[4].value : null;
 
-  results.forEach(function(r, i) {
+  results.forEach((r, i) => {
     if (r.status === "rejected") console.error("collector " + i + " failed: " + r.reason);
   });
 
@@ -275,7 +275,7 @@ async function run() {
   console.log("collection complete (v2.1 organic estimates)");
 }
 
-run().catch(async function(e) {
+run().catch(async (e) => {
   console.error("collection failed: " + e);
   await sendTelegram("<b>Collection FAILED</b>\n" + e.message);
   process.exit(1);

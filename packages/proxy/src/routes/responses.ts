@@ -120,7 +120,6 @@ responsesRouter.post('/responses', async (c) => {
     endUserId: c.req.header('x-llmkit-user-id') || undefined,
     toolCalls,
     providerCostUsd: undefined,
-    apiKey: c.get('apiKey'),
     apiKeyId: c.get('apiKeyId'),
     userId: c.get('userId'),
     budgetId: c.get('budgetId'),

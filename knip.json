@@ -1,16 +1,35 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
-  "ignoreDependencies": [],
+  "ignoreDependencies": [
+    "@biomejs/biome",
+    "kguard",
+    "publint",
+    "supabase"
+  ],
   "exclude": ["types", "exports"],
-  "ignore": ["examples/**", "scripts/**"],
+  "ignore": [
+    "examples/**",
+    "scripts/**",
+    "test/quality-gate-contract-test.mjs",
+    ".semgrep/llmkit-security.ts"
+  ],
   "workspaces": {
     "packages/proxy": {
       "ignore": ["test/**"],
       "ignoreDependencies": ["cloudflare"]
     },
-    "packages/sdk": {},
-    "packages/cli": {},
-    "packages/mcp-server": {},
+    "packages/sdk": {
+      "entry": ["test/*.mjs"]
+    },
+    "packages/cli": {
+      "entry": ["test/*.mjs"]
+    },
+    "packages/ai-sdk-provider": {
+      "entry": ["test/*.mjs"]
+    },
+    "packages/mcp-server": {
+      "entry": ["test/*.mjs"]
+    },
     "packages/dashboard": {
       "ignoreDependencies": ["class-variance-authority"],
       "ignore": [

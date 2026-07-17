@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { CostChart } from '@/components/charts/cost-chart';
 import { ProviderChart } from '@/components/charts/provider-chart';
 import { RequestChart } from '@/components/charts/request-chart';
@@ -10,7 +10,7 @@ import { TokenChart } from '@/components/charts/token-chart';
 import { EcosystemPanel } from '@/components/ecosystem-panel';
 import { StatCard } from '@/components/stat-card';
 import { formatCents } from '@/lib/format';
-import type { TimeseriesPoint, AccountRow } from '@/lib/queries';
+import type { AccountRow, TimeseriesPoint } from '@/lib/queries';
 import { AccountTable } from './account-table';
 import { AlertsPanel } from './alerts-panel';
 import { ThresholdStatCard } from './threshold-stat-card';
@@ -100,7 +100,9 @@ export function AdminTabs(props: AdminTabsProps) {
   );
 
   useEffect(() => {
-    window.dispatchEvent(new Event('resize'));
+    if (activeTab) {
+      window.dispatchEvent(new Event('resize'));
+    }
   }, [activeTab]);
 
   function setTab(id: TabId) {

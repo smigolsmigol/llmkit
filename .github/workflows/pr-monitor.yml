@@ -37,12 +37,10 @@ jobs:
 
           PREV_REVIEWS=0
           PREV_COMMENTS=0
-          PREV_CHECKS=0
           PREV_STATE="OPEN"
           if [ -f "$PREV_FILE" ]; then
             PREV_REVIEWS=$(jq -r '.reviews' "$PREV_FILE" 2>/dev/null || echo 0)
             PREV_COMMENTS=$(jq -r '.comments' "$PREV_FILE" 2>/dev/null || echo 0)
-            PREV_CHECKS=$(jq -r '.checks' "$PREV_FILE" 2>/dev/null || echo 0)
             PREV_STATE=$(jq -r '.state' "$PREV_FILE" 2>/dev/null || echo "OPEN")
           fi
 

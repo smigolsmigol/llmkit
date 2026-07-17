@@ -31,6 +31,7 @@ export function RevokeKeyButton({ keyId, keyName }: RevokeKeyButtonProps) {
         {error && <span className="text-xs text-red-400">Failed.</span>}
         <span className="text-xs text-muted-foreground">Revoke {keyName}?</span>
         <button
+          type="button"
           onClick={handleRevoke}
           disabled={pending}
           className="rounded px-2 py-0.5 text-xs text-red-400 transition-colors hover:bg-red-500/10"
@@ -38,6 +39,7 @@ export function RevokeKeyButton({ keyId, keyName }: RevokeKeyButtonProps) {
           {pending ? '...' : 'Yes'}
         </button>
         <button
+          type="button"
           onClick={() => setConfirming(false)}
           className="rounded px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
@@ -49,6 +51,7 @@ export function RevokeKeyButton({ keyId, keyName }: RevokeKeyButtonProps) {
 
   return (
     <button
+      type="button"
       onClick={() => setConfirming(true)}
       className="rounded px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:text-red-400"
     >

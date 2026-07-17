@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 import uuid
-from typing import Any, AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import Any
 
 from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionChunk

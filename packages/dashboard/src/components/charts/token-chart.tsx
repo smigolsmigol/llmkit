@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import { useMemo } from 'react';
 import echarts from '@/lib/echarts';
-import { type TimeseriesPoint, bucketByHour, dataBounds, dataZoomConfig, baseTooltip } from './types';
+import { asTooltipData, baseTooltip, bucketByHour, dataBounds, dataZoomConfig, type TimeseriesPoint } from './types';
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -41,13 +41,13 @@ export function TokenChart({ data }: { data: TimeseriesPoint[] }) {
       },
       tooltip: {
         ...baseTooltip,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        formatter: (params: any) => {
-          if (!Array.isArray(params) || !params.length) return '';
-          const date = new Date(params[0].value[0]);
+        formatter: (params: unknown) => {
+          const dataPoints = asTooltipData(params);
+          if (!dataPoints.length) return '';
+          const date = new Date(dataPoints[0].value[0]);
           const label = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
           let html = `<div style="font-size:10px;color:#888;margin-bottom:3px">${label}</div>`;
-          for (const p of params) {
+          for (const p of dataPoints) {
             if (p.value?.[1] > 0) {
               html += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px">` +
                 `<span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${p.color};margin-right:4px"></span>${p.seriesName}</span>` +

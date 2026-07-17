@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
 import ReactEChartsCore from 'echarts-for-react/lib/core';
+import { useMemo } from 'react';
 import echarts from '@/lib/echarts';
-import { type TimeseriesPoint, bucketByHour, dataBounds, dataZoomConfig, baseTooltip } from './types';
+import { asTooltipData, baseTooltip, bucketByHour, dataBounds, dataZoomConfig, type TimeseriesPoint } from './types';
 
 function formatCost(v: number): string {
   if (v === 0) return '$0';
@@ -56,14 +56,14 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
       },
       tooltip: {
         ...baseTooltip,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        formatter: (params: any) => {
-          if (!Array.isArray(params) || !params.length) return '';
-          const date = new Date(params[0].value[0]);
+        formatter: (params: unknown) => {
+          const dataPoints = asTooltipData(params);
+          if (!dataPoints.length) return '';
+          const date = new Date(dataPoints[0].value[0]);
           const label = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
-          const total = params.reduce((s: number, p: { value?: [number, number] }) => s + (p.value?.[1] || 0), 0);
+          const total = dataPoints.reduce((sum, point) => sum + point.value[1], 0);
           let html = `<div style="font-size:10px;color:#888;margin-bottom:3px">${label}</div>`;
-          for (const p of params) {
+          for (const p of dataPoints) {
             if (p.value?.[1] > 0) {
               html += `<div style="display:flex;justify-content:space-between;gap:16px;font-size:11px">` +
                 `<span><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${p.color};margin-right:4px"></span>${p.seriesName}</span>` +

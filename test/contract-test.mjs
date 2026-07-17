@@ -73,7 +73,8 @@ test('manifest.json version matches package.json version', () => {
 });
 
 // MCPB freshness check (skipped if mcpb not present - file is gitignored, built locally)
-import { statSync, existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
+
 test('MCPB file exists and is not older than dist/', () => {
   const mcpbPath = 'packages/mcp-server/mcp-server.mcpb';
   if (!existsSync(mcpbPath)) { return; } // gitignored, skip in CI

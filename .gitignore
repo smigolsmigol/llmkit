@@ -4,6 +4,7 @@ node_modules/
 
 # build
 dist/
+packages/python-sdk/build/
 .turbo/
 *.tsbuildinfo
 *.b64
@@ -33,6 +34,14 @@ Thumbs.db
 
 # python cache
 __pycache__/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.egg-info/
 
 # mcp publisher artifacts
 *.mcpb
@@ -65,6 +74,7 @@ npm-debug.log*
 # temp
 tmp/
 .cache/
+supabase/.temp/
 
 # planning docs (local only, not repo material)
 /docs/
@@ -88,4 +98,3 @@ e2e-ai-sdk-test.mjs
 .env.staging
 .env.development
 .pypirc
-

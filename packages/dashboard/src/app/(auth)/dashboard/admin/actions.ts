@@ -1,8 +1,8 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { createServerClient } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
+import { createServerClient } from '@/lib/supabase';
 
 async function assertAdmin(userId: string | null) {
   if (!userId) throw new Error('Unauthorized');

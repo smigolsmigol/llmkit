@@ -1,12 +1,23 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, Callable, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
+from typing import Any
 
 import httpx
 
 from ._pricing import calculate_cost
 from ._types import CostInfo
+
+
+def _token_count(value: Any) -> int:
+    """Return a safe provider token count for untrusted response data."""
+    return value if type(value) is int and value >= 0 else 0
+
+
+def _optional_token_count(value: Any) -> int | None:
+    """Preserve the distinction between an absent and zero provider count."""
+    return value if type(value) is int and value >= 0 else None
 
 
 def _extract_cost_from_json(body: bytes) -> CostInfo | None:
@@ -16,25 +27,33 @@ def _extract_cost_from_json(body: bytes) -> CostInfo | None:
     except (json.JSONDecodeError, UnicodeDecodeError):
         return None
 
-    model = data.get("model")
-    usage = data.get("usage")
-    if not model or not usage:
+    if not isinstance(data, dict):
         return None
 
-    output_t = usage.get("completion_tokens") or usage.get("output_tokens") or 0
-    cache_write = usage.get("cache_creation_input_tokens") or 0
+    model = data.get("model")
+    usage = data.get("usage")
+    if not isinstance(model, str) or not model or not isinstance(usage, dict):
+        return None
+
+    output_t = _token_count(usage.get("completion_tokens"))
+    if output_t == 0:
+        output_t = _token_count(usage.get("output_tokens"))
+    cache_write = _token_count(usage.get("cache_creation_input_tokens"))
 
     # OpenAI: prompt_tokens includes cached_tokens as subset
     # Anthropic: input_tokens is separate from cache_read_input_tokens
-    openai_cached = (usage.get("prompt_tokens_details") or {}).get("cached_tokens") or 0
-    anthropic_cached = usage.get("cache_read_input_tokens") or 0
+    prompt_details = usage.get("prompt_tokens_details")
+    openai_cached = (
+        _token_count(prompt_details.get("cached_tokens")) if isinstance(prompt_details, dict) else 0
+    )
+    anthropic_cached = _token_count(usage.get("cache_read_input_tokens"))
 
-    if usage.get("prompt_tokens") is not None:
-        raw_input = usage["prompt_tokens"]
+    prompt_tokens = _optional_token_count(usage.get("prompt_tokens"))
+    if prompt_tokens is not None:
         cache_read = openai_cached
-        input_t = raw_input - cache_read if cache_read else raw_input
+        input_t = max(prompt_tokens - cache_read, 0)
     else:
-        input_t = usage.get("input_tokens") or 0
+        input_t = _token_count(usage.get("input_tokens"))
         cache_read = anthropic_cached
 
     total = calculate_cost(model, input_t, output_t, cache_read, cache_write)
@@ -42,7 +61,7 @@ def _extract_cost_from_json(body: bytes) -> CostInfo | None:
 
 
 def _is_chat_endpoint(path: str) -> bool:
-    return path.endswith("/chat/completions") or path.endswith("/messages")
+    return path.endswith(("/chat/completions", "/messages"))
 
 
 def _is_sse(response: httpx.Response) -> bool:
@@ -77,37 +96,52 @@ class _SSEScanner:
             except json.JSONDecodeError:
                 continue
 
-            if data.get("model"):
-                self.model = data["model"]
+            if not isinstance(data, dict):
+                continue
+
+            model = data.get("model")
+            if isinstance(model, str) and model:
+                self.model = model
 
             # anthropic: model inside message object
-            msg = data.get("message") or {}
-            if isinstance(msg, dict) and msg.get("model"):
-                self.model = msg["model"]
+            message = data.get("message")
+            msg = message if isinstance(message, dict) else {}
+            message_model = msg.get("model")
+            if isinstance(message_model, str) and message_model:
+                self.model = message_model
 
             # openai: usage in final chunk (prompt_tokens includes cached_tokens)
             usage = data.get("usage")
             if isinstance(usage, dict):
                 self.has_usage = True
-                cached = (usage.get("prompt_tokens_details") or {}).get(
-                    "cached_tokens"
-                ) or 0
-                raw_input = usage.get("prompt_tokens") or usage.get("input_tokens") or 0
-                self.input_tokens += raw_input - cached if cached else raw_input
-                self.output_tokens += (
-                    usage.get("completion_tokens") or usage.get("output_tokens") or 0
+                prompt_details = usage.get("prompt_tokens_details")
+                cached = (
+                    _token_count(prompt_details.get("cached_tokens"))
+                    if isinstance(prompt_details, dict)
+                    else 0
                 )
+                prompt_tokens = _optional_token_count(usage.get("prompt_tokens"))
+                raw_input = (
+                    prompt_tokens
+                    if prompt_tokens is not None
+                    else _token_count(usage.get("input_tokens"))
+                )
+                self.input_tokens += max(raw_input - cached, 0)
+                output_tokens = _token_count(usage.get("completion_tokens"))
+                if output_tokens == 0:
+                    output_tokens = _token_count(usage.get("output_tokens"))
+                self.output_tokens += output_tokens
                 self.cache_read_tokens += cached
 
             # anthropic: usage split across message_start and message_delta
             msg_usage = msg.get("usage") if isinstance(msg, dict) else None
             if isinstance(msg_usage, dict):
                 self.has_usage = True
-                self.input_tokens += msg_usage.get("input_tokens") or 0
-                self.output_tokens += msg_usage.get("output_tokens") or 0
-                self.cache_read_tokens += msg_usage.get("cache_read_input_tokens") or 0
-                self.cache_write_tokens += (
-                    msg_usage.get("cache_creation_input_tokens") or 0
+                self.input_tokens += _token_count(msg_usage.get("input_tokens"))
+                self.output_tokens += _token_count(msg_usage.get("output_tokens"))
+                self.cache_read_tokens += _token_count(msg_usage.get("cache_read_input_tokens"))
+                self.cache_write_tokens += _token_count(
+                    msg_usage.get("cache_creation_input_tokens")
                 )
 
     def result(self) -> CostInfo | None:

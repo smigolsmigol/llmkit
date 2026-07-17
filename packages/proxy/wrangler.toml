@@ -17,6 +17,18 @@ class_name = "BudgetDO"
 name = "RATE_LIMIT_DO"
 class_name = "RateLimitDO"
 
+[env.staging]
+workers_dev = true
+routes = []
+
+[[env.staging.durable_objects.bindings]]
+name = "BUDGET_DO"
+class_name = "BudgetDO"
+
+[[env.staging.durable_objects.bindings]]
+name = "RATE_LIMIT_DO"
+class_name = "RateLimitDO"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["BudgetDO", "RateLimitDO"]

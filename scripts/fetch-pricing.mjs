@@ -7,10 +7,10 @@
 //   node scripts/fetch-pricing.mjs              # fetch + update + generate
 //   node scripts/fetch-pricing.mjs --dry-run    # show what would change, don't write
 
-import { readFileSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');

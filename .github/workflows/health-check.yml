@@ -45,8 +45,7 @@ jobs:
           check_npm() {
             local pkg="$1"
             local ver
-            ver=$(npm view "$pkg" version 2>&1)
-            if [ $? -ne 0 ] || [ -z "$ver" ]; then
+            if ! ver=$(npm view "$pkg" version 2>&1) || [ -z "$ver" ]; then
               FAILURES="${FAILURES}npm $pkg: not found on registry%0A"
             fi
           }

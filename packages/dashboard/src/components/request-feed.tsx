@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { type RequestRow } from '@/lib/queries';
+import type { RequestRow } from '@/lib/queries';
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('en-US', {

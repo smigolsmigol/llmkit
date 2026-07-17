@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
 import { auth } from '@clerk/nextjs/server';
-import { getBudgets, getAccount } from '@/lib/queries';
+import type { Metadata } from 'next';
+import { getAccount, getBudgets } from '@/lib/queries';
 
 export const metadata: Metadata = { title: 'Settings - LLMKit' };
+
 import { BudgetManager } from '@/components/budget-manager';
 
 
@@ -55,7 +56,7 @@ export default async function SettingsPage() {
             <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-500">Plan</h2>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
               </div>
               <div>
                 <p className="text-lg font-semibold">{planName}</p>
@@ -86,7 +87,7 @@ export default async function SettingsPage() {
             <h2 className="mb-4 text-xs font-medium uppercase tracking-wider text-zinc-500">Account</h2>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-violet-400"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               </div>
               <div>
                 <p className="text-xs text-zinc-500">User ID</p>

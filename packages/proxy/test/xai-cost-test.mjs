@@ -2,7 +2,7 @@
 // usage: node test/xai-cost-test.mjs
 
 import { strict as assert } from 'node:assert';
-import { getModelPricing, calculateCostFromPricing, PRICING } from '../../shared/dist/index.js';
+import { calculateCostFromPricing, getModelPricing, PRICING } from '../../shared/dist/index.js';
 
 let passed = 0;
 let failed = 0;

@@ -6,6 +6,7 @@ partial chunk reassembly).
 """
 
 import sys
+
 import atheris
 
 with atheris.instrument_imports():
@@ -19,9 +20,7 @@ def fuzz_one(data: bytes) -> None:
     # split the input into random-sized chunks to test partial reassembly
     remaining = fdp.ConsumeBytes(fdp.remaining_bytes())
     while remaining:
-        split = max(
-            1, len(remaining) // (fdp.ConsumeIntInRange(1, 8) if len(data) > 1 else 1)
-        )
+        split = max(1, len(remaining) // (fdp.ConsumeIntInRange(1, 8) if len(data) > 1 else 1))
         chunk, remaining = remaining[:split], remaining[split:]
         scanner.feed(chunk)
 

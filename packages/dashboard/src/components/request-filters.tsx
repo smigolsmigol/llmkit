@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback } from 'react';
 
 interface RequestFiltersProps {
@@ -39,6 +39,8 @@ export function RequestFilters({ providers, models }: RequestFiltersProps) {
           <span className="text-muted-foreground">Session:</span>
           <span className="max-w-[120px] truncate font-mono">{activeSession}</span>
           <button
+            type="button"
+            aria-label="Clear session filter"
             onClick={() => updateParam('session_id', '')}
             className="ml-0.5 text-muted-foreground hover:text-foreground"
           >
@@ -48,6 +50,7 @@ export function RequestFilters({ providers, models }: RequestFiltersProps) {
       )}
 
       <select
+        aria-label="Filter by provider"
         value={activeProvider}
         onChange={(e) => updateParam('provider', e.target.value)}
         className="h-8 rounded-md border border-border bg-secondary px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -59,6 +62,7 @@ export function RequestFilters({ providers, models }: RequestFiltersProps) {
       </select>
 
       <select
+        aria-label="Filter by model"
         value={activeModel}
         onChange={(e) => updateParam('model', e.target.value)}
         className="h-8 rounded-md border border-border bg-secondary px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -70,6 +74,7 @@ export function RequestFilters({ providers, models }: RequestFiltersProps) {
       </select>
 
       <select
+        aria-label="Filter by status"
         value={activeStatus}
         onChange={(e) => updateParam('status', e.target.value)}
         className="h-8 rounded-md border border-border bg-secondary px-3 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
@@ -81,6 +86,7 @@ export function RequestFilters({ providers, models }: RequestFiltersProps) {
 
       {(activeProvider || activeModel || activeStatus || activeSession) && (
         <button
+          type="button"
           onClick={() => router.push(pathname)}
           className="text-xs text-muted-foreground transition-colors hover:text-foreground"
         >
