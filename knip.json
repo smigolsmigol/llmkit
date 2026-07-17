@@ -33,7 +33,8 @@
     "packages/dashboard": {
       "entry": [
         "open-next.config.ts",
-        "test/*.mjs"
+        "test/*.mjs",
+        "test/fixtures/*.ts"
       ],
       "ignoreDependencies": ["class-variance-authority"],
       "ignore": [

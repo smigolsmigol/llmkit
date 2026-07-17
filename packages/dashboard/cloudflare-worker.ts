@@ -1,7 +1,10 @@
 // biome-ignore lint/suspicious/noTsIgnore: The OpenNext handler is generated before Wrangler runs.
 // @ts-ignore The OpenNext handler is generated before Wrangler runs.
 import openNextHandler from './.open-next/worker.js';
-import { classifyRecoveryPath } from './src/lib/public-recovery';
+import {
+  classifyRecoveryPath,
+  createHttpsRedirectResponse,
+} from './src/lib/public-recovery';
 
 const SECURITY_HEADERS = {
   'Content-Security-Policy':
@@ -37,6 +40,12 @@ function withHeaders(response: Response, extraHeaders: Record<string, string> = 
 export default {
   async fetch(request: Request, env: unknown, context: unknown): Promise<Response> {
     const requestUrl = new URL(request.url);
+    const httpsRedirectResponse = createHttpsRedirectResponse(requestUrl);
+
+    if (httpsRedirectResponse) {
+      return withHeaders(httpsRedirectResponse);
+    }
+
     const boundary = classifyRecoveryPath(requestUrl.pathname);
 
     if (boundary === 'blocked-api') {
