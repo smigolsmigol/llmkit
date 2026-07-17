@@ -31,6 +31,10 @@
       "entry": ["test/*.mjs"]
     },
     "packages/dashboard": {
+      "entry": [
+        "open-next.config.ts",
+        "test/*.mjs"
+      ],
       "ignoreDependencies": ["class-variance-authority"],
       "ignore": [
         "src/components/ui/card.tsx"

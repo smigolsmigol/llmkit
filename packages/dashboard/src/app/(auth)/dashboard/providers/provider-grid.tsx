@@ -1,6 +1,5 @@
 'use client';
 
-import { track } from '@vercel/analytics';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ProviderIcon } from '@/components/provider-icons';
@@ -155,7 +154,6 @@ function AddKeyInline({ provider, onDone }: { provider: string; onDone: () => vo
     setError('');
     try {
       await addProviderKey(provider, key, name || undefined);
-      track('provider_key_added', { provider });
       onDone();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add key');

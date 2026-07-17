@@ -2,10 +2,19 @@
   "name": "@f3d1/llmkit-dashboard",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "description": "LLMKit dashboard - cost analytics, API key management, budget configuration",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "corepack pnpm@9.15.4 --filter @f3d1/llmkit-shared build",
     "build": "next build",
+    "cloudflare:build": "opennextjs-cloudflare build",
+    "cloudflare:preview": "opennextjs-cloudflare build --env staging && opennextjs-cloudflare preview --env staging",
+    "cloudflare:dry-run": "opennextjs-cloudflare build --env staging && wrangler deploy --dry-run --env staging",
+    "cloudflare:deploy:staging": "opennextjs-cloudflare build --env staging && opennextjs-cloudflare deploy --env staging",
+    "cloudflare:deploy:production": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cloudflare:typegen": "wrangler types --env staging --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "test": "node test/recovery-boundary-test.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
@@ -13,8 +22,6 @@
     "@clerk/nextjs": "^6.39.2",
     "@f3d1/llmkit-shared": "workspace:*",
     "@supabase/supabase-js": "^2.110.6",
-    "@vercel/analytics": "^2.0.1",
-    "@vercel/speed-insights": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "echarts": "^6.1.0",
@@ -26,11 +33,13 @@
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "1.20.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "postcss": "^8.5.19",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "wrangler": "4.112.0"
   }
 }
