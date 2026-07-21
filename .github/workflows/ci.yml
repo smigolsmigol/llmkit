@@ -150,7 +150,7 @@ jobs:
             ./
 
       - name: require zero known vulnerabilities
-        uses: google/osv-scanner-action/osv-reporter-action@8dc09193bb540e09b23da07ad7e30bd33bf87018 # v2.3.8
+        uses: google/osv-scanner-action/osv-reporter-action@a82132c0bd6c7261ffcb78e754c46c70ab57ad9a # v2.3.8
         with:
           scan-args: |-
             --output=results.sarif
