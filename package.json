@@ -47,10 +47,10 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.2",
+    "@biomejs/biome": "^2.5.5",
     "kguard": "^0.1.0",
     "knip": "^5.85.0",
-    "publint": "^0.3.18",
+    "publint": "^0.3.21",
     "supabase": "2.109.1",
     "turbo": "^2.10.5",
     "typescript": "^5.7.0"
