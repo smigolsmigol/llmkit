@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@f3d1/llmkit-shared": "workspace:*",
-    "hono": "^4.12.30"
+    "hono": "^4.12.31"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260716.1",
