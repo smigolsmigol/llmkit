@@ -34,6 +34,7 @@ const tests = [
   'packages/shared/test/exports-test.mjs',
   'packages/mcp-server/test/integration-test.mjs',
   'test/contract-test.mjs',
+  'test/health-check-workflow-test.mjs',
   'test/quality-gate-contract-test.mjs',
 ];
 

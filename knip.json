@@ -10,10 +10,12 @@
   "ignore": [
     "examples/**",
     "scripts/**",
-    "test/quality-gate-contract-test.mjs",
     ".semgrep/llmkit-security.ts"
   ],
   "workspaces": {
+    ".": {
+      "entry": ["test/*.mjs"]
+    },
     "packages/proxy": {
       "ignore": ["test/**"],
       "ignoreDependencies": ["cloudflare"]
