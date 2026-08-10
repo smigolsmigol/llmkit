@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const scripts = [
   'scripts/run-ts-quality.mjs',
   'scripts/run-quality-gate.mjs',
+  'scripts/check-budget-falsifier-coverage.mjs',
   'scripts/assert-scorecard-supply-chain.mjs',
   'packages/proxy/test/database-compatibility-runtime-proof.mjs',
 ];

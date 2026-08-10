@@ -237,16 +237,24 @@ jobs:
   notify-failure:
     name: notify-ci-failure
     needs: [quality, python-floor, scorecard-supply-chain, osv, deploy, post-deploy-verify]
-    if: always() && contains(needs.*.result, 'failure')
+    if: >-
+      always() &&
+      contains(needs.*.result, 'failure') &&
+      github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
       - name: notify failure
+        continue-on-error: true
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         shell: bash
         run: |
+          if [ -z "$TELEGRAM_BOT_TOKEN" ] || [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "Telegram failure alert is not configured; skipping delivery."
+            exit 0
+          fi
           first_line=$(printf '%s' "$COMMIT_MSG" | head -1 | tr -d '<>&')
           curl --fail-with-body --silent --show-error \
             --request POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
