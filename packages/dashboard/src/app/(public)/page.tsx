@@ -6,6 +6,7 @@ import { PublicFooter } from '@/components/public-footer';
 import { PublicNavStatic } from '@/components/public-nav-static';
 import { TerminalDemo } from '@/components/terminal-demo';
 import { TrackClick } from '@/components/track-event';
+import { RECOVERY_PUBLIC_CTA, RECOVERY_STATUS_HREF } from '@/lib/public-recovery';
 
 export const metadata: Metadata = {
   title: 'LLMKit - Know what your AI agents cost',
@@ -32,10 +33,9 @@ const providers = [
 ];
 
 export default function Home() {
-  const ctaHref = '/sign-up';
-  const ctaLabel = 'Get started free';
+  const { href: ctaHref, label: ctaLabel } = RECOVERY_PUBLIC_CTA;
   return (
-    <div className="relative min-h-screen bg-[#0a0a0a] text-white selection:bg-violet-500/30">
+    <div className="relative min-h-screen overflow-x-hidden bg-[#0a0a0a] text-white selection:bg-violet-500/30">
       <div
         className="pointer-events-none fixed inset-0 z-50 opacity-[0.02]"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
@@ -166,23 +166,23 @@ export default function Home() {
                 Budget enforcement that actually blocks requests. Reservation pattern: estimate before, reject if over, settle after. Per-key and per-session limits.
               </p>
               <p className="mt-4 text-xs text-cyan-400 group-hover:text-cyan-300 transition">
-                Get started {'->'}
+                Set up locally {'->'}
               </p>
             </div>
           </Link>
 
           {/* Dashboard */}
-          <Link href={ctaHref} className="group">
+          <Link href={RECOVERY_STATUS_HREF} className="group">
             <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition hover:border-amber-500/20 hover:bg-white/[0.04]">
               <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
                 <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
               </div>
-              <h3 className="text-base font-semibold">Dashboard</h3>
+              <h3 className="text-base font-semibold">Hosted dashboard</h3>
               <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Spend by model, provider, and session. Request log with full cost breakdown. API key management, budget configuration, anomaly detection.
+                Hosted accounts are temporarily unavailable while the authenticated service is restored. Local SDK, CLI, and MCP tools remain available.
               </p>
               <p className="mt-4 text-xs text-amber-400 group-hover:text-amber-300 transition">
-                Try it free {'->'}
+                View service status {'->'}
               </p>
             </div>
           </Link>
@@ -241,13 +241,15 @@ export default function Home() {
 
       {/* cta */}
       <div className="mx-auto max-w-2xl px-6 pb-8 pt-6 text-center">
-        <p className="mb-4 text-sm text-zinc-500">Free while in beta. No credit card.</p>
+        <p className="mb-4 text-sm text-zinc-500">
+          Hosted accounts are temporarily unavailable. Local tools remain available without an account.
+        </p>
         <div className="flex items-center justify-center gap-3">
           <Link
             href={ctaHref}
             className="rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-500 transition"
           >
-            Try the dashboard
+            {ctaLabel}
           </Link>
           <TrackClick
             event="cta_click"

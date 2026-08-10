@@ -12,7 +12,30 @@ export const RECOVERY_BLOCKED_API_PREFIXES = [
 
 export const RECOVERY_WEB_HOSTS = ['llmkit.sh', 'www.llmkit.sh'] as const;
 
+export const RECOVERY_PUBLIC_CTA = {
+  href: '/docs#local-setup',
+  label: 'Use locally',
+} as const;
+
+export const RECOVERY_STATUS_HREF = '/service-restoring';
+
 export type RecoveryBoundary = 'public' | 'blocked-ui' | 'blocked-api';
+
+export function getWorkerVersionHeaders(environment: unknown): Record<string, string> {
+  if (!environment || typeof environment !== 'object') {
+    return {};
+  }
+
+  const metadata = Reflect.get(environment, 'CF_VERSION_METADATA');
+  if (!metadata || typeof metadata !== 'object') {
+    return {};
+  }
+
+  const versionId = Reflect.get(metadata, 'id');
+  return typeof versionId === 'string' && versionId.length > 0
+    ? { 'X-LLMKit-Worker-Version': versionId }
+    : {};
+}
 
 export function getHttpsRedirectUrl(requestUrl: URL): string | null {
   if (

@@ -4,9 +4,12 @@ import { fileURLToPath } from 'node:url';
 import { bucketByHour } from '../src/components/charts/types.ts';
 import {
   classifyRecoveryPath,
+  getWorkerVersionHeaders,
   getHttpsRedirectUrl,
   RECOVERY_BLOCKED_API_PREFIXES,
   RECOVERY_BLOCKED_UI_PREFIXES,
+  RECOVERY_PUBLIC_CTA,
+  RECOVERY_STATUS_HREF,
   RECOVERY_WEB_HOSTS,
 } from '../src/lib/public-recovery.ts';
 
@@ -39,6 +42,15 @@ assert.deepEqual(RECOVERY_BLOCKED_API_PREFIXES, [
   '/api/pricing',
 ]);
 assert.deepEqual(RECOVERY_WEB_HOSTS, ['llmkit.sh', 'www.llmkit.sh']);
+assert.deepEqual(RECOVERY_PUBLIC_CTA, { href: '/docs#local-setup', label: 'Use locally' });
+assert.equal(RECOVERY_STATUS_HREF, '/service-restoring');
+
+assert.deepEqual(
+  getWorkerVersionHeaders({ CF_VERSION_METADATA: { id: 'worker-version-123' } }),
+  { 'X-LLMKit-Worker-Version': 'worker-version-123' },
+);
+assert.deepEqual(getWorkerVersionHeaders({ CF_VERSION_METADATA: { id: '' } }), {});
+assert.deepEqual(getWorkerVersionHeaders({}), {});
 
 for (const [source, destination] of [
   ['http://llmkit.sh/', 'https://llmkit.sh/'],
@@ -73,6 +85,26 @@ assert.deepEqual(
 assert.equal(wrangler.env.staging.workers_dev, true);
 assert.equal(wrangler.env.staging.preview_urls, true);
 assert.deepEqual(wrangler.env.staging.routes, []);
+assert.equal(wrangler.version_metadata.binding, 'CF_VERSION_METADATA');
+assert.equal(wrangler.env.staging.version_metadata.binding, 'CF_VERSION_METADATA');
+
+for (const relativePath of [
+  'src/components/public-nav-static.tsx',
+  'src/app/(public)/page.tsx',
+  'src/app/(public)/docs/page.tsx',
+  'src/app/(public)/compare/page.tsx',
+  'src/app/(public)/pricing/page.tsx',
+  'src/app/(public)/providers/[name]/page.tsx',
+]) {
+  const source = readFileSync(`${packageRoot}/${relativePath}`, 'utf8');
+  assert.doesNotMatch(source, /\/sign-(?:in|up)/, relativePath);
+}
+
+const docsSource = readFileSync(`${packageRoot}/src/app/(public)/docs/page.tsx`, 'utf8');
+assert.ok(
+  docsSource.indexOf('id="local-setup"') < docsSource.indexOf('Hosted API gateway'),
+  'the local setup anchor must precede the hosted recovery notice',
+);
 
 const [costBucket] = bucketByHour([
   {
@@ -118,10 +150,11 @@ assert.doesNotMatch(deploymentContract, /SUPABASE_SERVICE_KEY|CLERK_SECRET_KEY|A
 const worker = readFileSync(`${packageRoot}/cloudflare-worker.ts`, 'utf8');
 assert.doesNotMatch(worker, /@clerk\/nextjs|SUPABASE_SERVICE_KEY/);
 assert.match(worker, /createHttpsRedirectResponse\(requestUrl\)/);
-assert.match(worker, /withHeaders\(httpsRedirectResponse\)/);
+assert.match(worker, /withHeaders\(httpsRedirectResponse, versionHeaders\)/);
 assert.match(worker, /status:\s*503/);
 assert.match(worker, /Retry-After/);
 assert.match(worker, /Content-Security-Policy/);
+assert.match(worker, /getWorkerVersionHeaders\(env\)/);
 
 console.log(
   'RECOVERY_BOUNDARY PASS (HTTPS redirect, blocked tenant surfaces, public routes, isolated staging)',
