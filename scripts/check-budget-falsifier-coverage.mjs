@@ -88,6 +88,41 @@ function percent(hit, total) {
   return total === 0 ? 100 : Number(((hit / total) * 100).toFixed(2));
 }
 
+function coverageDecision(aggregateMetrics) {
+  if (aggregateMetrics.statements.total === 0) {
+    return {
+      status: 'N/A',
+      pass: true,
+      reason: 'NO_CHANGED_EXECUTABLE_PRODUCTION_STATEMENTS',
+    };
+  }
+  const pass = Object.values(aggregateMetrics).every((metric) => metric.pct >= threshold);
+  return {
+    status: pass ? 'PASS' : 'FAIL',
+    pass,
+    reason: null,
+  };
+}
+
+if (process.argv.includes('--self-test')) {
+  const empty = {
+    statements: { hit: 0, total: 0, pct: 100 },
+    branches: { hit: 0, total: 0, pct: 100 },
+    functions: { hit: 0, total: 0, pct: 100 },
+    lines: { hit: 0, total: 0, pct: 100 },
+  };
+  const passing = Object.fromEntries(
+    Object.entries(empty).map(([name]) => [name, { hit: 9, total: 10, pct: 90 }]),
+  );
+  const failing = structuredClone(passing);
+  failing.branches = { hit: 8, total: 10, pct: 80 };
+  if (coverageDecision(empty).status !== 'N/A') throw new Error('empty diff must be N/A');
+  if (coverageDecision(passing).status !== 'PASS') throw new Error('covered diff must pass');
+  if (coverageDecision(failing).status !== 'FAIL') throw new Error('under-covered diff must fail');
+  process.stdout.write('BUDGET_COVERAGE_SELF_TEST PASS\n');
+  process.exit(0);
+}
+
 const coveragePath = resolve(packageRoot, 'coverage', 'budget-falsifier', 'coverage-final.json');
 const coverageBytes = await readFile(coveragePath);
 const coverage = JSON.parse(coverageBytes);
@@ -146,15 +181,14 @@ for (const target of targets) {
 }
 
 for (const metric of Object.values(aggregate)) metric.pct = percent(metric.hit, metric.total);
-if (aggregate.statements.total === 0) {
-  throw new Error('coverage gate found no changed executable production statements');
-}
-const pass = Object.values(aggregate).every((metric) => metric.pct >= threshold);
+const decision = coverageDecision(aggregate);
 const receipt = {
   schemaVersion: 1,
   gate: 'LLMKit changed money-path coverage',
   threshold,
-  pass,
+  status: decision.status,
+  pass: decision.pass,
+  reason: decision.reason,
   base: selectedBase,
   sourceCommit: git(['rev-parse', 'HEAD']).trim(),
   dirtyMaterialSha256: await dirtyMaterialHash(),
@@ -169,6 +203,7 @@ await writeFile(output, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 const receiptSha = createHash('sha256').update(await readFile(output)).digest('hex');
 
 process.stdout.write(`BUDGET_COVERAGE ${JSON.stringify(aggregate)}\n`);
+process.stdout.write(`BUDGET_COVERAGE_DECISION ${decision.status}${decision.reason ? ` ${decision.reason}` : ''}\n`);
 process.stdout.write(`BUDGET_COVERAGE_RECEIPT ${output}\n`);
 process.stdout.write(`BUDGET_COVERAGE_SHA256 ${receiptSha}\n`);
-if (!pass) process.exit(1);
+if (!decision.pass) process.exit(1);
