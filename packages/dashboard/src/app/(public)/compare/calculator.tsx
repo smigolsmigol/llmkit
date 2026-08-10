@@ -173,7 +173,7 @@ export function Calculator({ models, providers }: Props) {
       <p className="text-xs text-zinc-600 text-center">
         Showing top 50 cheapest models. {models.length} total across {providers.length} providers. Data from pricing.json, updated weekly.
         {' '}<a href="/pricing" className="text-violet-400 hover:text-violet-300">Full table</a>
-        {' | '}<a href="https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=1000&output=500" className="text-violet-400 hover:text-violet-300">API</a>
+        {' | '}<a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500" className="text-violet-400 hover:text-violet-300">API</a>
       </p>
     </div>
   );

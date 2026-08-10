@@ -172,7 +172,7 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
           </Link>
           <span className="text-zinc-600">|</span>
           <a
-            href="https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=1000&output=500"
+            href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500"
             className="text-violet-400 hover:text-violet-300 transition"
             target="_blank"
             rel="noopener noreferrer"
