@@ -3,22 +3,40 @@ import { Hono } from 'hono';
 import { decrypt } from '../crypto';
 import { findProviderKey } from '../db';
 import type { Env, ResponseMeta } from '../env';
-import { trackRequest } from '../middleware/logger';
+import { admitBudgetForDispatch } from '../middleware/budget';
 import { resolveCost } from '../pricing';
 import { getProviderBaseUrl } from '../providers';
-import type { ToolCall } from '../providers/types';
+import { providerRequestSignal } from '../providers/request';
+import { readJsonResponseBounded, readProviderErrorDetail } from '../response-body';
 
-function countToolInvocations(toolCalls?: ToolCall[]): Array<{ dimension: ExtraCostDimension; quantity: number }> | undefined {
-  if (!toolCalls?.length) return undefined;
+const TOOL_OUTPUT_DIMENSIONS: Record<string, ExtraCostDimension> = {
+  web_search_call: 'web_search',
+  x_search_call: 'x_search',
+  code_execution_call: 'code_execution',
+  code_interpreter_call: 'code_interpreter',
+  attachment_search_call: 'attachment_search',
+  collections_search_call: 'collections_search',
+  file_search_call: 'file_search',
+};
+
+function countToolInvocations(
+  output?: Array<{ type: string; name?: string; id?: string }>,
+): Array<{ dimension: ExtraCostDimension; quantity: number }> | undefined {
+  if (!output?.length) return undefined;
   const counts = new Map<string, number>();
-  for (const tc of toolCalls) {
-    const dim = tc.name;
-    if (['web_search', 'x_search', 'code_execution', 'code_interpreter', 'attachment_search', 'collections_search', 'file_search'].includes(dim)) {
-      counts.set(dim, (counts.get(dim) || 0) + 1);
-    }
+  for (const item of output) {
+    const dimension = TOOL_OUTPUT_DIMENSIONS[item.type];
+    if (dimension) counts.set(dimension, (counts.get(dimension) || 0) + 1);
   }
   if (counts.size === 0) return undefined;
   return [...counts.entries()].map(([dimension, quantity]) => ({ dimension: dimension as ExtraCostDimension, quantity }));
+}
+
+function parseProviderCost(rawUsage: Record<string, number> | undefined): number | undefined {
+  const ticks = rawUsage?.cost_in_usd_ticks;
+  return typeof ticks === 'number' && Number.isFinite(ticks) && ticks >= 0
+    ? ticks / 10_000_000_000
+    : undefined;
 }
 
 function wantsLLMKitFormat(c: { req: { header: (name: string) => string | undefined } }): boolean {
@@ -29,7 +47,7 @@ function setCostHeaders(c: { header: (name: string, value: string) => void }, co
   c.header('x-llmkit-cost', String(cost.totalCost));
   c.header('x-llmkit-provider', provider);
   c.header('x-llmkit-latency-ms', String(latency));
-  if (providerCostUsd) c.header('x-llmkit-provider-cost', String(providerCostUsd));
+  if (providerCostUsd != null) c.header('x-llmkit-provider-cost', String(providerCostUsd));
   if (cost.extraCosts?.length) c.header('x-llmkit-extra-costs', JSON.stringify(cost.extraCosts));
 }
 
@@ -68,6 +86,9 @@ responsesRouter.post('/responses', async (c) => {
   const baseUrl = getProviderBaseUrl(provider);
   const start = Date.now();
 
+  await admitBudgetForDispatch(c, body, [provider]);
+
+  c.set('providerDispatchStarted', true);
   const res = await fetch(`${baseUrl}/responses`, {
     method: 'POST',
     headers: {
@@ -75,14 +96,15 @@ responsesRouter.post('/responses', async (c) => {
       'Authorization': `Bearer ${providerKey}`,
     },
     body: JSON.stringify(body),
+    signal: providerRequestSignal(),
   });
 
   if (!res.ok) {
-    const detail = await res.text();
+    const detail = await readProviderErrorDetail(res);
     throw new Error(`${provider} returned ${res.status}: ${detail}`);
   }
 
-  const data = await res.json() as Record<string, unknown>;
+  const data = await readJsonResponseBounded<Record<string, unknown>>(res);
   const latency = Date.now() - start;
 
   // extract usage - Responses API uses input_tokens/output_tokens (not prompt_tokens/completion_tokens)
@@ -98,7 +120,8 @@ responsesRouter.post('/responses', async (c) => {
   const toolCalls = output
     ?.filter((o): o is { type: string; name: string; id: string } => o.type !== 'message' && !!o.name)
     .map(o => ({ id: o.id || '', name: o.name, arguments: '' }));
-  const extraUsage = countToolInvocations(toolCalls);
+  const extraUsage = countToolInvocations(output);
+  const providerCostUsd = parseProviderCost(rawUsage);
 
   // calculate cost including non-token dimensions
   const cost = await resolveCost(provider, model, usage, extraUsage);
@@ -110,28 +133,9 @@ responsesRouter.post('/responses', async (c) => {
     usage,
     latency,
     toolCalls,
-    providerCostUsd: undefined,
+    providerCostUsd,
   };
   c.set('llmkit_response', meta);
-
-  // log the request
-  await trackRequest({
-    sessionId: c.req.header('x-llmkit-session-id') || undefined,
-    endUserId: c.req.header('x-llmkit-user-id') || undefined,
-    toolCalls,
-    providerCostUsd: undefined,
-    apiKeyId: c.get('apiKeyId'),
-    userId: c.get('userId'),
-    budgetId: c.get('budgetId'),
-    budgetReservationId: c.get('budgetReservationId'),
-    provider,
-    model: (data.model as string) || model,
-    usage,
-    cost,
-    latencyMs: latency,
-    env: c.env,
-    ctx: c.executionCtx,
-  });
 
   if (wantsLLMKitFormat(c)) {
     return c.json({
@@ -143,6 +147,6 @@ responsesRouter.post('/responses', async (c) => {
     });
   }
 
-  setCostHeaders(c, cost, provider, latency);
+  setCostHeaders(c, cost, provider, latency, providerCostUsd);
   return c.json(data);
 });

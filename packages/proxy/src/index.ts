@@ -1,13 +1,15 @@
 import { inferProvider, LLMKitError } from '@f3d1/llmkit-shared';
-import { Hono, type ExecutionContext as HonoExecutionContext } from 'hono';
+import { type Context, Hono, type ExecutionContext as HonoExecutionContext } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
-import { logRequest } from './db';
+import { supabaseServiceHeaders } from './db';
 import type { Env } from './env';
 import { auth } from './middleware/auth';
-import { budgetCheck, releaseReservation } from './middleware/budget';
-import { costLogger } from './middleware/logger';
+import { budgetCheck } from './middleware/budget';
+import { idempotency } from './middleware/idempotency';
+import { costLogger, trackFailedRequest } from './middleware/logger';
 import { rateLimit } from './middleware/ratelimit';
+import { requestEvidence } from './middleware/request-evidence';
 import { formatErrorStreak, formatNewUser, formatRequestLog, notifyTelegram } from './notify';
 import { analyticsRouter } from './routes/analytics';
 import { providerRouter } from './routes/chat';
@@ -17,6 +19,7 @@ import { pricingRouter } from './routes/pricing';
 import { responsesRouter } from './routes/responses';
 
 export { BudgetDO } from './do/budget-do';
+export { IdempotencyDO } from './do/idempotency-do';
 export { RateLimitDO } from './do/ratelimit-do';
 
 function sanitizeHeader(value: string | undefined, pattern: RegExp): string | null {
@@ -31,7 +34,7 @@ async function hasExistingRequests(supabaseUrl: string, supabaseKey: string, api
   try {
     const res = await fetch(
       `${supabaseUrl}/rest/v1/requests?select=id&api_key_id=eq.${encodeURIComponent(apiKeyId)}&limit=1`,
-      { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } },
+      { headers: supabaseServiceHeaders(supabaseKey) },
     );
     const data = await res.json() as unknown[];
     return data.length > 0;
@@ -90,49 +93,40 @@ const app = new Hono<Env>();
 
 app.use('*', cors({
   origin: '*',
-  allowHeaders: ['Content-Type', 'Authorization', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-format', 'x-llmkit-revenue', 'x-llmkit-revenue-token'],
-  exposeHeaders: ['x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-provider-cost', 'x-llmkit-extra-costs', 'x-llmkit-margin', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
+  allowHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-customer-id', 'x-llmkit-workflow-id', 'x-llmkit-agent-id', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-format', 'x-llmkit-revenue', 'x-llmkit-revenue-token'],
+  exposeHeaders: ['Idempotency-Key', 'x-llmkit-idempotency-status', 'x-llmkit-request-id', 'x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-provider-cost', 'x-llmkit-extra-costs', 'x-llmkit-margin', 'x-llmkit-settlement-status', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
   allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'],
 }));
 
-app.onError(async (err, c) => {
+export async function handleAppError(err: Error, c: Context<Env>): Promise<Response> {
   const code = err instanceof LLMKitError ? err.code : 'INTERNAL_ERROR';
   const status = err instanceof LLMKitError ? err.statusCode : 500;
 
   const apiKeyId = c.get('apiKeyId');
   const userId = c.get('userId');
+  const ctx = resolveErrorContext(c);
+  await resolveModelFromBody(c, ctx);
+  await trackFailedRequest({
+    requestId: c.get('requestId'),
+    customerId: c.get('customerId'),
+    workflowId: c.get('workflowId'),
+    agentId: c.get('agentId'),
+    sessionId: c.get('sessionId') || sanitizeHeader(c.req.header('x-llmkit-session-id'), /^[\w-]{1,128}$/) || undefined,
+    endUserId: c.get('endUserId') || sanitizeHeader(c.req.header('x-llmkit-user-id'), /^[\w@.+-]{1,256}$/) || undefined,
+    idempotencyKeyHash: c.get('idempotencyKeyHash'),
+    apiKeyId,
+    userId,
+    budgetId: c.get('budgetId'),
+    budgetReservationId: c.get('budgetReservationId'),
+    provider: ctx.provider,
+    model: ctx.model,
+    errorCode: code,
+    env: c.env,
+    ctx: c.executionCtx,
+  });
+
   if (apiKeyId && userId && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
-    const ctx = resolveErrorContext(c);
-    await resolveModelFromBody(c, ctx);
-
-    c.executionCtx.waitUntil(
-      logRequest(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, {
-        user_id: userId,
-        api_key_id: apiKeyId,
-        session_id: sanitizeHeader(c.req.header('x-llmkit-session-id'), /^[\w-]{1,128}$/),
-        end_user_id: sanitizeHeader(c.req.header('x-llmkit-user-id'), /^[\w@.+-]{1,256}$/),
-        provider: ctx.provider,
-        model: ctx.model,
-        input_tokens: 0,
-        output_tokens: 0,
-        cache_read_tokens: 0,
-        cache_write_tokens: 0,
-        cost_cents: 0,
-        latency_ms: 0,
-        status: 'error',
-        error_code: code,
-        source: 'proxy',
-        tool_calls: null,
-      }),
-    );
-
     sendErrorNotifications(c.executionCtx, c.env, userId, apiKeyId, c.get('apiKey') || '???', code, ctx.model, ctx.provider);
-  }
-
-  const budgetId = c.get('budgetId');
-  const reservationId = c.get('budgetReservationId');
-  if (budgetId && reservationId) {
-    c.executionCtx.waitUntil(releaseReservation(c.env.BUDGET_DO, budgetId, reservationId));
   }
 
   if (!(err instanceof LLMKitError)) console.error('unhandled:', err);
@@ -140,7 +134,9 @@ app.onError(async (err, c) => {
     { error: { code, message: err instanceof LLMKitError ? err.message : 'Something went wrong' } },
     status as ContentfulStatusCode,
   );
-});
+}
+
+app.onError(handleAppError);
 
 app.get('/health', (c) => c.json({ status: 'ok', version: '0.0.1' }));
 
@@ -148,6 +144,8 @@ app.get('/health', (c) => c.json({ status: 'ok', version: '0.0.1' }));
 app.route('/v1', pricingRouter);
 
 app.use('/v1/*', auth());
+app.use('/v1/*', requestEvidence());
+app.use('/v1/*', idempotency());
 app.use('/v1/*', rateLimit());
 app.use('/v1/*', budgetCheck());
 app.use('/v1/*', costLogger());

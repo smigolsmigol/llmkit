@@ -12,6 +12,12 @@ export interface HitResult {
   retryAfterSeconds?: number;
 }
 
+export interface StagingRateLimitProofSnapshot {
+  count: number;
+  window: number;
+  storedEntries: number;
+}
+
 export class RateLimitDO extends DurableObject {
   private count = 0;
   private window = 0;
@@ -54,5 +60,21 @@ export class RateLimitDO extends DurableObject {
       limit: input.limit,
       remaining: input.limit - this.count,
     };
+  }
+
+  async stagingProofSnapshot(): Promise<StagingRateLimitProofSnapshot> {
+    await this.load();
+    return {
+      count: this.count,
+      window: this.window,
+      storedEntries: (await this.ctx.storage.list()).size,
+    };
+  }
+
+  async stagingProofPurge(): Promise<void> {
+    await this.ctx.storage.deleteAll();
+    this.count = 0;
+    this.window = 0;
+    this.loaded = true;
   }
 }

@@ -106,12 +106,20 @@ export default async function OverviewPage({
         </div>
       )}
 
+      {summary.unknownCostRequests > 0 && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
+          Spend is incomplete: {summary.unknownCostRequests.toLocaleString()} of {summary.totalRequests.toLocaleString()} request
+          {summary.totalRequests === 1 ? '' : 's'} {summary.unknownCostRequests === 1 ? 'has' : 'have'} unknown committed cost.
+          Totals, charts, rates, and projections show priced requests only.
+        </div>
+      )}
+
       {totalRequests > 0 && <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
         <div className="group relative">
           <div className="absolute -inset-px rounded-lg bg-gradient-to-b from-white/[0.06] to-transparent opacity-0 transition duration-300 group-hover:opacity-100" />
           <div className="relative glow-hover rounded-lg border border-border bg-card p-3">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-zinc-500">Total Spend ({days}d)</p>
+              <p className="text-xs text-zinc-500">Known Spend ({days}d)</p>
               {trend.deltas.spend != null && (
                 <span className={`text-[10px] font-medium ${trend.deltas.spend > 0 ? 'text-emerald-400' : trend.deltas.spend < 0 ? 'text-red-400' : 'text-zinc-500'}`}>
                   {trend.deltas.spend > 0 ? '\u2191' : trend.deltas.spend < 0 ? '\u2193' : ''}{Math.abs(trend.deltas.spend)}%
@@ -144,6 +152,9 @@ export default async function OverviewPage({
                 <p className="mt-0.5 font-mono text-lg font-semibold">
                   {formatCents(b.usedCents)} <span className="text-sm text-muted-foreground">/ {formatCents(b.limitCents)}</span>
                 </p>
+                {b.unknownCostRequests > 0 && (
+                  <p className="mt-0.5 text-[10px] text-amber-400">+ {b.unknownCostRequests} request cost unknown</p>
+                )}
                 <div className="mt-1.5 h-1.5 rounded-full bg-secondary">
                   <div
                     className={`h-full rounded-full transition-all ${warn ? 'bg-amber-400' : 'bg-primary'}`}
@@ -159,7 +170,7 @@ export default async function OverviewPage({
       {totalRequests > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
           <StatCard
-            label="Avg Cost / Request"
+            label="Avg Known Cost / Request"
             value={formatCents(summary.avgCostCents)}
             delta={trend.deltas.avgCost}
           />
@@ -179,9 +190,9 @@ export default async function OverviewPage({
             sublabel={`${(summary.totalInputTokens / 1000).toFixed(1)}k in / ${(summary.totalOutputTokens / 1000).toFixed(1)}k out`}
           />
           <StatCard
-            label="Projected Monthly"
+            label="Projected Known Spend"
             value={formatCents(summary.projectedMonthlyCents)}
-            sublabel="based on last 7 days"
+            sublabel="priced requests, last 7 days"
           />
         </div>
       )}
@@ -209,7 +220,7 @@ export default async function OverviewPage({
             <div className="rounded-lg border border-border bg-card p-2">
               <div className="mb-1 border-b border-[#1a1a1a] pb-1">
                 <h2 className="text-xs font-medium">By Provider</h2>
-                <p className="text-[10px] text-muted-foreground">Spend distribution</p>
+                <p className="text-[10px] text-muted-foreground">Known spend distribution</p>
               </div>
               <ProviderChart data={providerData} />
             </div>
@@ -245,7 +256,10 @@ export default async function OverviewPage({
                     <tr key={m.model} className="border-t border-[#1a1a1a]">
                       <td className="py-1 font-mono text-xs">{m.model}</td>
                       <td className="py-1 text-right text-muted-foreground">{m.requests}</td>
-                      <td className="py-1 text-right font-mono">{formatCents(m.spendCents)}</td>
+                      <td className="py-1 text-right font-mono">
+                        {formatCents(m.spendCents)}
+                        {m.unknownCostRequests > 0 && <span className="ml-1 text-[10px] text-amber-400">+{m.unknownCostRequests}?</span>}
+                      </td>
                       <td className="py-1 text-right text-muted-foreground">{m.avgLatencyMs.toLocaleString()}</td>
                       <td className="py-1 text-right font-mono text-muted-foreground">{formatCents(m.costPer1kTokens)}</td>
                     </tr>
@@ -283,7 +297,10 @@ export default async function OverviewPage({
                           )}
                         </td>
                         <td className="py-1 text-right text-muted-foreground">{s.requestCount}</td>
-                        <td className="py-1 text-right font-mono">{formatCents(s.totalCostCents)}</td>
+                        <td className="py-1 text-right font-mono">
+                          {formatCents(s.totalCostCents)}
+                          {s.unknownCostRequests > 0 && <span className="ml-1 text-[10px] text-amber-400">+{s.unknownCostRequests}?</span>}
+                        </td>
                         <td className="py-1 text-right text-xs text-muted-foreground">{s.providers.join(', ')}</td>
                       </tr>
                     ))}

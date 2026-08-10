@@ -1,4 +1,7 @@
 import type { ProviderName, TokenUsage } from '@f3d1/llmkit-shared';
+import { readJsonResponseBounded, readProviderErrorDetail } from '../response-body';
+import { providerRequestSignal } from './request';
+import { readSseLines } from './sse-lines';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
 interface OpenAIMessage {
@@ -76,15 +79,16 @@ export class OpenAIAdapter implements ProviderAdapter {
         'Authorization': `Bearer ${req.apiKey}`,
       },
       body: JSON.stringify(body),
+      signal: providerRequestSignal(),
     });
 
     if (!res.ok) {
-      const detail = await res.text();
+      const detail = await readProviderErrorDetail(res);
       console.error(`provider error (${this.name} ${res.status}): ${detail}`);
       throw new Error(`${this.name} returned ${res.status}`);
     }
 
-    const data = (await res.json()) as OpenAIResponse;
+    const data = await readJsonResponseBounded<OpenAIResponse>(res);
     return parseResponse(data);
   }
 
@@ -114,76 +118,61 @@ export class OpenAIAdapter implements ProviderAdapter {
         'Authorization': `Bearer ${req.apiKey}`,
       },
       body: JSON.stringify(body),
+      signal: providerRequestSignal(),
     });
 
     if (!res.ok) {
-      const detail = await res.text();
+      const detail = await readProviderErrorDetail(res);
       console.error(`provider error (${this.name} ${res.status}): ${detail}`);
       throw new Error(`${this.name} returned ${res.status}`);
     }
 
     if (!res.body) throw new Error('No response body for stream');
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let usage: TokenUsage | null = null;
     let providerCostUsd: number | undefined;
     let finishReason = 'stop';
     let messageId = '';
     let model = req.model;
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    for await (const line of readSseLines(res.body)) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (!raw || raw === '[DONE]') continue;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
+      try {
+        const parsed = JSON.parse(raw) as OpenAIStreamChunk;
+        messageId = parsed.id;
+        model = parsed.model;
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const raw = line.slice(6).trim();
-          if (!raw || raw === '[DONE]') continue;
+        const choice = parsed.choices[0];
+        const delta = choice?.delta?.content;
+        if (delta) {
+          yield { type: 'text' as const, text: delta };
+        }
 
-          try {
-            const parsed = JSON.parse(raw) as OpenAIStreamChunk;
-            messageId = parsed.id;
-            model = parsed.model;
-
-            const choice = parsed.choices[0];
-            const delta = choice?.delta?.content;
-            if (delta) {
-              yield { type: 'text' as const, text: delta };
-            }
-
-            if (choice?.delta?.tool_calls) {
-              for (const tc of choice.delta.tool_calls) {
-                yield {
-                  type: 'tool' as const,
-                  toolCallId: tc.id,
-                  toolName: tc.function?.name,
-                  toolArguments: tc.function?.arguments,
-                  toolIndex: tc.index,
-                };
-              }
-            }
-
-            const fr = choice?.finish_reason;
-            if (fr) finishReason = fr;
-
-            if (parsed.usage) {
-              usage = parseUsage(parsed.usage);
-              providerCostUsd = parseProviderCost(parsed.usage);
-            }
-          } catch {
-            // partial JSON from chunk boundary
+        if (choice?.delta?.tool_calls) {
+          for (const tc of choice.delta.tool_calls) {
+            yield {
+              type: 'tool' as const,
+              toolCallId: tc.id,
+              toolName: tc.function?.name,
+              toolArguments: tc.function?.arguments,
+              toolIndex: tc.index,
+            };
           }
         }
+
+        const fr = choice?.finish_reason;
+        if (fr) finishReason = fr;
+
+        if (parsed.usage) {
+          usage = parseUsage(parsed.usage);
+          providerCostUsd = parseProviderCost(parsed.usage);
+        }
+      } catch {
+        // Ignore malformed provider events.
       }
-    } finally {
-      reader.releaseLock();
     }
 
     yield { type: 'end', usage: usage ?? undefined, finishReason, id: messageId, model, providerCostUsd };

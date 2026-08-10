@@ -39,6 +39,9 @@ interface AdminTabsProps {
   stats: {
     totalSpendCents: number;
     totalRequests: number;
+    pricedRequests: number;
+    unknownCostRequests: number;
+    costComplete: boolean;
     totalAccounts: number;
     totalInputTokens: number;
     totalOutputTokens: number;
@@ -139,11 +142,17 @@ export function AdminTabs(props: AdminTabsProps) {
       {/* Overview */}
       <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}>
         <div className="space-y-1.5">
+          {stats.unknownCostRequests > 0 && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
+              Platform spend is incomplete: {stats.unknownCostRequests.toLocaleString()} of {stats.totalRequests.toLocaleString()} request costs are unknown.
+              Spend charts and rates use {stats.pricedRequests.toLocaleString()} priced requests only.
+            </div>
+          )}
           {/* stat cards row 1 */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
             <div className="glow-hover rounded-lg border border-border bg-card p-3">
               <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Platform Spend</p>
+                <p className="text-xs text-muted-foreground">Known Platform Spend</p>
                 {deltas.spend != null && (
                   <span className={`text-[10px] font-medium ${deltas.spend > 0 ? 'text-emerald-400' : deltas.spend < 0 ? 'text-red-400' : 'text-muted-foreground'}`}>
                     {deltas.spend > 0 ? '\u2191' : deltas.spend < 0 ? '\u2193' : ''}{Math.abs(deltas.spend)}%

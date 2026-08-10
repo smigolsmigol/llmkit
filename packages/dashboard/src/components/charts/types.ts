@@ -1,6 +1,6 @@
 export interface TimeseriesPoint {
   t: string;
-  costCents: number;
+  costCents: number | null;
   inputTokens: number;
   outputTokens: number;
 }
@@ -10,6 +10,10 @@ export interface HourBucket {
   costCents: number;
   inputTokens: number;
   outputTokens: number;
+  pricedInputTokens: number;
+  pricedOutputTokens: number;
+  pricedRequests: number;
+  unknownCostRequests: number;
   count: number;
 }
 
@@ -53,8 +57,25 @@ export function bucketByHour(data: TimeseriesPoint[]): HourBucket[] {
   for (const d of data) {
     const raw = new Date(d.t).getTime();
     const hour = Math.floor(raw / HOUR_MS) * HOUR_MS;
-    const b = map.get(hour) || { ts: hour, costCents: 0, inputTokens: 0, outputTokens: 0, count: 0 };
-    b.costCents += d.costCents;
+    const b = map.get(hour) || {
+      ts: hour,
+      costCents: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      pricedInputTokens: 0,
+      pricedOutputTokens: 0,
+      pricedRequests: 0,
+      unknownCostRequests: 0,
+      count: 0,
+    };
+    if (d.costCents === null) {
+      b.unknownCostRequests++;
+    } else {
+      b.costCents += d.costCents;
+      b.pricedInputTokens += d.inputTokens;
+      b.pricedOutputTokens += d.outputTokens;
+      b.pricedRequests++;
+    }
     b.inputTokens += d.inputTokens;
     b.outputTokens += d.outputTokens;
     b.count++;

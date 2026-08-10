@@ -24,6 +24,9 @@ const tenantA = 'foundation-runtime-a';
 const tenantB = 'foundation-runtime-b';
 const keyAId = '60000000-0000-4000-8000-0000000000a1';
 const keyBId = '60000000-0000-4000-8000-0000000000b1';
+const receiptASettledId = '70000000-0000-4000-8000-0000000000a1';
+const receiptAUnknownId = '70000000-0000-4000-8000-0000000000a2';
+const receiptBId = '70000000-0000-4000-8000-0000000000b1';
 const keyA = 'llmk_foundation_runtime_a_20260716';
 const keyB = 'llmk_foundation_runtime_b_20260716';
 
@@ -139,7 +142,7 @@ async function postgrest(url, serviceKey, path, body) {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    throw new Error(`Fixture insert ${path} failed (${response.status}).`);
+    throw new Error(`Fixture insert ${path} failed (${response.status}): ${await response.text()}`);
   }
 }
 
@@ -167,8 +170,18 @@ async function seedFixture(url, serviceKey) {
   ]);
   await postgrest(url, serviceKey, 'requests', [
     {
+      id: receiptASettledId,
       user_id: tenantA,
       api_key_id: keyAId,
+      customer_id: 'customer-runtime-a',
+      workflow_id: 'workflow-runtime-a',
+      agent_id: 'agent-runtime-a',
+      session_id: 'session-runtime-a',
+      end_user_id: 'end-user-runtime-a',
+      budget_reservation_id: '71000000-0000-4000-8000-0000000000a1',
+      reserved_cost_cents: 13,
+      idempotency_key_hash: 'a'.repeat(64),
+      response_sha256: 'b'.repeat(64),
       provider: 'openai',
       model: 'foundation-model-a',
       input_tokens: 100,
@@ -176,13 +189,51 @@ async function seedFixture(url, serviceKey) {
       cache_read_tokens: 10,
       cache_write_tokens: 0,
       cost_cents: 12.5,
+      settlement_status: 'settled_actual',
       latency_ms: 100,
       status: 'success',
+      error_code: null,
       source: 'proxy',
     },
     {
+      id: receiptAUnknownId,
+      user_id: tenantA,
+      api_key_id: keyAId,
+      customer_id: 'customer-runtime-a',
+      workflow_id: 'workflow-runtime-a',
+      agent_id: 'agent-runtime-a',
+      session_id: 'session-runtime-a',
+      end_user_id: 'end-user-runtime-a',
+      budget_reservation_id: null,
+      reserved_cost_cents: null,
+      idempotency_key_hash: null,
+      response_sha256: null,
+      provider: 'openai',
+      model: 'foundation-model-a-unknown-cost',
+      input_tokens: 20,
+      output_tokens: 5,
+      cache_read_tokens: 0,
+      cache_write_tokens: 0,
+      cost_cents: null,
+      settlement_status: 'unknown',
+      latency_ms: 80,
+      status: 'error',
+      error_code: 'UNKNOWN_COST_FIXTURE',
+      source: 'proxy',
+    },
+    {
+      id: receiptBId,
       user_id: tenantB,
       api_key_id: keyBId,
+      customer_id: 'customer-runtime-b',
+      workflow_id: 'workflow-runtime-b',
+      agent_id: 'agent-runtime-b',
+      session_id: 'session-runtime-b',
+      end_user_id: 'end-user-runtime-b',
+      budget_reservation_id: null,
+      reserved_cost_cents: null,
+      idempotency_key_hash: null,
+      response_sha256: null,
       provider: 'anthropic',
       model: 'tenant-b-private-model',
       input_tokens: 999,
@@ -190,8 +241,10 @@ async function seedFixture(url, serviceKey) {
       cache_read_tokens: 0,
       cache_write_tokens: 0,
       cost_cents: 999,
+      settlement_status: 'settled_actual',
       latency_ms: 999,
       status: 'success',
+      error_code: null,
       source: 'proxy',
     },
   ]);
@@ -243,6 +296,13 @@ async function fetchUsage(baseUrl, key) {
   return { response, body: await response.json() };
 }
 
+async function fetchReceipt(baseUrl, key, receiptId) {
+  const response = await fetch(`${baseUrl}/v1/analytics/receipts/${receiptId}`, {
+    headers: key ? { Authorization: `Bearer ${key}` } : {},
+  });
+  return { response, body: await response.json() };
+}
+
 async function main() {
   if (!existsSync(supabaseLauncher) || !existsSync(wranglerLauncher) || !dockerReady(docker)) {
     throw new Error('Pinned Supabase CLI, Wrangler, and a ready Docker daemon are required.');
@@ -285,18 +345,49 @@ async function main() {
 
     const usageA = await fetchUsage(baseUrl, keyA);
     assert(usageA.response.status === 200, `Tenant A usage returned ${usageA.response.status}.`);
-    assert(usageA.body.requests === 1, 'Deployed aggregate signature did not return tenant A data.');
+    assert(usageA.body.requests === 2, 'Deployed aggregate signature did not return tenant A data.');
+    assert(usageA.body.pricedRequests === 1, 'Tenant A priced-request count was incorrect.');
+    assert(usageA.body.unknownCostRequests === 1, 'Tenant A unknown-cost count was erased.');
+    assert(usageA.body.costComplete === false, 'Tenant A incomplete cost was marked complete.');
     assert(Number(usageA.body.totalCostCents) === 12.5, 'Tenant A cost total was incorrect.');
     assert(!JSON.stringify(usageA.body).includes('tenant-b-private-model'), 'Tenant B data leaked.');
+
+    const settledReceipt = await fetchReceipt(baseUrl, keyA, receiptASettledId);
+    assert(settledReceipt.response.status === 200, 'Tenant A could not read its settled receipt.');
+    assert(
+      settledReceipt.body.receipt?.id === receiptASettledId
+        && settledReceipt.body.receipt?.customer_id === 'customer-runtime-a'
+        && settledReceipt.body.receipt?.workflow_id === 'workflow-runtime-a'
+        && settledReceipt.body.receipt?.agent_id === 'agent-runtime-a'
+        && settledReceipt.body.receipt?.session_id === 'session-runtime-a'
+        && settledReceipt.body.receipt?.settlement_status === 'settled_actual'
+        && settledReceipt.body.receipt?.idempotency_key_hash === 'a'.repeat(64)
+        && settledReceipt.body.receipt?.response_sha256 === 'b'.repeat(64),
+      'Settled receipt detail lost replay or attribution evidence.',
+    );
+    const unknownReceipt = await fetchReceipt(baseUrl, keyA, receiptAUnknownId);
+    assert(
+      unknownReceipt.response.status === 200
+        && unknownReceipt.body.receipt?.cost_cents === null
+        && unknownReceipt.body.receipt?.settlement_status === 'unknown',
+      'Unknown-cost receipt detail was erased or misclassified.',
+    );
+    const crossTenantReceipt = await fetchReceipt(baseUrl, keyB, receiptASettledId);
+    assert(crossTenantReceipt.response.status === 404, 'Tenant B could read tenant A receipt detail.');
+    const invalidReceipt = await fetchReceipt(baseUrl, keyA, 'not-a-uuid');
+    assert(invalidReceipt.response.status === 400, 'Malformed receipt identity was accepted.');
 
     const usageB = await fetchUsage(baseUrl, keyB);
     assert(
       usageB.response.status === 200
         && usageB.body.requests === 1
+        && usageB.body.pricedRequests === 1
+        && usageB.body.unknownCostRequests === 0
+        && usageB.body.costComplete === true
         && Number(usageB.body.totalCostCents) === 999,
       'Tenant B control result was incorrect.',
     );
-    console.log('WORKER_DATABASE_COMPATIBILITY_PROOF PASS (real Worker + hardened local schema)');
+    console.log('WORKER_DATABASE_COMPATIBILITY_PROOF PASS (real Worker + receipt API + hardened local schema)');
   } catch (error) {
     proofError = error;
   } finally {

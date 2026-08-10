@@ -10,20 +10,35 @@ export async function getAccountPlan(userId: string): Promise<string | null> {
 export interface RequestRow {
   id: string;
   api_key_id: string;
+  customer_id: string | null;
+  workflow_id: string | null;
+  agent_id: string | null;
   session_id: string | null;
   end_user_id: string | null;
+  budget_id: string | null;
+  budget_reservation_id: string | null;
+  reserved_cost_cents: number | null;
+  idempotency_key_hash: string | null;
+  response_sha256: string | null;
+  settlement_status: string;
   provider: string;
   model: string;
   input_tokens: number;
   output_tokens: number;
   cache_read_tokens: number;
   cache_write_tokens: number;
-  cost_cents: number;
+  cost_cents: number | null;
   latency_ms: number;
   status: string;
   error_code: string | null;
   tool_calls: { name: string }[] | null;
   created_at: string;
+}
+
+function knownCostCents(value: number | null): number | null {
+  if (value === null) return null;
+  const cost = Number(value);
+  return Number.isFinite(cost) ? cost : null;
 }
 
 export interface BudgetRow {
@@ -48,7 +63,13 @@ export interface ApiKeyRow {
   revoked_at: string | null;
 }
 
-interface ProviderStats {
+export interface CostCoverage {
+  pricedRequests: number;
+  unknownCostRequests: number;
+  costComplete: boolean;
+}
+
+interface ProviderStats extends CostCoverage {
   provider: string;
   count: number;
   totalCostCents: number;
@@ -56,15 +77,17 @@ interface ProviderStats {
 
 export const getRecentRequests = cache(async function getRecentRequests(userId: string, limit = 20): Promise<RequestRow[]> {
   const db = createServerClient();
-  const { data: keys } = await db
+  const { data: keys, error: keysError } = await db
     .from('api_keys')
     .select('id')
     .eq('user_id', userId);
 
+  if (keysError) throw new Error(`Failed to load analytics keys: ${keysError.message}`);
+
   if (!keys?.length) return [];
 
   const keyIds = keys.map((k) => k.id);
-  const { data } = await db
+  const { data, error } = await db
     .from('requests')
     .select('*')
     .in('api_key_id', keyIds)
@@ -72,28 +95,106 @@ export const getRecentRequests = cache(async function getRecentRequests(userId: 
     .order('created_at', { ascending: false })
     .limit(limit);
 
+  if (error) throw new Error(`Failed to load request receipts: ${error.message}`);
+
   return (data as RequestRow[]) || [];
 });
 
-export async function getSpendByProvider(userId: string, days = 30): Promise<ProviderStats[]> {
-  const requests = filterByDays(await getRecentRequests(userId, 1000), days);
+const ANALYTICS_PAGE_SIZE = 1000;
 
-  const byProvider = new Map<string, { count: number; totalCostCents: number }>();
+const getUserAnalyticsRequests = cache(async function getUserAnalyticsRequests(
+  userId: string,
+  days = 0,
+): Promise<RequestRow[]> {
+  const db = createServerClient();
+  const { data: keys, error: keysError } = await db
+    .from('api_keys')
+    .select('id')
+    .eq('user_id', userId);
+  if (keysError) throw new Error(`Failed to load analytics keys: ${keysError.message}`);
+  if (!keys?.length) return [];
+
+  const keyIds = keys.map((key) => key.id);
+  const snapshot = new Date().toISOString();
+  const cutoff = days > 0
+    ? new Date(Date.now() - days * 86400000).toISOString()
+    : null;
+  const rows: RequestRow[] = [];
+  let expectedTotal: number | null = null;
+  let offset = 0;
+
+  while (true) {
+    let query = db
+      .from('requests')
+      .select('*', { count: 'exact' })
+      .in('api_key_id', keyIds)
+      .eq('source', 'proxy')
+      .lte('created_at', snapshot)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(offset, offset + ANALYTICS_PAGE_SIZE - 1);
+    if (cutoff) query = query.gte('created_at', cutoff);
+
+    const { data, error, count } = await query;
+    if (error) throw new Error(`Failed to load analytics request page: ${error.message}`);
+    if (count === null) throw new Error('Analytics request page omitted an exact row count');
+    if (expectedTotal === null) expectedTotal = count;
+    if (count !== expectedTotal) throw new Error('Analytics request count changed during pagination');
+
+    const page = (data as RequestRow[]) || [];
+    rows.push(...page);
+    if (rows.length >= expectedTotal || page.length === 0) break;
+    offset += page.length;
+  }
+
+  if (rows.length !== expectedTotal) {
+    throw new Error(`Analytics pagination returned ${rows.length} of ${expectedTotal} request receipts`);
+  }
+  return rows;
+});
+
+export async function getSpendByProvider(userId: string, days = 30): Promise<ProviderStats[]> {
+  const requests = await getUserAnalyticsRequests(userId, days);
+
+  const byProvider = new Map<string, {
+    count: number;
+    pricedRequests: number;
+    unknownCostRequests: number;
+    totalCostCents: number;
+  }>();
   for (const req of requests) {
-    const existing = byProvider.get(req.provider) || { count: 0, totalCostCents: 0 };
+    const existing = byProvider.get(req.provider) || {
+      count: 0,
+      pricedRequests: 0,
+      unknownCostRequests: 0,
+      totalCostCents: 0,
+    };
     existing.count++;
-    existing.totalCostCents += Number(req.cost_cents);
+    const cost = knownCostCents(req.cost_cents);
+    if (cost === null) {
+      existing.unknownCostRequests++;
+    } else {
+      existing.pricedRequests++;
+      existing.totalCostCents += cost;
+    }
     byProvider.set(req.provider, existing);
   }
 
   return Array.from(byProvider.entries()).map(([provider, stats]) => ({
     provider,
     ...stats,
+    costComplete: stats.unknownCostRequests === 0,
   }));
 }
 
-export async function getTotalSpend(userId: string, days?: number): Promise<{ today: number; week: number; month: number; range: number }> {
-  const requests = await getRecentRequests(userId, 10000);
+export async function getTotalSpend(userId: string, days?: number): Promise<{
+  today: number;
+  week: number;
+  month: number;
+  range: number;
+} & CostCoverage> {
+  const analyticsDays = days === 0 ? 0 : Math.max(days ?? 30, 30);
+  const requests = await getUserAnalyticsRequests(userId, analyticsDays);
 
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
@@ -105,17 +206,32 @@ export async function getTotalSpend(userId: string, days?: number): Promise<{ to
   let week = 0;
   let month = 0;
   let range = 0;
+  let pricedRequests = 0;
+  let unknownCostRequests = 0;
 
   for (const req of requests) {
-    const cost = Number(req.cost_cents);
+    const cost = knownCostCents(req.cost_cents);
     const date = new Date(req.created_at);
+    if (!rangeAgo || date >= rangeAgo) {
+      if (cost === null) unknownCostRequests++;
+      else pricedRequests++;
+    }
+    if (cost === null) continue;
     if (req.created_at.startsWith(todayStr)) today += cost;
     if (date >= weekAgo) week += cost;
     if (date >= monthAgo) month += cost;
     if (!rangeAgo || date >= rangeAgo) range += cost;
   }
 
-  return { today, week, month, range };
+  return {
+    today,
+    week,
+    month,
+    range,
+    pricedRequests,
+    unknownCostRequests,
+    costComplete: unknownCostRequests === 0,
+  };
 }
 
 export interface PaginatedResult {
@@ -203,12 +319,12 @@ export async function getRequestById(userId: string, requestId: string): Promise
 }
 
 export async function getDistinctProviders(userId: string): Promise<string[]> {
-  const requests = await getRecentRequests(userId, 1000);
+  const requests = await getUserAnalyticsRequests(userId);
   return [...new Set(requests.map((r) => r.provider))].sort();
 }
 
 export async function getDistinctModels(userId: string): Promise<string[]> {
-  const requests = await getRecentRequests(userId, 1000);
+  const requests = await getUserAnalyticsRequests(userId);
   return [...new Set(requests.map((r) => r.model))].sort();
 }
 
@@ -218,17 +334,17 @@ export async function getDistinctModels(userId: string): Promise<string[]> {
 
 export interface TimeseriesPoint {
   t: string;
-  costCents: number;
+  costCents: number | null;
   inputTokens: number;
   outputTokens: number;
 }
 
 export async function getRequestTimeseries(userId: string, days = 30): Promise<TimeseriesPoint[]> {
-  const requests = filterByDays(await getRecentRequests(userId, 10000), days);
+  const requests = await getUserAnalyticsRequests(userId, days);
   return requests
     .map((r) => ({
       t: r.created_at,
-      costCents: Number(r.cost_cents),
+      costCents: knownCostCents(r.cost_cents),
       inputTokens: r.input_tokens,
       outputTokens: r.output_tokens,
     }))
@@ -240,7 +356,7 @@ export async function getAdminRequestTimeseries(days = 0): Promise<TimeseriesPoi
   return rows
     .map((r) => ({
       t: r.created_at,
-      costCents: Number(r.cost_cents),
+      costCents: knownCostCents(r.cost_cents),
       inputTokens: r.input_tokens,
       outputTokens: r.output_tokens,
     }))
@@ -305,8 +421,9 @@ export async function getAllAccounts(): Promise<AccountRow[]> {
 // ---- Admin queries (all users, platform-wide) ----
 
 interface AdminRequest {
+  id: string;
   api_key_id: string;
-  cost_cents: number;
+  cost_cents: number | null;
   latency_ms: number;
   error_code: string | null;
   provider: string;
@@ -318,13 +435,35 @@ interface AdminRequest {
 
 const getAllRequests = cache(async function getAllRequests(): Promise<AdminRequest[]> {
   const db = createServerClient();
-  const { data } = await db
-    .from('requests')
-    .select('api_key_id, cost_cents, latency_ms, error_code, provider, model, input_tokens, output_tokens, created_at')
-    .eq('source', 'proxy')
-    .order('created_at', { ascending: false })
-    .limit(50000);
-  return (data as AdminRequest[]) || [];
+  const snapshot = new Date().toISOString();
+  const rows: AdminRequest[] = [];
+  let expectedTotal: number | null = null;
+  let offset = 0;
+
+  while (true) {
+    const { data, error, count } = await db
+      .from('requests')
+      .select('id, api_key_id, cost_cents, latency_ms, error_code, provider, model, input_tokens, output_tokens, created_at', { count: 'exact' })
+      .eq('source', 'proxy')
+      .lte('created_at', snapshot)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(offset, offset + ANALYTICS_PAGE_SIZE - 1);
+    if (error) throw new Error(`Failed to load admin request page: ${error.message}`);
+    if (count === null) throw new Error('Admin request page omitted an exact row count');
+    if (expectedTotal === null) expectedTotal = count;
+    if (count !== expectedTotal) throw new Error('Admin request count changed during pagination');
+
+    const page = (data as AdminRequest[]) || [];
+    rows.push(...page);
+    if (rows.length >= expectedTotal || page.length === 0) break;
+    offset += page.length;
+  }
+
+  if (rows.length !== expectedTotal) {
+    throw new Error(`Admin pagination returned ${rows.length} of ${expectedTotal} request receipts`);
+  }
+  return rows;
 });
 
 function filterByDays<T extends { created_at: string }>(rows: T[], days: number): T[] {
@@ -333,7 +472,7 @@ function filterByDays<T extends { created_at: string }>(rows: T[], days: number)
   return rows.filter((r) => new Date(r.created_at) >= cutoff);
 }
 
-export interface AdminStats {
+export interface AdminStats extends CostCoverage {
   totalRequests: number;
   totalSpendCents: number;
   totalAccounts: number;
@@ -348,7 +487,7 @@ export interface AdminStats {
   avgTokensPerReq: number;
 }
 
-export interface UserBreakdown {
+export interface UserBreakdown extends CostCoverage {
   userId: string;
   plan: string;
   note: string | null;
@@ -359,7 +498,7 @@ export interface UserBreakdown {
   lastActive: string;
 }
 
-export interface ModelBreakdown {
+export interface ModelBreakdown extends CostCoverage {
   model: string;
   provider: string;
   requests: number;
@@ -381,13 +520,24 @@ export async function getAdminUserBreakdown(days = 0): Promise<UserBreakdown[]> 
   const keyToUser = new Map(keys.map((k) => [k.id, k.user_id]));
   const rows = filterByDays(await getAllRequests(), days);
 
-  const users = new Map<string, { requests: number; spendCents: number; errors: number; totalLatency: number; lastActive: string }>();
+  const users = new Map<string, {
+    requests: number; pricedRequests: number; unknownCostRequests: number;
+    spendCents: number; errors: number; totalLatency: number; lastActive: string;
+  }>();
   for (const r of rows) {
     const uid = keyToUser.get(r.api_key_id);
     if (!uid) continue;
-    const u = users.get(uid) || { requests: 0, spendCents: 0, errors: 0, totalLatency: 0, lastActive: '' };
+    const u = users.get(uid) || {
+      requests: 0, pricedRequests: 0, unknownCostRequests: 0,
+      spendCents: 0, errors: 0, totalLatency: 0, lastActive: '',
+    };
     u.requests++;
-    u.spendCents += Number(r.cost_cents);
+    const cost = knownCostCents(r.cost_cents);
+    if (cost === null) u.unknownCostRequests++;
+    else {
+      u.pricedRequests++;
+      u.spendCents += cost;
+    }
     if (r.error_code) u.errors++;
     u.totalLatency += r.latency_ms;
     if (r.created_at > u.lastActive) u.lastActive = r.created_at;
@@ -403,7 +553,10 @@ export async function getAdminUserBreakdown(days = 0): Promise<UserBreakdown[]> 
   // include all accounts, even those with 0 requests
   for (const acct of accounts || []) {
     if (!users.has(acct.user_id)) {
-      users.set(acct.user_id, { requests: 0, spendCents: 0, errors: 0, totalLatency: 0, lastActive: '' });
+      users.set(acct.user_id, {
+        requests: 0, pricedRequests: 0, unknownCostRequests: 0,
+        spendCents: 0, errors: 0, totalLatency: 0, lastActive: '',
+      });
     }
   }
 
@@ -413,6 +566,9 @@ export async function getAdminUserBreakdown(days = 0): Promise<UserBreakdown[]> 
       plan: acctMap.get(userId)?.plan || 'free',
       note: acctMap.get(userId)?.note || null,
       requests: u.requests,
+      pricedRequests: u.pricedRequests,
+      unknownCostRequests: u.unknownCostRequests,
+      costComplete: u.unknownCostRequests === 0,
       spendCents: u.spendCents,
       errors: u.errors,
       avgLatencyMs: u.requests > 0 ? Math.round(u.totalLatency / u.requests) : 0,
@@ -425,16 +581,25 @@ export async function getAdminTopModels(days = 0): Promise<ModelBreakdown[]> {
   const rows = filterByDays(await getAllRequests(), days);
 
   const models = new Map<string, {
-    provider: string; requests: number; spendCents: number;
-    totalLatency: number; totalInput: number; totalOutput: number;
+    provider: string; requests: number; pricedRequests: number; unknownCostRequests: number;
+    spendCents: number; totalLatency: number; totalInput: number; totalOutput: number;
+    pricedInput: number; pricedOutput: number;
   }>();
   for (const r of rows) {
     const m = models.get(r.model) || {
-      provider: r.provider, requests: 0, spendCents: 0,
-      totalLatency: 0, totalInput: 0, totalOutput: 0,
+      provider: r.provider, requests: 0, pricedRequests: 0, unknownCostRequests: 0,
+      spendCents: 0, totalLatency: 0, totalInput: 0, totalOutput: 0,
+      pricedInput: 0, pricedOutput: 0,
     };
     m.requests++;
-    m.spendCents += Number(r.cost_cents);
+    const cost = knownCostCents(r.cost_cents);
+    if (cost === null) m.unknownCostRequests++;
+    else {
+      m.pricedRequests++;
+      m.spendCents += cost;
+      m.pricedInput += r.input_tokens;
+      m.pricedOutput += r.output_tokens;
+    }
     m.totalLatency += r.latency_ms;
     m.totalInput += r.input_tokens;
     m.totalOutput += r.output_tokens;
@@ -444,14 +609,18 @@ export async function getAdminTopModels(days = 0): Promise<ModelBreakdown[]> {
   return Array.from(models.entries())
     .map(([model, m]) => {
       const totalTokens = m.totalInput + m.totalOutput;
+      const pricedTokens = m.pricedInput + m.pricedOutput;
       return {
         model,
         provider: m.provider,
         requests: m.requests,
+        pricedRequests: m.pricedRequests,
+        unknownCostRequests: m.unknownCostRequests,
+        costComplete: m.unknownCostRequests === 0,
         spendCents: m.spendCents,
         avgLatencyMs: m.requests > 0 ? Math.round(m.totalLatency / m.requests) : 0,
         avgTokensPerReq: m.requests > 0 ? Math.round(totalTokens / m.requests) : 0,
-        costPer1kTokens: totalTokens > 0 ? +((m.spendCents / totalTokens) * 1000).toFixed(4) : 0,
+        costPer1kTokens: pricedTokens > 0 ? +((m.spendCents / pricedTokens) * 1000).toFixed(4) : 0,
       };
     })
     .sort((a, b) => b.spendCents - a.spendCents);
@@ -477,6 +646,9 @@ function computeStats(rows: AdminRequest[]): Omit<AdminStats, 'totalAccounts' | 
   let totalLatency = 0;
   let totalInput = 0;
   let totalOutput = 0;
+  let totalSpend = 0;
+  let pricedRequests = 0;
+  let unknownCostRequests = 0;
   const latencies: number[] = [];
 
   for (const r of rows) {
@@ -485,6 +657,12 @@ function computeStats(rows: AdminRequest[]): Omit<AdminStats, 'totalAccounts' | 
     latencies.push(r.latency_ms);
     totalInput += r.input_tokens;
     totalOutput += r.output_tokens;
+    const cost = knownCostCents(r.cost_cents);
+    if (cost === null) unknownCostRequests++;
+    else {
+      pricedRequests++;
+      totalSpend += cost;
+    }
   }
 
   latencies.sort((a, b) => a - b);
@@ -492,7 +670,10 @@ function computeStats(rows: AdminRequest[]): Omit<AdminStats, 'totalAccounts' | 
 
   return {
     totalRequests: rows.length,
-    totalSpendCents: rows.reduce((s, r) => s + Number(r.cost_cents), 0),
+    pricedRequests,
+    unknownCostRequests,
+    costComplete: unknownCostRequests === 0,
+    totalSpendCents: totalSpend,
     errorRate: rows.length > 0 ? (errors / rows.length) * 100 : 0,
     avgLatencyMs: rows.length > 0 ? Math.round(totalLatency / rows.length) : 0,
     p95LatencyMs: latencies.length > 0 ? (latencies[p95Idx] ?? 0) : 0,
@@ -570,7 +751,9 @@ export async function getAdminStatsTrend(days: number): Promise<AdminStatsTrend>
     current,
     previous,
     deltas: {
-      spend: pctDelta(curr.totalSpendCents, prev.totalSpendCents),
+      spend: curr.costComplete && prev.costComplete
+        ? pctDelta(curr.totalSpendCents, prev.totalSpendCents)
+        : null,
       requests: pctDelta(curr.totalRequests, prev.totalRequests),
       errorRate: pctDelta(curr.errorRate, prev.errorRate),
       avgLatency: pctDelta(curr.avgLatencyMs, prev.avgLatencyMs),
@@ -582,7 +765,7 @@ export async function getAdminStatsTrend(days: number): Promise<AdminStatsTrend>
 
 // ---- Admin: provider health ----
 
-export interface ProviderHealth {
+export interface ProviderHealth extends CostCoverage {
   provider: string;
   requests: number;
   successRate: number;
@@ -595,16 +778,27 @@ export interface ProviderHealth {
 export async function getAdminProviderHealth(days = 0): Promise<ProviderHealth[]> {
   const rows = filterByDays(await getAllRequests(), days);
 
-  const providers = new Map<string, { total: number; errors: number; spendCents: number; latencies: number[]; lastErrorAt: string | null }>();
+  const providers = new Map<string, {
+    total: number; pricedRequests: number; unknownCostRequests: number;
+    errors: number; spendCents: number; latencies: number[]; lastErrorAt: string | null;
+  }>();
 
   for (const r of rows) {
-    const p = providers.get(r.provider) || { total: 0, errors: 0, spendCents: 0, latencies: [], lastErrorAt: null };
+    const p = providers.get(r.provider) || {
+      total: 0, pricedRequests: 0, unknownCostRequests: 0,
+      errors: 0, spendCents: 0, latencies: [], lastErrorAt: null,
+    };
     p.total++;
     if (r.error_code) {
       p.errors++;
       if (!p.lastErrorAt || r.created_at > p.lastErrorAt) p.lastErrorAt = r.created_at;
     }
-    p.spendCents += Number(r.cost_cents);
+    const cost = knownCostCents(r.cost_cents);
+    if (cost === null) p.unknownCostRequests++;
+    else {
+      p.pricedRequests++;
+      p.spendCents += cost;
+    }
     p.latencies.push(r.latency_ms);
     providers.set(r.provider, p);
   }
@@ -617,6 +811,9 @@ export async function getAdminProviderHealth(days = 0): Promise<ProviderHealth[]
       return {
         provider,
         requests: p.total,
+        pricedRequests: p.pricedRequests,
+        unknownCostRequests: p.unknownCostRequests,
+        costComplete: p.unknownCostRequests === 0,
         successRate: p.total > 0 ? +((((p.total - p.errors) / p.total) * 100).toFixed(1)) : 100,
         avgLatencyMs: avgLatency,
         p95LatencyMs: p.latencies.length > 0 ? (p.latencies[p95Idx] ?? 0) : 0,
@@ -629,19 +826,35 @@ export async function getAdminProviderHealth(days = 0): Promise<ProviderHealth[]
 
 // ---- Admin: provider spend breakdown (for ProviderChart) ----
 
-export async function getAdminProviderSpend(days = 0): Promise<Array<{ provider: string; cost: number; count: number }>> {
+export async function getAdminProviderSpend(days = 0): Promise<Array<{
+  provider: string; cost: number; count: number;
+  pricedRequests: number; unknownCostRequests: number; costComplete: boolean;
+}>> {
   const rows = filterByDays(await getAllRequests(), days);
 
-  const providers = new Map<string, { cost: number; count: number }>();
+  const providers = new Map<string, {
+    cost: number; count: number; pricedRequests: number; unknownCostRequests: number;
+  }>();
   for (const r of rows) {
-    const p = providers.get(r.provider) || { cost: 0, count: 0 };
-    p.cost += Number(r.cost_cents) / 100;
+    const p = providers.get(r.provider) || {
+      cost: 0, count: 0, pricedRequests: 0, unknownCostRequests: 0,
+    };
+    const cost = knownCostCents(r.cost_cents);
+    if (cost === null) p.unknownCostRequests++;
+    else {
+      p.pricedRequests++;
+      p.cost += cost / 100;
+    }
     p.count++;
     providers.set(r.provider, p);
   }
 
   return Array.from(providers.entries())
-    .map(([provider, p]) => ({ provider, ...p }))
+    .map(([provider, p]) => ({
+      provider,
+      ...p,
+      costComplete: p.unknownCostRequests === 0,
+    }))
     .sort((a, b) => b.cost - a.cost);
 }
 
@@ -656,7 +869,7 @@ export interface ProviderKeyRow {
   revoked_at: string | null;
 }
 
-export interface ProviderActivity {
+export interface ProviderActivity extends CostCoverage {
   provider: string;
   requests: number;
   spendCents: number;
@@ -679,10 +892,12 @@ export async function getProviderKeys(userId: string): Promise<ProviderKeyRow[]>
 }
 
 export async function getProviderActivity(userId: string): Promise<ProviderActivity[]> {
-  const requests = await getRecentRequests(userId, 10000);
+  const requests = await getUserAnalyticsRequests(userId);
 
   const providers = new Map<string, {
     requests: number;
+    pricedRequests: number;
+    unknownCostRequests: number;
     spendCents: number;
     lastUsed: string;
     lastError: string | null;
@@ -692,10 +907,16 @@ export async function getProviderActivity(userId: string): Promise<ProviderActiv
 
   for (const r of requests) {
     const p = providers.get(r.provider) || {
-      requests: 0, spendCents: 0, lastUsed: '', lastError: null, lastErrorTime: null, models: new Map(),
+      requests: 0, pricedRequests: 0, unknownCostRequests: 0,
+      spendCents: 0, lastUsed: '', lastError: null, lastErrorTime: null, models: new Map(),
     };
     p.requests++;
-    p.spendCents += Number(r.cost_cents);
+    const cost = knownCostCents(r.cost_cents);
+    if (cost === null) p.unknownCostRequests++;
+    else {
+      p.pricedRequests++;
+      p.spendCents += cost;
+    }
     if (r.created_at > p.lastUsed) p.lastUsed = r.created_at;
     if (r.error_code && (!p.lastErrorTime || r.created_at > p.lastErrorTime)) {
       p.lastError = r.error_code;
@@ -709,6 +930,9 @@ export async function getProviderActivity(userId: string): Promise<ProviderActiv
     .map(([provider, p]) => ({
       provider,
       requests: p.requests,
+      pricedRequests: p.pricedRequests,
+      unknownCostRequests: p.unknownCostRequests,
+      costComplete: p.unknownCostRequests === 0,
       spendCents: p.spendCents,
       lastUsed: p.lastUsed,
       lastError: p.lastError,
@@ -722,7 +946,7 @@ export async function getProviderActivity(userId: string): Promise<ProviderActiv
 
 // ---- User analytics ----
 
-export interface ModelStats {
+export interface ModelStats extends CostCoverage {
   model: string;
   provider: string;
   requests: number;
@@ -733,7 +957,7 @@ export interface ModelStats {
   costPer1kTokens: number;
 }
 
-export interface RequestSummary {
+export interface RequestSummary extends CostCoverage {
   totalRequests: number;
   totalSpendCents: number;
   totalInputTokens: number;
@@ -744,20 +968,29 @@ export interface RequestSummary {
 }
 
 export async function getModelBreakdown(userId: string, days = 30): Promise<ModelStats[]> {
-  const requests = filterByDays(await getRecentRequests(userId, 10000), days);
+  const requests = await getUserAnalyticsRequests(userId, days);
 
   const models = new Map<string, {
-    provider: string; requests: number; spendCents: number;
-    totalLatency: number; inputTokens: number; outputTokens: number;
+    provider: string; requests: number; pricedRequests: number; unknownCostRequests: number;
+    spendCents: number; totalLatency: number; inputTokens: number; outputTokens: number;
+    pricedInputTokens: number; pricedOutputTokens: number;
   }>();
 
   for (const r of requests) {
     const m = models.get(r.model) || {
-      provider: r.provider, requests: 0, spendCents: 0,
-      totalLatency: 0, inputTokens: 0, outputTokens: 0,
+      provider: r.provider, requests: 0, pricedRequests: 0, unknownCostRequests: 0,
+      spendCents: 0, totalLatency: 0, inputTokens: 0, outputTokens: 0,
+      pricedInputTokens: 0, pricedOutputTokens: 0,
     };
     m.requests++;
-    m.spendCents += Number(r.cost_cents);
+    const cost = knownCostCents(r.cost_cents);
+    if (cost === null) m.unknownCostRequests++;
+    else {
+      m.pricedRequests++;
+      m.spendCents += cost;
+      m.pricedInputTokens += r.input_tokens;
+      m.pricedOutputTokens += r.output_tokens;
+    }
     m.totalLatency += r.latency_ms;
     m.inputTokens += r.input_tokens;
     m.outputTokens += r.output_tokens;
@@ -766,48 +999,53 @@ export async function getModelBreakdown(userId: string, days = 30): Promise<Mode
 
   return Array.from(models.entries())
     .map(([model, m]) => {
-      const totalTokens = m.inputTokens + m.outputTokens;
+      const pricedTokens = m.pricedInputTokens + m.pricedOutputTokens;
       return {
         model,
         provider: m.provider,
         requests: m.requests,
+        pricedRequests: m.pricedRequests,
+        unknownCostRequests: m.unknownCostRequests,
+        costComplete: m.unknownCostRequests === 0,
         spendCents: m.spendCents,
         avgLatencyMs: m.requests > 0 ? Math.round(m.totalLatency / m.requests) : 0,
         totalInputTokens: m.inputTokens,
         totalOutputTokens: m.outputTokens,
-        costPer1kTokens: totalTokens > 0 ? +((m.spendCents / totalTokens) * 1000).toFixed(4) : 0,
+        costPer1kTokens: pricedTokens > 0 ? +((m.spendCents / pricedTokens) * 1000).toFixed(4) : 0,
       };
     })
     .sort((a, b) => b.spendCents - a.spendCents);
 }
 
 export async function getRequestSummary(userId: string, days = 30): Promise<RequestSummary> {
-  const requests = filterByDays(await getRecentRequests(userId, 10000), days);
+  const requests = await getUserAnalyticsRequests(userId, days);
 
   let totalSpend = 0;
+  let pricedCount = 0;
   let totalLatency = 0;
   let totalInput = 0;
   let totalOutput = 0;
 
   for (const r of requests) {
-    totalSpend += Number(r.cost_cents);
+    const cost = knownCostCents(r.cost_cents);
+    totalSpend += cost ?? 0;
+    pricedCount += Number(cost !== null);
     totalLatency += r.latency_ms;
     totalInput += r.input_tokens;
     totalOutput += r.output_tokens;
   }
 
   const count = requests.length;
-  const avgCost = count > 0 ? totalSpend / count : 0;
+  const avgCost = pricedCount > 0 ? totalSpend / pricedCount : 0;
   const avgLatency = count > 0 ? Math.round(totalLatency / count) : 0;
 
   // projected monthly: find daily average from last 7 days, multiply by 30
   const weekAgo = new Date(Date.now() - 7 * 86400000);
   let weekSpend = 0;
-  let weekCount = 0;
   for (const r of requests) {
     if (new Date(r.created_at) >= weekAgo) {
-      weekSpend += Number(r.cost_cents);
-      weekCount++;
+      const cost = knownCostCents(r.cost_cents);
+      weekSpend += cost ?? 0;
     }
   }
   const daysActive = Math.max(1, Math.ceil((Date.now() - weekAgo.getTime()) / 86400000));
@@ -816,6 +1054,9 @@ export async function getRequestSummary(userId: string, days = 30): Promise<Requ
 
   return {
     totalRequests: count,
+    pricedRequests: pricedCount,
+    unknownCostRequests: count - pricedCount,
+    costComplete: pricedCount === count,
     totalSpendCents: totalSpend,
     totalInputTokens: totalInput,
     totalOutputTokens: totalOutput,
@@ -863,39 +1104,43 @@ export interface UserStatsTrend {
 export async function getUserStatsTrend(userId: string, days: number): Promise<UserStatsTrend> {
   if (days <= 0) return { deltas: { spend: null, requests: null, avgCost: null, avgLatency: null } };
 
-  const allRequests = await getRecentRequests(userId, 10000);
+  const allRequests = await getUserAnalyticsRequests(userId, days * 2);
   const now = Date.now();
   const periodMs = days * 86400000;
   const currentCutoff = new Date(now - periodMs);
   const previousCutoff = new Date(now - periodMs * 2);
 
-  let curSpend = 0, curLatency = 0, curCount = 0;
-  let prevSpend = 0, prevLatency = 0, prevCount = 0;
+  let curSpend = 0, curLatency = 0, curCount = 0, curPricedCount = 0, curUnknownCost = 0;
+  let prevSpend = 0, prevLatency = 0, prevCount = 0, prevPricedCount = 0, prevUnknownCost = 0;
 
   for (const r of allRequests) {
     const ts = new Date(r.created_at);
-    const cost = Number(r.cost_cents);
+    const cost = knownCostCents(r.cost_cents);
     if (ts >= currentCutoff) {
-      curSpend += cost;
+      curSpend += cost ?? 0;
+      curPricedCount += Number(cost !== null);
+      curUnknownCost += Number(cost === null);
       curLatency += r.latency_ms;
       curCount++;
     } else if (ts >= previousCutoff) {
-      prevSpend += cost;
+      prevSpend += cost ?? 0;
+      prevPricedCount += Number(cost !== null);
+      prevUnknownCost += Number(cost === null);
       prevLatency += r.latency_ms;
       prevCount++;
     }
   }
 
-  const curAvgCost = curCount > 0 ? curSpend / curCount : 0;
-  const prevAvgCost = prevCount > 0 ? prevSpend / prevCount : 0;
+  const curAvgCost = curPricedCount > 0 ? curSpend / curPricedCount : 0;
+  const prevAvgCost = prevPricedCount > 0 ? prevSpend / prevPricedCount : 0;
   const curAvgLatency = curCount > 0 ? curLatency / curCount : 0;
   const prevAvgLatency = prevCount > 0 ? prevLatency / prevCount : 0;
 
   return {
     deltas: {
-      spend: pctDelta(curSpend, prevSpend),
+      spend: curUnknownCost === 0 && prevUnknownCost === 0 ? pctDelta(curSpend, prevSpend) : null,
       requests: pctDelta(curCount, prevCount),
-      avgCost: pctDelta(curAvgCost, prevAvgCost),
+      avgCost: curUnknownCost === 0 && prevUnknownCost === 0 ? pctDelta(curAvgCost, prevAvgCost) : null,
       avgLatency: pctDelta(curAvgLatency, prevAvgLatency),
     },
   };
@@ -903,7 +1148,7 @@ export async function getUserStatsTrend(userId: string, days: number): Promise<U
 
 // ---- User: budget usage (computed from requests table) ----
 
-export interface BudgetUsageSummary {
+export interface BudgetUsageSummary extends CostCoverage {
   budgetId: string;
   name: string;
   limitCents: number;
@@ -920,18 +1165,10 @@ function periodToMs(period: string): number {
 }
 
 export async function getBudgetUsage(userId: string): Promise<BudgetUsageSummary[]> {
-  const [budgets, keys, requests] = await Promise.all([
-    getBudgets(userId),
-    getApiKeys(userId),
-    getRecentRequests(userId, 10000),
-  ]);
-
+  const budgets = await getBudgets(userId);
   if (!budgets.length) return [];
-
-  const keyToBudget = new Map<string, string>();
-  for (const k of keys) {
-    if (k.budget_id) keyToBudget.set(k.id, k.budget_id);
-  }
+  const analyticsDays = budgets.some((budget) => periodToMs(budget.period) === 0) ? 0 : 30;
+  const requests = await getUserAnalyticsRequests(userId, analyticsDays);
 
   // compute period start for each budget
   const budgetPeriodStart = new Map<string, Date>();
@@ -944,32 +1181,59 @@ export async function getBudgetUsage(userId: string): Promise<BudgetUsageSummary
     }
   }
 
-  const usage = new Map<string, number>();
+  const usage = new Map<string, {
+    usedCents: number;
+    pricedRequests: number;
+    unknownCostRequests: number;
+  }>();
   for (const r of requests) {
-    const bid = keyToBudget.get(r.api_key_id);
+    const bid = r.budget_id;
     if (!bid) continue;
     const start = budgetPeriodStart.get(bid);
     if (start && new Date(r.created_at) >= start) {
-      usage.set(bid, (usage.get(bid) || 0) + Number(r.cost_cents));
+      const current = usage.get(bid) || {
+        usedCents: 0,
+        pricedRequests: 0,
+        unknownCostRequests: 0,
+      };
+      const cost = knownCostCents(r.cost_cents);
+      if (cost === null) current.unknownCostRequests++;
+      else {
+        current.pricedRequests++;
+        current.usedCents += cost;
+      }
+      usage.set(bid, current);
     }
   }
 
-  return budgets.map((b) => ({
-    budgetId: b.id,
-    name: b.name,
-    limitCents: b.limit_cents,
-    usedCents: usage.get(b.id) || 0,
-    period: b.period,
-    resetAt: b.reset_at,
-  }));
+  return budgets.map((b) => {
+    const current = usage.get(b.id) || {
+      usedCents: 0,
+      pricedRequests: 0,
+      unknownCostRequests: 0,
+    };
+    return {
+      budgetId: b.id,
+      name: b.name,
+      limitCents: b.limit_cents,
+      usedCents: current.usedCents,
+      pricedRequests: current.pricedRequests,
+      unknownCostRequests: current.unknownCostRequests,
+      costComplete: current.unknownCostRequests === 0,
+      period: b.period,
+      resetAt: b.reset_at,
+    };
+  });
 }
 
 export async function getSessions(userId: string, limit = 50, days = 30) {
-  const requests = filterByDays(await getRecentRequests(userId, 5000), days);
+  const requests = await getUserAnalyticsRequests(userId, days);
 
   const sessions = new Map<string, {
     sessionId: string;
     requestCount: number;
+    pricedRequests: number;
+    unknownCostRequests: number;
     totalCostCents: number;
     providers: Set<string>;
     firstRequest: string;
@@ -981,13 +1245,20 @@ export async function getSessions(userId: string, limit = 50, days = 30) {
     const existing = sessions.get(sid) || {
       sessionId: sid,
       requestCount: 0,
+      pricedRequests: 0,
+      unknownCostRequests: 0,
       totalCostCents: 0,
       providers: new Set<string>(),
       firstRequest: req.created_at,
       lastRequest: req.created_at,
     };
     existing.requestCount++;
-    existing.totalCostCents += Number(req.cost_cents);
+    const cost = knownCostCents(req.cost_cents);
+    if (cost === null) existing.unknownCostRequests++;
+    else {
+      existing.pricedRequests++;
+      existing.totalCostCents += cost;
+    }
     existing.providers.add(req.provider);
     if (req.created_at < existing.firstRequest) existing.firstRequest = req.created_at;
     if (req.created_at > existing.lastRequest) existing.lastRequest = req.created_at;
@@ -995,7 +1266,11 @@ export async function getSessions(userId: string, limit = 50, days = 30) {
   }
 
   return Array.from(sessions.values())
-    .map((s) => ({ ...s, providers: Array.from(s.providers) }))
+    .map((s) => ({
+      ...s,
+      costComplete: s.unknownCostRequests === 0,
+      providers: Array.from(s.providers),
+    }))
     .sort((a, b) => b.lastRequest.localeCompare(a.lastRequest))
     .slice(0, limit);
 }

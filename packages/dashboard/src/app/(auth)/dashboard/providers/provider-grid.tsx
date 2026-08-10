@@ -82,6 +82,9 @@ function ActiveProviderCard({
           {activity.requests} req{activity.requests !== 1 ? 's' : ''}
         </span>
         <span className="font-mono text-muted-foreground">{formatCents(activity.spendCents)}</span>
+        {activity.unknownCostRequests > 0 && (
+          <span className="text-amber-400">+{activity.unknownCostRequests} cost unknown</span>
+        )}
         {hasRecentError && (
           <span className="text-yellow-500">{activity.lastError}</span>
         )}
@@ -269,7 +272,8 @@ export function ProviderGrid({
                 key={p.id}
                 provider={p}
                 activity={activityMap.get(p.id) || {
-                  provider: p.id, requests: 0, spendCents: 0,
+                  provider: p.id, requests: 0, pricedRequests: 0, unknownCostRequests: 0,
+                  costComplete: true, spendCents: 0,
                   lastUsed: '', lastError: null, lastErrorTime: null, models: [],
                 }}
                 keys={keysByProvider.get(p.id) || []}

@@ -1,9 +1,11 @@
 import type { ProviderName } from '@f3d1/llmkit-shared';
-import { BudgetExceededError, inferProvider, ValidationError } from '@f3d1/llmkit-shared';
+import { BudgetExceededError, inferProvider, PRICING, ValidationError } from '@f3d1/llmkit-shared';
+import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
-import type { BudgetDO } from '../do/budget-do';
+import type { RequestInsert } from '../db';
+import type { BudgetDO, FailureFinalizationResult } from '../do/budget-do';
 import type { Env } from '../env';
-import { resolvePricing } from '../pricing';
+import { resolveProviderChain } from '../providers/chain';
 
 function validateSessionId(sessionId: string | undefined): void {
   if (sessionId && !/^[\w-]{1,128}$/.test(sessionId)) {
@@ -25,9 +27,98 @@ async function parseBody(c: { req: { json(): Promise<Record<string, unknown>> } 
   }
 }
 
+const BUDGETED_POST_PATHS = new Set(['/v1/chat/completions', '/v1/responses']);
+const HARD_BUDGET_CHAT_FIELDS = new Set([
+  'model', 'messages', 'temperature', 'max_tokens', 'maxTokens',
+  'tools', 'tool_choice', 'response_format', 'stream', 'stream_options', 'provider',
+]);
+const HARD_BUDGET_RESPONSES_FIELDS = new Set([
+  'model', 'input', 'instructions', 'temperature', 'max_output_tokens',
+  'tools', 'tool_choice', 'text', 'provider',
+]);
+
+function validateHardBudgetTopLevelFields(body: Record<string, unknown>, path: string): void {
+  const allowed = path === '/v1/responses' ? HARD_BUDGET_RESPONSES_FIELDS : HARD_BUDGET_CHAT_FIELDS;
+  const unsupported = Object.keys(body).filter((field) => !allowed.has(field)).sort();
+  if (unsupported.length > 0) {
+    throw new ValidationError(
+      `hard budgets do not support unbounded or cost-affecting request fields: ${unsupported.join(', ')}`,
+    );
+  }
+}
+
+function containsUnsupportedHardBudgetContent(value: unknown): boolean {
+  const pending = [value];
+  let inspected = 0;
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (!current || typeof current !== 'object') continue;
+    inspected += 1;
+    if (inspected > 10_000) {
+      throw new ValidationError('request content is too complex to validate for hard-budget tool safety');
+    }
+    if (Array.isArray(current)) {
+      pending.push(...current);
+      continue;
+    }
+    const item = current as Record<string, unknown>;
+    if (
+      item.type === 'input_file'
+      || item.type === 'image_url'
+      || item.type === 'input_image'
+      || item.type === 'image'
+      || item.type === 'document'
+      || item.type === 'input_audio'
+      || item.type === 'audio'
+      || item.type === 'input_video'
+      || item.type === 'video'
+      || 'file_id' in item
+      || 'file_url' in item
+    ) return true;
+    pending.push(...Object.values(item));
+  }
+  return false;
+}
+
+function validateHardBudgetToolBoundary(body: Record<string, unknown>): void {
+  if (body.tools !== undefined) {
+    if (!Array.isArray(body.tools)) throw new ValidationError('tools must be an array');
+    for (const tool of body.tools) {
+      if (!tool || typeof tool !== 'object' || (tool as Record<string, unknown>).type !== 'function') {
+        throw new ValidationError(
+          'provider-managed tools are not supported by hard budgets because no enforceable pre-dispatch cost ceiling is available',
+        );
+      }
+    }
+  }
+  if (containsUnsupportedHardBudgetContent(body.input) || containsUnsupportedHardBudgetContent(body.messages)) {
+    throw new ValidationError(
+      'images and provider-managed file attachments are not supported by hard budgets because no enforceable pre-dispatch token ceiling is available',
+    );
+  }
+}
+
+function requestedMaxOutputTokens(body: Record<string, unknown>, path?: string): number {
+  const chatMax = body.max_tokens ?? body.maxTokens;
+  const value = path === '/v1/responses' ? body.max_output_tokens : path === '/v1/chat/completions' ? chatMax : chatMax ?? body.max_output_tokens;
+  if (!Number.isSafeInteger(value) || (value as number) <= 0) {
+    const field = path === '/v1/responses' ? 'max_output_tokens' : 'max_tokens';
+    throw new ValidationError(`hard budgets require an explicit positive integer ${field}`);
+  }
+  if (
+    path === '/v1/chat/completions'
+    && body.max_tokens !== undefined
+    && body.maxTokens !== undefined
+    && body.max_tokens !== body.maxTokens
+  ) {
+    throw new ValidationError('max_tokens and maxTokens must match when both are provided');
+  }
+  return value as number;
+}
+
 export function budgetCheck() {
   return createMiddleware<Env>(async (c, next) => {
-    if (c.req.method !== 'POST') return await next();
+    if (c.req.method !== 'POST' || !BUDGETED_POST_PATHS.has(c.req.path)) return await next();
     const budgetId: string | undefined = c.get('budgetId');
     if (!budgetId) return await next();
 
@@ -36,39 +127,88 @@ export function budgetCheck() {
     validateEndUserId(c.req.header('x-llmkit-user-id'));
 
     const body = await parseBody(c);
+    validateHardBudgetTopLevelFields(body, c.req.path);
+    validateHardBudgetToolBoundary(body);
     const model = body.model as string;
     const provider = (c.req.header('x-llmkit-provider') || body.provider || inferProvider(model) || 'openai') as ProviderName;
-    c.set('requestProvider', provider);
+    const providers = c.req.path === '/v1/chat/completions'
+      ? resolveProviderChain(provider, c.req.header('x-llmkit-fallback'))
+      : [provider];
+    requestedMaxOutputTokens(body, c.req.path);
+    await Promise.all(providers.map((providerName) => estimateCost(body, providerName)));
+    c.set('requestProvider', providers[0]);
     if (body.model) c.set('requestModel', body.model as string);
-    const estimated = await estimateCost(body, provider);
-
-    const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName(budgetId));
-    const budgetConfig = c.get('budgetConfig');
-    const result = await stub.check({
-      sessionId: sessionId || undefined,
-      estimatedCents: estimated,
-      budgetConfig,
-    });
-
-    if (!result.allowed) {
-      throw new BudgetExceededError(budgetId, result.limitCents, result.usedCents);
-    }
-
-    const clamped = await affordableMaxTokens(result.remaining, body, provider);
-    if (clamped !== undefined && clamped < 10) {
-      // release reservation before rejecting
-      if (result.reservationId) {
-        await stub.release(result.reservationId);
-      }
-      throw new BudgetExceededError(budgetId, result.limitCents, result.usedCents);
-    }
-
-    c.set('budgetId', budgetId);
-    c.set('budgetScope', result.scope);
-    c.set('budgetReservationId', result.reservationId);
-    if (clamped !== undefined) c.set('budgetMaxTokens', clamped);
     await next();
   });
+}
+
+export async function admitBudgetForDispatch(
+  c: Context<Env>,
+  body: Record<string, unknown>,
+  providers: ProviderName[],
+): Promise<void> {
+  const budgetId = c.get('budgetId');
+  if (!budgetId || c.get('budgetReservationId')) return;
+
+  const sessionId = c.req.header('x-llmkit-session-id') || undefined;
+  const estimates = await Promise.all(providers.map((providerName) => estimateCost(body, providerName)));
+  // A failed dispatched attempt may still be billable. Reserve every possible
+  // attempt before the first dispatch so fallback cannot cross the hard limit.
+  const estimated = estimates.reduce((total, cost) => total + cost, 0);
+  const requestId = c.get('requestId');
+  const apiKeyId = c.get('apiKeyId');
+  const userId = c.get('userId');
+  const customerId = c.get('customerId');
+  if (!requestId || !apiKeyId || !userId || !customerId) {
+    throw new Error('hard budget admission requires a durable request evidence identity');
+  }
+  const receipt: RequestInsert = {
+    id: requestId,
+    user_id: userId,
+    api_key_id: apiKeyId,
+    customer_id: customerId,
+    workflow_id: c.get('workflowId') || null,
+    agent_id: c.get('agentId') || null,
+    session_id: c.get('sessionId') || null,
+    end_user_id: c.get('endUserId') || null,
+    budget_id: budgetId,
+    budget_reservation_id: null,
+    reserved_cost_cents: estimated,
+    settlement_status: 'pending',
+    idempotency_key_hash: c.get('idempotencyKeyHash') || null,
+    response_sha256: null,
+    provider: providers[0] || 'unknown',
+    model: typeof body.model === 'string' ? body.model : 'unknown',
+    input_tokens: 0,
+    output_tokens: 0,
+    cache_read_tokens: 0,
+    cache_write_tokens: 0,
+    cost_cents: null,
+    latency_ms: 0,
+    status: 'pending',
+    error_code: null,
+    source: 'proxy',
+    tool_calls: null,
+  };
+  const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName(budgetId));
+  const result = await stub.check({
+    sessionId,
+    estimatedCents: estimated,
+    budgetConfig: c.get('budgetConfig'),
+    dispatching: true,
+    receipt,
+  });
+
+  if (!result.allowed) {
+    throw new BudgetExceededError(budgetId, result.limitCents, result.usedCents);
+  }
+  if (!result.reservationId) {
+    throw new Error('hard budget admission did not create a reservation');
+  }
+
+  c.set('budgetScope', result.scope);
+  c.set('budgetReservationId', result.reservationId);
+  c.set('budgetReservedCostCents', estimated);
 }
 
 export async function recordUsage(
@@ -77,9 +217,11 @@ export async function recordUsage(
   sessionId: string | undefined,
   costCents: number,
   reservationId?: string,
+  receipt?: RequestInsert,
 ): Promise<{ webhookUrl: string; body: Record<string, unknown> } | null> {
   const stub = doNamespace.get(doNamespace.idFromName(budgetId));
-  const result = await stub.record({ reservationId: reservationId || '', sessionId, costCents });
+  const result = await stub.record({ reservationId: reservationId || '', sessionId, costCents, receipt });
+  if (result.settlementAccepted === false) throw new Error('budget settlement was not accepted');
 
   if (result.alert) {
     const body: Record<string, unknown> = {
@@ -109,6 +251,31 @@ export async function releaseReservation(
   await stub.release(reservationId);
 }
 
+export async function finalizeReservationFailure(
+  doNamespace: DurableObjectNamespace<BudgetDO>,
+  budgetId: string | undefined,
+  reservationId: string | undefined,
+  receipt?: RequestInsert,
+): Promise<FailureFinalizationResult> {
+  if (!budgetId || !reservationId) {
+    return { disposition: 'missing', committedCents: 0, usedCents: 0, limitCents: 0 };
+  }
+  const stub = doNamespace.get(doNamespace.idFromName(budgetId));
+  return stub.finalizeFailure(reservationId, receipt);
+}
+
+export async function attachReceiptResponseHash(
+  doNamespace: DurableObjectNamespace<BudgetDO>,
+  budgetId: string | undefined,
+  requestId: string,
+  responseSha256: string,
+): Promise<void> {
+  if (!budgetId) return;
+  const stub = doNamespace.get(doNamespace.idFromName(budgetId));
+  const attached = await stub.attachResponseHash(requestId, responseSha256);
+  if (!attached) throw new Error('request receipt response hash could not be attached');
+}
+
 export async function sendAlert(alert: { webhookUrl: string; body: Record<string, unknown> }): Promise<void> {
   try {
     if (!alert.webhookUrl.startsWith('https://')) return;
@@ -124,63 +291,43 @@ export async function sendAlert(alert: { webhookUrl: string; body: Record<string
 
 // pure functions for cost estimation (exported for testing)
 
-const IMAGE_CHAR_ESTIMATE = 12_800; // ~3200 tokens * 4 chars/token, rough estimate for vision
+const HARD_BUDGET_INPUT_OVERHEAD_TOKENS = 1024;
 
-function countInputChars(messages: Array<{ content: string | Array<{ type: string; text?: string }> }> | undefined): number {
-  if (!messages) return 0;
-  let chars = 0;
-  for (const m of messages) {
-    if (typeof m.content === 'string') {
-      chars += m.content.length;
-    } else if (Array.isArray(m.content)) {
-      for (const block of m.content) {
-        if (block.type === 'text' && block.text) chars += block.text.length;
-        else if (block.type === 'image_url') chars += IMAGE_CHAR_ESTIMATE;
-      }
-    }
+function estimateInputTokenCeiling(body: Record<string, unknown>): number {
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(body);
+  } catch {
+    throw new ValidationError('request body must be JSON-serializable for hard-budget admission');
   }
-  return chars;
+  // Supported hard-budget requests are text plus optional client-side function
+  // schemas. Counting every UTF-8 request byte as a token includes schemas and
+  // structural fields, then adds an explicit allowance for provider wrappers.
+  return new TextEncoder().encode(serialized).byteLength + HARD_BUDGET_INPUT_OVERHEAD_TOKENS;
 }
 
 export async function estimateCost(body: Record<string, unknown>, provider: ProviderName): Promise<number> {
   const model = body.model as string;
-  if (!model) return 0;
+  if (!model) throw new ValidationError('model is required for hard-budget admission');
 
-  const pricing = await resolvePricing(provider, model);
+  const pricing = PRICING[provider]?.[model];
+  if (!pricing) {
+    throw new ValidationError(
+      `hard budgets require pinned pricing for ${provider}/${model}; update the pricing snapshot before dispatch`,
+    );
+  }
 
-  const inputChars = countInputChars(body.messages as Array<{ content: string | Array<{ type: string; text?: string }> }> | undefined);
-  const inputTokens = Math.ceil(inputChars / 4);
-  const maxOutput = (body.max_tokens as number) || (body.maxTokens as number) || 1024;
+  const inputTokens = estimateInputTokenCeiling(body);
+  const maxOutput = requestedMaxOutputTokens(body);
+  const inputRate = Math.max(
+    pricing.inputPerMillion,
+    pricing.cacheReadPerMillion ?? 0,
+    pricing.cacheWritePerMillion ?? 0,
+  );
 
   const costUsd =
-    (inputTokens / 1_000_000) * pricing.inputPerMillion +
+    (inputTokens / 1_000_000) * inputRate +
     (maxOutput / 1_000_000) * pricing.outputPerMillion;
 
   return Math.ceil(costUsd * 100);
-}
-
-export async function affordableMaxTokens(
-  remainingCents: number,
-  body: Record<string, unknown>,
-  provider: ProviderName,
-): Promise<number | undefined> {
-  const model = body.model as string;
-  if (!model) return undefined;
-
-  const pricing = await resolvePricing(provider, model);
-  if (pricing.outputPerMillion === 0) return undefined;
-
-  const inputChars = countInputChars(body.messages as Array<{ content: string | Array<{ type: string; text?: string }> }> | undefined);
-  const inputTokens = Math.ceil(inputChars / 4);
-  const inputCostCents = ((inputTokens / 1_000_000) * pricing.inputPerMillion) * 100;
-
-  const centsForOutput = remainingCents - inputCostCents;
-  if (centsForOutput <= 0) return 0;
-
-  const affordable = Math.floor((centsForOutput / 100 / pricing.outputPerMillion) * 1_000_000);
-  const userMax = (body.max_tokens as number) ?? (body.maxTokens as number);
-
-  if (userMax && affordable >= userMax) return undefined;
-
-  return affordable;
 }

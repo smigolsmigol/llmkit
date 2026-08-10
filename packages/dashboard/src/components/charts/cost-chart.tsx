@@ -14,6 +14,7 @@ function formatCost(v: number): string {
 }
 
 export function CostChart({ data }: { data: TimeseriesPoint[] }) {
+  const unknownCostRequests = data.filter((point) => point.costCents === null).length;
   const option = useMemo(() => {
     const buckets = bucketByHour(data);
     if (!buckets.length) return null;
@@ -26,13 +27,13 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
     const outputData: [number, number][] = [];
 
     for (const b of buckets) {
-      const totalTokens = b.inputTokens + b.outputTokens;
+      const totalTokens = b.pricedInputTokens + b.pricedOutputTokens;
       const cost = b.costCents / 100;
       if (totalTokens === 0) {
         inputData.push([b.ts, cost]);
         outputData.push([b.ts, 0]);
       } else {
-        const ratio = b.inputTokens / totalTokens;
+        const ratio = b.pricedInputTokens / totalTokens;
         inputData.push([b.ts, cost * ratio]);
         outputData.push([b.ts, cost * (1 - ratio)]);
       }
@@ -62,6 +63,7 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
           const date = new Date(dataPoints[0].value[0]);
           const label = date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
           const total = dataPoints.reduce((sum, point) => sum + point.value[1], 0);
+          const bucket = buckets.find((item) => item.ts === dataPoints[0].value[0]);
           let html = `<div style="font-size:10px;color:#888;margin-bottom:3px">${label}</div>`;
           for (const p of dataPoints) {
             if (p.value?.[1] > 0) {
@@ -73,6 +75,10 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
           if (total > 0) {
             html += `<div style="border-top:1px solid #2a2a2a;margin-top:3px;padding-top:3px;display:flex;justify-content:space-between;font-size:11px">` +
               `<span style="font-weight:600">Total</span><span style="font-family:monospace;font-weight:600">${formatCost(total)}</span></div>`;
+          }
+          if (bucket && bucket.unknownCostRequests > 0) {
+            html += `<div style="margin-top:3px;font-size:10px;color:#f59e0b">` +
+              `${bucket.unknownCostRequests} request cost${bucket.unknownCostRequests === 1 ? '' : 's'} unknown</div>`;
           }
           return html;
         },
@@ -98,7 +104,9 @@ export function CostChart({ data }: { data: TimeseriesPoint[] }) {
   if (!option) {
     return (
       <div className="flex h-20 items-center justify-center text-xs text-muted-foreground">
-        No spend data yet
+        {unknownCostRequests > 0
+          ? `Spend unavailable: ${unknownCostRequests} request cost${unknownCostRequests === 1 ? '' : 's'} unknown`
+          : 'No spend data yet'}
       </div>
     );
   }

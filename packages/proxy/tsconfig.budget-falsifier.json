@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": ".",
+    "types": [
+      "@cloudflare/vitest-pool-workers/types",
+      "@cloudflare/workers-types"
+    ]
+  },
+  "include": [
+    "src/do/budget-do.ts",
+    "src/do/idempotency-do.ts",
+    "src/env.ts",
+    "src/middleware/budget.ts",
+    "src/middleware/idempotency.ts",
+    "src/middleware/logger.ts",
+    "src/routes/chat.ts",
+    "src/routes/responses.ts",
+    "test/budget-falsifier/**/*.ts"
+  ]
+}

@@ -1,0 +1,32 @@
+name = "llmkit-budget-falsifier"
+main = "test/budget-falsifier/worker.ts"
+compatibility_date = "2025-02-18"
+
+[vars]
+SUPABASE_URL = "https://proof-db.invalid"
+SUPABASE_KEY = "proof-service-key"
+ENCRYPTION_KEY = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+[[durable_objects.bindings]]
+name = "BUDGET_DO"
+class_name = "BudgetDO"
+
+[[durable_objects.bindings]]
+name = "FAIL_RECORD_BUDGET_DO"
+class_name = "FailingRecordBudgetDO"
+
+[[durable_objects.bindings]]
+name = "IDEMPOTENCY_DO"
+class_name = "IdempotencyDO"
+
+[[durable_objects.bindings]]
+name = "SOFT_BUDGET_DO"
+class_name = "SoftBudgetDO"
+
+[[durable_objects.bindings]]
+name = "RATE_LIMIT_DO"
+class_name = "RateLimitDO"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["BudgetDO", "FailingRecordBudgetDO", "IdempotencyDO", "RateLimitDO", "SoftBudgetDO"]

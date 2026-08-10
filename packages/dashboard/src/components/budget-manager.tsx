@@ -43,7 +43,12 @@ export function BudgetManager({ budgets }: BudgetManagerProps) {
     setError(null);
     startTransition(async () => {
       try {
-        await deleteBudget(id);
+        const result = await deleteBudget(id);
+        if (!result.deleted && result.reason === 'receipt_history') {
+          setError('This budget has durable request receipts and cannot be deleted. Keep it to preserve audit history.');
+        } else if (!result.deleted && result.reason === 'active_keys') {
+          setError('This budget is assigned to an active API key. Reassign or revoke the key before deleting the budget.');
+        }
       } catch {
         setError('Failed to delete budget. Please try again.');
       }
