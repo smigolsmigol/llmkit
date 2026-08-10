@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@f3d1/llmkit-shared": "workspace:*",
-    "hono": "^4.12.34"
+    "hono": "^4.13.1"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.18.6",
