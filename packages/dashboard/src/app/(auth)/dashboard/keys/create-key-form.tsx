@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { createApiKey } from './actions';
 
-const PROXY_URL = 'https://llmkit-proxy.smigolsmigol.workers.dev/v1';
+const PROXY_URL = 'https://api.llmkit.sh/v1';
 
 function SnippetBlock({ label, code, onCopy }: { label: string; code: string; onCopy: (text: string) => void }) {
   return (

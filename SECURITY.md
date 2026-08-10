@@ -18,7 +18,7 @@ Provider keys are encrypted with AES-256-GCM before storage. Each operation uses
 
 ### Runtime Isolation
 
-The proxy runs on Cloudflare Workers - V8 isolates with no filesystem, no .env, no persistent storage. Nothing to exfiltrate even if a Worker is compromised.
+The proxy runs in Cloudflare Workers V8 isolates without a local filesystem. Secrets are supplied through Worker bindings and provider keys are decrypted only on the scoped request path that needs them. Isolation reduces persistence and cross-request exposure; it does not make a compromised request path harmless.
 
 ### Supply Chain
 
@@ -26,14 +26,14 @@ All CI actions pinned to commit SHAs (not mutable version tags). Every workflow 
 
 ### CI Security Pipeline
 
-Every push triggers a 6-stage pipeline. Deploy is gated behind all security jobs passing.
+Pull requests and main-branch changes run a layered quality and security pipeline. Deployment workflows have separate environment and target gates.
 
 1. **Secret scanning**: gitleaks (full git history) + semgrep secrets ruleset + private pattern matching
 2. **Static analysis**: semgrep security-audit rules across the entire codebase
 3. **Dependency audit**: `pnpm audit` (TS) + `pip-audit` (Python) + `bandit` (Python security linter)
 4. **Project scanner**: [KeyGuard](https://github.com/smigolsmigol/keyguard) scans for leaked secrets, credential files, vulnerable configs
 5. **Type safety**: `tsc --noEmit` + `mypy` (Python) - type errors don't ship
-6. **Post-deploy verification**: health checks, pricing sync validation, phantom URL detection, private info scan
+6. **Release verification**: health checks, pricing sync validation, phantom URL detection, and private-info scanning where the workflow has a deployed target
 
 ### Local Protection
 
@@ -43,9 +43,9 @@ Pre-commit hooks install automatically via `pnpm install` (sets `core.hooksPath`
 - Private info patterns from a local gitignored config file
 - [gitleaks](https://github.com/gitleaks/gitleaks) staged file scan (when installed)
 
-### AI Tool Exclusion
+### Editor Context Hygiene
 
-`.cursorignore` and `.claudeignore` prevent AI coding assistants from reading secret files, env configs, and credential stores in the project.
+`.cursorignore` and `.claudeignore` reduce accidental inclusion of local configuration in supported editor tools. They are not access-control boundaries. Credentials must remain outside the repository and enter the runtime only through the documented secret bindings.
 
 ### Dependency Surface
 

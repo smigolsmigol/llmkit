@@ -40,26 +40,26 @@ function num(v) {
   return typeof v === 'number' ? v : Number(v);
 }
 
-function safeName(s) {
-  if (!/^[a-zA-Z0-9._\-/: ]+$/.test(s)) throw new Error(`unsafe name in pricing.json: ${s}`);
-  return s.replace(/'/g, "\\'");
+function quoteString(value) {
+  if (typeof value !== 'string') throw new TypeError('pricing identifiers must be strings');
+  return JSON.stringify(value);
 }
 
 // --- TypeScript shared pricing data ---
 
 function generateSharedTS() {
   const lines = [HEADER_TS];
-  lines.push(`export const UPDATED_AT = '${pricing.updatedAt}';\n`);
+  lines.push(`export const UPDATED_AT = ${quoteString(pricing.updatedAt)};\n`);
 
   lines.push('export const PRICING_DATA: Record<string, Record<string, { input: number; output: number; cacheRead?: number; cacheWrite?: number; extraRates?: Record<string, { rate: number; per: number }> }>> = {');
   for (const [provider, models] of Object.entries(pricing.providers)) {
-    lines.push(`  '${safeName(provider)}': {`);
+    lines.push(`  ${quoteString(provider)}: {`);
     for (const [model, p] of Object.entries(models)) {
       const parts = [`input: ${p.input}, output: ${p.output}`];
       if (num(p.cacheRead)) parts.push(`cacheRead: ${p.cacheRead}`);
       if (num(p.cacheWrite)) parts.push(`cacheWrite: ${p.cacheWrite}`);
       if (p.extraRates) parts.push(`extraRates: ${JSON.stringify(p.extraRates)}`);
-      lines.push(`    '${safeName(model)}': { ${parts.join(', ')} },`);
+      lines.push(`    ${quoteString(model)}: { ${parts.join(', ')} },`);
     }
     lines.push('  },');
   }
@@ -67,7 +67,7 @@ function generateSharedTS() {
 
   lines.push('export const PREFIXES: [string, string][] = [');
   for (const [prefix, provider] of pricing.prefixes) {
-    lines.push(`  ['${prefix}', '${provider}'],`);
+    lines.push(`  [${quoteString(prefix)}, ${quoteString(provider)}],`);
   }
   lines.push('];\n');
 
@@ -78,14 +78,14 @@ function generateSharedTS() {
 
 function formatExtraRates(extra) {
   const entries = Object.entries(extra).map(
-    ([k, v]) => `"${k}": (${v.rate}, ${v.per})`
+    ([k, v]) => `${quoteString(k)}: (${v.rate}, ${v.per})`
   );
   return `{${entries.join(', ')}}`;
 }
 
 function generatePythonData() {
   const lines = [HEADER_PY];
-  lines.push(`UPDATED_AT = "${pricing.updatedAt}"\n`);
+  lines.push(`UPDATED_AT = ${quoteString(pricing.updatedAt)}\n`);
 
   lines.push('# 5-tuple: (input, output, cacheRead, cacheWrite, extraRates)');
   lines.push('# extraRates is dict[str, tuple[rate, per]] or None');
@@ -93,12 +93,12 @@ function generatePythonData() {
   lines.push('PRICING: dict[str, dict[str, PricingEntry]] = {');
   for (const [provider, models] of Object.entries(pricing.providers)) {
     if (Object.keys(models).length === 0) continue;
-    lines.push(`    "${provider}": {`);
+    lines.push(`    ${quoteString(provider)}: {`);
     for (const [model, p] of Object.entries(models)) {
       const cr = num(p.cacheRead) || 0;
       const cw = num(p.cacheWrite) || 0;
       const extra = p.extraRates ? formatExtraRates(p.extraRates) : 'None';
-      lines.push(`        "${model}": (${p.input}, ${p.output}, ${cr}, ${cw}, ${extra}),`);
+      lines.push(`        ${quoteString(model)}: (${p.input}, ${p.output}, ${cr}, ${cw}, ${extra}),`);
     }
     lines.push('    },');
   }
@@ -106,7 +106,7 @@ function generatePythonData() {
 
   lines.push('PREFIXES: list[tuple[str, str]] = [');
   for (const [prefix, provider] of pricing.prefixes) {
-    lines.push(`    ("${prefix}", "${provider}"),`);
+    lines.push(`    (${quoteString(prefix)}, ${quoteString(provider)}),`);
   }
   lines.push(']\n');
 
@@ -147,7 +147,7 @@ function generateMcpTS() {
 
   lines.push('export const CLAUDE_PRICING: Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> = {');
   for (const [model, p] of Object.entries(claudeModels)) {
-    lines.push(`  '${model}': { input: ${p.input}, output: ${p.output}, cacheRead: ${num(p.cacheRead) || 0}, cacheWrite: ${num(p.cacheWrite) || 0} },`);
+    lines.push(`  ${quoteString(model)}: { input: ${p.input}, output: ${p.output}, cacheRead: ${num(p.cacheRead) || 0}, cacheWrite: ${num(p.cacheWrite) || 0} },`);
   }
   lines.push('};\n');
 
