@@ -14,21 +14,17 @@ name = "BUDGET_DO"
 class_name = "BudgetDO"
 
 [[durable_objects.bindings]]
-name = "RATE_LIMIT_DO"
-class_name = "RateLimitDO"
+name = "IDEMPOTENCY_DO"
+class_name = "IdempotencyDO"
 
-[env.staging]
-workers_dev = true
-routes = []
-
-[[env.staging.durable_objects.bindings]]
-name = "BUDGET_DO"
-class_name = "BudgetDO"
-
-[[env.staging.durable_objects.bindings]]
+[[durable_objects.bindings]]
 name = "RATE_LIMIT_DO"
 class_name = "RateLimitDO"
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["BudgetDO", "RateLimitDO"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["IdempotencyDO"]

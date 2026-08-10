@@ -173,6 +173,8 @@ if (mode === 'static') {
 }
 
 pnpm(['test']);
+pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier']);
+pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier:coverage']);
 runPythonProof();
 pnpmWithVersion(auditPnpmVersion, ['--pm-on-fail=ignore', 'audit']);
 pnpm(['db:verify']);

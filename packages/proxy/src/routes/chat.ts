@@ -2,6 +2,7 @@ import {
   AllProvidersFailedError,
   type CostBreakdown,
   inferProvider,
+  LLMKitError,
   type MarginInfo,
   ProviderError,
   type ProviderName,
@@ -16,10 +17,12 @@ import { emitBeacon } from '../bench';
 import { decrypt } from '../crypto';
 import { findProviderKey } from '../db';
 import type { Env, ResponseMeta } from '../env';
+import { admitBudgetForDispatch, finalizeReservationFailure } from '../middleware/budget';
 import { trackRequest } from '../middleware/logger';
 import { resolveCost } from '../pricing';
 import type { ProviderRequest, ProviderResponse } from '../providers';
 import { getAdapter } from '../providers';
+import { resolveProviderChain } from '../providers/chain';
 
 const encoder = new TextEncoder();
 
@@ -72,36 +75,10 @@ providerRouter.post('/chat/completions', async (c) => {
   const model = body.model as string;
   const provider = (c.req.header('x-llmkit-provider') || body.provider || inferProvider(model) || 'openai') as ProviderName;
 
-  const fallbackHeader = c.req.header('x-llmkit-fallback');
-  const chain: ProviderName[] = fallbackHeader
-    ? (fallbackHeader.split(',').map((s: string) => s.trim()) as ProviderName[])
-    : [provider];
-
-  let providerKey = c.req.header('x-llmkit-provider-key') || '';
-
-  if (!providerKey && c.get('userId') && c.env.ENCRYPTION_KEY && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
-    const stored = await findProviderKey(
-      c.env.SUPABASE_URL, c.env.SUPABASE_KEY, c.get('userId')!, provider,
-    );
-    if (stored) {
-      try {
-        providerKey = await decrypt(stored.encrypted_key, stored.iv, c.env.ENCRYPTION_KEY, `${stored.user_id}:${stored.provider}`);
-      } catch {
-        throw new ValidationError('stored provider key could not be decrypted, please re-add it in the dashboard');
-      }
-    }
-  }
-
-  if (!providerKey) {
-    throw new ValidationError(`no ${provider} API key found. add one in the dashboard Providers tab or pass x-llmkit-provider-key header.`);
-  }
+  const chain = resolveProviderChain(provider, c.req.header('x-llmkit-fallback'));
+  const directProviderKey = c.req.header('x-llmkit-provider-key') || '';
 
   const userMaxTokens = body.max_tokens ?? body.maxTokens;
-  const budgetMaxTokens: number | undefined = c.get('budgetMaxTokens');
-  const effectiveMaxTokens = budgetMaxTokens
-    ? (userMaxTokens ? Math.min(userMaxTokens as number, budgetMaxTokens) : budgetMaxTokens)
-    : userMaxTokens as number | undefined;
-
   // collect provider-specific fields, blocking sensitive and core fields from override
   const blockedFields = new Set([
     'model', 'messages', 'temperature', 'max_tokens', 'maxTokens',
@@ -115,12 +92,11 @@ providerRouter.post('/chat/completions', async (c) => {
     if (!blockedFields.has(k)) extra[k] = v;
   }
 
-  const req: ProviderRequest = {
+  const req: Omit<ProviderRequest, 'apiKey'> = {
     model: body.model as string,
     messages: body.messages as ProviderRequest['messages'],
     temperature: body.temperature as number | undefined,
-    maxTokens: effectiveMaxTokens,
-    apiKey: providerKey,
+    maxTokens: userMaxTokens as number | undefined,
     tools: body.tools as unknown[] | undefined,
     toolChoice: body.tool_choice,
     responseFormat: body.response_format,
@@ -128,28 +104,87 @@ providerRouter.post('/chat/completions', async (c) => {
   };
 
   if (wantStream) {
-    return handleStream(c, req, chain);
+    return handleStream(c, req, chain, directProviderKey, body);
   }
 
-  return handleChat(c, req, chain);
+  return handleChat(c, req, chain, directProviderKey, body);
 });
 
-async function releaseReservation(c: Context<Env>): Promise<void> {
-  const budgetId = c.get('budgetId');
-  const reservationId = c.get('budgetReservationId');
-  if (!budgetId || !reservationId) return;
-  const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName(budgetId));
-  await stub.release(reservationId);
+class ProviderCredentialError extends Error {}
+
+async function resolveProviderKeyForAttempt(
+  c: Context<Env>,
+  provider: ProviderName,
+  attemptIndex: number,
+  directProviderKey: string,
+): Promise<string> {
+  if (attemptIndex === 0 && directProviderKey) return directProviderKey;
+
+  const userId = c.get('userId');
+  if (!userId || !c.env.ENCRYPTION_KEY || !c.env.SUPABASE_URL || !c.env.SUPABASE_KEY) {
+    throw new ProviderCredentialError(
+      `no ${provider} API key found. add one in the dashboard Providers tab${attemptIndex === 0 ? ' or pass x-llmkit-provider-key header' : ''}.`,
+    );
+  }
+
+  const stored = await findProviderKey(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, userId, provider);
+  if (!stored) {
+    throw new ProviderCredentialError(`no stored ${provider} API key found for fallback attempt`);
+  }
+  try {
+    return await decrypt(
+      stored.encrypted_key,
+      stored.iv,
+      c.env.ENCRYPTION_KEY,
+      `${stored.user_id}:${stored.provider}`,
+    );
+  } catch {
+    throw new ProviderCredentialError(`stored ${provider} API key could not be decrypted, please re-add it in the dashboard`);
+  }
 }
 
-async function handleChat(c: Context<Env>, req: ProviderRequest, chain: ProviderName[]) {
+async function admitProviderDispatch(
+  c: Context<Env>,
+  body: Record<string, unknown>,
+  chain: ProviderName[],
+): Promise<void> {
+  await admitBudgetForDispatch(c, body, chain);
+}
+
+async function finalizeFailedReservation(c: Context<Env>): Promise<void> {
+  await finalizeReservationFailure(
+    c.env.BUDGET_DO,
+    c.get('budgetId'),
+    c.get('budgetReservationId'),
+  );
+}
+
+async function handleChat(
+  c: Context<Env>,
+  req: Omit<ProviderRequest, 'apiKey'>,
+  chain: ProviderName[],
+  directProviderKey: string,
+  body: Record<string, unknown>,
+) {
   const errors: ProviderError[] = [];
 
-  for (const providerName of chain) {
+  for (const [attemptIndex, providerName] of chain.entries()) {
+    let providerKey: string;
+    try {
+      providerKey = await resolveProviderKeyForAttempt(c, providerName, attemptIndex, directProviderKey);
+    } catch (err) {
+      const message = (err as Error).message;
+      if (chain.length === 1) throw new ValidationError(message);
+      errors.push(new ProviderError(message, providerName));
+      continue;
+    }
+
     try {
       const adapter = getAdapter(providerName);
       const start = Date.now();
-      const result = await adapter.chat(req);
+      await admitProviderDispatch(c, body, chain);
+      c.set('providerDispatchStarted', true);
+      const result = await adapter.chat({ ...req, apiKey: providerKey });
       const latency = Date.now() - start;
 
       const cost = await resolveCost(providerName, result.model, result.usage);
@@ -223,27 +258,45 @@ async function handleChat(c: Context<Env>, req: ProviderRequest, chain: Provider
         },
       });
     } catch (err) {
-      if (err instanceof ValidationError) throw err;
+      if (err instanceof LLMKitError) throw err;
+      if (c.get('budgetReservationId')) c.set('budgetSettlementMode', 'ceiling');
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(new ProviderError(msg, providerName));
     }
   }
 
-  await releaseReservation(c);
   throw new AllProvidersFailedError(errors);
 }
 
-async function handleStream(c: Context<Env>, req: ProviderRequest, chain: ProviderName[]) {
+async function handleStream(
+  c: Context<Env>,
+  req: Omit<ProviderRequest, 'apiKey'>,
+  chain: ProviderName[],
+  directProviderKey: string,
+  body: Record<string, unknown>,
+) {
   const errors: ProviderError[] = [];
 
-  for (const providerName of chain) {
+  for (const [attemptIndex, providerName] of chain.entries()) {
+    let providerKey: string;
+    try {
+      providerKey = await resolveProviderKeyForAttempt(c, providerName, attemptIndex, directProviderKey);
+    } catch (err) {
+      const message = (err as Error).message;
+      if (chain.length === 1) throw new ValidationError(message);
+      errors.push(new ProviderError(message, providerName));
+      continue;
+    }
+
     try {
       const adapter = getAdapter(providerName);
       const start = Date.now();
-      const gen = adapter.chatStream(req);
+      const gen = adapter.chatStream({ ...req, apiKey: providerKey });
 
       // warm up: force the generator past the fetch() call so connection errors
       // are caught HERE (in the fallback loop), not inside the stream callback
+      await admitProviderDispatch(c, body, chain);
+      c.set('providerDispatchStarted', true);
       const first = await gen.next();
 
       c.header('Content-Type', 'text/event-stream');
@@ -271,15 +324,23 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
             streamId: usage.streamId,
           });
 
-          await trackRequest({
-            sessionId: c.req.header('x-llmkit-session-id') || undefined,
-            endUserId: c.req.header('x-llmkit-user-id') || undefined,
+          const settlementStatus = await trackRequest({
+            requestId: c.get('requestId'),
+            customerId: c.get('customerId'),
+            workflowId: c.get('workflowId'),
+            agentId: c.get('agentId'),
+            sessionId: c.get('sessionId'),
+            endUserId: c.get('endUserId'),
+            idempotencyKeyHash: c.get('idempotencyKeyHash'),
+            responseSha256: c.get('responseSha256'),
             toolCalls: undefined,
             providerCostUsd: usage.providerCostUsd,
             apiKeyId: c.get('apiKeyId'),
             userId: c.get('userId'),
             budgetId: c.get('budgetId'),
             budgetReservationId: c.get('budgetReservationId'),
+            budgetReservedCostCents: c.get('budgetReservedCostCents'),
+            budgetSettlementMode: c.get('budgetSettlementMode'),
             provider: providerName,
             model: usage.model,
             usage: usage.tokens,
@@ -288,19 +349,22 @@ async function handleStream(c: Context<Env>, req: ProviderRequest, chain: Provid
             env: c.env,
             ctx: c.executionCtx,
           });
+          if (settlementStatus === 'estimated') {
+            console.error('stream budget settlement used the reserved upper bound');
+          }
           tracked = true;
         } finally {
-          if (!tracked) await releaseReservation(c).catch(() => {});
+          if (!tracked) await finalizeFailedReservation(c).catch(() => {});
         }
       });
     } catch (err) {
-      if (err instanceof ValidationError) throw err;
+      if (err instanceof LLMKitError) throw err;
+      if (c.get('budgetReservationId')) c.set('budgetSettlementMode', 'ceiling');
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(new ProviderError(msg, providerName));
     }
   }
 
-  await releaseReservation(c);
   throw new AllProvidersFailedError(errors);
 }
 

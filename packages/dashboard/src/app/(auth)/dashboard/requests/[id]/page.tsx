@@ -45,9 +45,11 @@ export default async function RequestDetailPage({ params }: PageProps) {
 
   if (!req) notFound();
 
-  const ok = !req.error_code;
+  const pending = req.status === 'pending';
+  const ok = req.status === 'success' && !req.error_code;
   const totalTokens = req.input_tokens + req.output_tokens;
   const pricing = getModelPricing(req.provider as ProviderName, req.model);
+  const committedCostCents = req.cost_cents === null ? null : Number(req.cost_cents);
   const toolCallRows: Array<{ key: string; label: string; name: string }> = [];
   const toolCallOccurrences = new Map<string, number>();
   for (const [ordinal, toolCall] of (req.tool_calls ?? []).entries()) {
@@ -60,7 +62,7 @@ export default async function RequestDetailPage({ params }: PageProps) {
     });
   }
   const toolCallCount = toolCallRows.length;
-  const costBreakdown = pricing
+  const costBreakdown = pricing && committedCostCents !== null
     ? calculateCostFromPricing(pricing, {
         inputTokens: req.input_tokens,
         outputTokens: req.output_tokens,
@@ -85,8 +87,8 @@ export default async function RequestDetailPage({ params }: PageProps) {
         </Link>
         <span className="text-muted-foreground">/</span>
         <h1 className="text-lg font-semibold">Request Detail</h1>
-        <Badge variant={ok ? 'success' : 'destructive'} className="ml-auto">
-          {ok ? 'OK' : req.error_code || 'Error'}
+        <Badge variant={pending ? 'secondary' : ok ? 'success' : 'destructive'} className="ml-auto">
+          {pending ? 'Pending' : ok ? 'OK' : req.error_code || 'Error'}
         </Badge>
       </div>
 
@@ -96,9 +98,33 @@ export default async function RequestDetailPage({ params }: PageProps) {
         <Row label="Provider">{req.provider}</Row>
         <Row label="Model">{req.model}</Row>
         <Row label="Latency">{req.latency_ms.toLocaleString()}ms</Row>
-        {req.session_id && <Row label="Session">{req.session_id}</Row>}
-        <Row label="Request ID">
-          <span className="text-xs text-muted-foreground">{req.id}</span>
+      </div>
+
+      <div className="rounded-lg border border-border bg-card p-5 space-y-1">
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">Receipt / Attribution</h2>
+        <Row label="Request ID"><span className="break-all text-xs">{req.id}</span></Row>
+        <Row label="Customer">{req.customer_id ?? 'Not recorded'}</Row>
+        <Row label="Workflow">{req.workflow_id ?? 'Not recorded'}</Row>
+        <Row label="Agent">{req.agent_id ?? 'Not recorded'}</Row>
+        <Row label="Session">{req.session_id ?? 'Not recorded'}</Row>
+        <Row label="End User">{req.end_user_id ?? 'Not recorded'}</Row>
+        <Row label="Budget">
+          <span className="break-all text-xs">{req.budget_id ?? 'Not recorded'}</span>
+        </Row>
+        <Row label="Reservation">
+          <span className="break-all text-xs">{req.budget_reservation_id ?? 'Not recorded'}</span>
+        </Row>
+        <Row label="Reserved Ceiling">
+          {req.reserved_cost_cents === null
+            ? 'Unknown'
+            : formatCents(Number(req.reserved_cost_cents))}
+        </Row>
+        <Row label="Settlement">{req.settlement_status}</Row>
+        <Row label="Idempotency Scope Hash">
+          <span className="break-all text-xs">{req.idempotency_key_hash ?? 'Not recorded'}</span>
+        </Row>
+        <Row label="Response SHA-256">
+          <span className="break-all text-xs">{req.response_sha256 ?? 'Not recorded'}</span>
         </Row>
       </div>
 
@@ -117,7 +143,9 @@ export default async function RequestDetailPage({ params }: PageProps) {
 
       <div className="rounded-lg border border-border bg-card p-5 space-y-1">
         <h2 className="text-sm font-medium text-muted-foreground mb-3">Cost</h2>
-        <Row label="Total">{formatCents(Number(req.cost_cents))}</Row>
+        <Row label="Committed Total">
+          {committedCostCents === null ? 'Unknown' : formatCents(committedCostCents)}
+        </Row>
         {inputCost > 0 && (
           <Row label="Input">${inputCost.toFixed(6)}</Row>
         )}
@@ -135,9 +163,9 @@ export default async function RequestDetailPage({ params }: PageProps) {
             ${ec.totalCost.toFixed(6)}
           </Row>
         ))}
-        {totalTokens > 0 && (
+        {totalTokens > 0 && committedCostCents !== null && (
           <Row label="Per 1k Tokens">
-            ${((Number(req.cost_cents) / 100 / totalTokens) * 1000).toFixed(4)}
+            ${((committedCostCents / 100 / totalTokens) * 1000).toFixed(4)}
           </Row>
         )}
       </div>

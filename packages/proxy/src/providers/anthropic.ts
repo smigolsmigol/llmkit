@@ -1,4 +1,7 @@
 import type { TokenUsage } from '@f3d1/llmkit-shared';
+import { readJsonResponseBounded, readProviderErrorDetail } from '../response-body';
+import { providerRequestSignal } from './request';
+import { readSseLines } from './sse-lines';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
 const BASE_URL = 'https://api.anthropic.com/v1';
@@ -63,48 +66,43 @@ export class AnthropicAdapter implements ProviderAdapter {
   async chat(req: ProviderRequest): Promise<ProviderResponse> {
     const { system, messages } = splitSystem(req.messages);
     const body = buildBody(req, system, messages, false);
-    const controller = new AbortController();
 
     const res = await fetch(`${BASE_URL}/messages`, {
       method: 'POST',
       headers: buildHeaders(req.apiKey, req.extra),
       body: JSON.stringify(body),
-      signal: controller.signal,
+      signal: providerRequestSignal(),
     });
 
     if (!res.ok) {
-      const detail = await res.text();
+      const detail = await readProviderErrorDetail(res);
       console.error(`provider error (anthropic ${res.status}): ${detail}`);
       throw new Error(`anthropic returned ${res.status}`);
     }
 
-    const data = (await res.json()) as AnthropicResponse;
+    const data = await readJsonResponseBounded<AnthropicResponse>(res);
     return parseResponse(data);
   }
 
   async *chatStream(req: ProviderRequest): AsyncGenerator<StreamEvent> {
     const { system, messages } = splitSystem(req.messages);
     const body = buildBody(req, system, messages, true);
-    const controller = new AbortController();
 
     const res = await fetch(`${BASE_URL}/messages`, {
       method: 'POST',
       headers: buildHeaders(req.apiKey, req.extra),
       body: JSON.stringify(body),
-      signal: controller.signal,
+      signal: providerRequestSignal(),
     });
 
     if (!res.ok) {
-      const detail = await res.text();
+      const detail = await readProviderErrorDetail(res);
       console.error(`provider error (anthropic ${res.status}): ${detail}`);
       throw new Error(`anthropic returned ${res.status}`);
     }
 
     if (!res.body) throw new Error('No response body for stream');
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let usage: TokenUsage | null = null;
     let finishReason = 'stop';
     let messageId = '';
@@ -113,81 +111,68 @@ export class AnthropicAdapter implements ProviderAdapter {
 
     const toolAccum = new Map<number, { id: string; name: string; args: string }>();
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    for await (const line of readSseLines(res.body)) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (!raw || raw === '[DONE]') continue;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
+      try {
+        const event = JSON.parse(raw) as AnthropicStreamEvent;
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const raw = line.slice(6).trim();
-          if (!raw || raw === '[DONE]') continue;
+        if (event.type === 'error') {
+          const msg = event.error?.message ?? 'unknown stream error';
+          console.error(`anthropic stream error: ${event.error?.type} - ${msg}`);
+          throw new Error(`anthropic stream error: ${msg}`);
+        }
 
-          try {
-            const event = JSON.parse(raw) as AnthropicStreamEvent;
+        if (event.type === 'message_start' && event.message) {
+          messageId = event.message.id;
+          model = event.message.model;
+          if (event.message.usage) usage = mapUsage(event.message.usage);
+        }
 
-            if (event.type === 'error') {
-              const msg = event.error?.message ?? 'unknown stream error';
-              console.error(`anthropic stream error: ${event.error?.type} - ${msg}`);
-              throw new Error(`anthropic stream error: ${msg}`);
-            }
+        if (event.type === 'content_block_start') {
+          const idx = event.index ?? 0;
+          if (event.content_block?.type === 'tool_use') {
+            toolAccum.set(idx, { id: event.content_block.id ?? `call_${idx}`, name: event.content_block.name ?? '', args: '' });
+          }
+          // thinking blocks: just track that they exist (content comes via deltas)
+        }
 
-            if (event.type === 'message_start' && event.message) {
-              messageId = event.message.id;
-              model = event.message.model;
-              if (event.message.usage) usage = mapUsage(event.message.usage);
-            }
-
-            if (event.type === 'content_block_start') {
-              const idx = event.index ?? 0;
-              if (event.content_block?.type === 'tool_use') {
-                toolAccum.set(idx, { id: event.content_block.id ?? `call_${idx}`, name: event.content_block.name ?? '', args: '' });
-              }
-              // thinking blocks: just track that they exist (content comes via deltas)
-            }
-
-            if (event.type === 'content_block_delta') {
-              if (event.delta?.type === 'text_delta' && event.delta.text) {
-                yield { type: 'text' as const, text: event.delta.text };
-              }
-              if (event.delta?.type === 'input_json_delta' && event.delta.partial_json) {
-                const idx = event.index ?? 0;
-                const entry = toolAccum.get(idx);
-                if (entry) entry.args += event.delta.partial_json;
-              }
-              if (event.delta?.type === 'thinking_delta' && event.delta.thinking) {
-                reasoningTokens++;
-                // thinking content not forwarded to clients (internal reasoning)
-              }
-            }
-
-            if (event.type === 'content_block_stop') {
-              const idx = event.index ?? 0;
-              const entry = toolAccum.get(idx);
-              if (entry && entry.name) {
-                yield { type: 'tool' as const, toolCallId: entry.id, toolName: entry.name, toolArguments: entry.args, toolIndex: idx };
-              }
-            }
-
-            if (event.type === 'message_delta') {
-              if (event.usage && usage) {
-                usage.outputTokens = event.usage.output_tokens;
-                usage.totalTokens = usage.inputTokens + usage.outputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0);
-              }
-              if (event.delta?.stop_reason) finishReason = event.delta.stop_reason;
-            }
-          } catch (e) {
-            if (e instanceof Error && e.message.startsWith('anthropic stream error')) throw e;
-            // partial JSON from chunk boundary
+        if (event.type === 'content_block_delta') {
+          if (event.delta?.type === 'text_delta' && event.delta.text) {
+            yield { type: 'text' as const, text: event.delta.text };
+          }
+          if (event.delta?.type === 'input_json_delta' && event.delta.partial_json) {
+            const idx = event.index ?? 0;
+            const entry = toolAccum.get(idx);
+            if (entry) entry.args += event.delta.partial_json;
+          }
+          if (event.delta?.type === 'thinking_delta' && event.delta.thinking) {
+            reasoningTokens++;
+            // thinking content not forwarded to clients (internal reasoning)
           }
         }
+
+        if (event.type === 'content_block_stop') {
+          const idx = event.index ?? 0;
+          const entry = toolAccum.get(idx);
+          if (entry && entry.name) {
+            yield { type: 'tool' as const, toolCallId: entry.id, toolName: entry.name, toolArguments: entry.args, toolIndex: idx };
+          }
+        }
+
+        if (event.type === 'message_delta') {
+          if (event.usage && usage) {
+            usage.outputTokens = event.usage.output_tokens;
+            usage.totalTokens = usage.inputTokens + usage.outputTokens + (usage.cacheReadTokens ?? 0) + (usage.cacheWriteTokens ?? 0);
+          }
+          if (event.delta?.stop_reason) finishReason = event.delta.stop_reason;
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message.startsWith('anthropic stream error')) throw e;
+        // Ignore malformed provider events.
       }
-    } finally {
-      reader.releaseLock();
     }
 
     if (usage && reasoningTokens > 0) usage.reasoningTokens = reasoningTokens;

@@ -33,22 +33,50 @@ export interface ProviderKeyRow {
 }
 
 export interface RequestInsert {
+  id: string;
   user_id: string;
   api_key_id: string;
+  customer_id: string;
+  workflow_id: string | null;
+  agent_id: string | null;
   session_id: string | null;
   end_user_id: string | null;
+  budget_id: string | null;
+  budget_reservation_id: string | null;
+  reserved_cost_cents: number | null;
+  settlement_status:
+    | 'legacy_recorded'
+    | 'pending'
+    | 'settled_actual'
+    | 'committed_ceiling'
+    | 'released'
+    | 'unknown'
+    | 'not_applicable';
+  idempotency_key_hash: string | null;
+  response_sha256: string | null;
   provider: string;
   model: string;
   input_tokens: number;
   output_tokens: number;
   cache_read_tokens: number;
   cache_write_tokens: number;
-  cost_cents: number;
+  cost_cents: number | null;
   latency_ms: number;
   status: string;
   error_code: string | null;
   source: 'proxy' | 'claude-code';
   tool_calls: { name: string }[] | null;
+}
+
+export function supabaseServiceHeaders(
+  serviceKey: string,
+  extra: Record<string, string> = {},
+): Record<string, string> {
+  const headers: Record<string, string> = { apikey: serviceKey, ...extra };
+  // Modern sb_secret_* keys are opaque API keys, not JWTs, and must not be
+  // copied into Authorization. Legacy service_role JWTs retain the Bearer form.
+  if (!serviceKey.startsWith('sb_')) headers.Authorization = `Bearer ${serviceKey}`;
+  return headers;
 }
 
 function postgrest(
@@ -57,11 +85,7 @@ function postgrest(
   path: string,
   init: RequestInit = {},
 ): Promise<Response> {
-  const headers: Record<string, string> = {
-    'apikey': serviceKey,
-    'Authorization': `Bearer ${serviceKey}`,
-    'Content-Type': 'application/json',
-  };
+  const headers = supabaseServiceHeaders(serviceKey, { 'Content-Type': 'application/json' });
 
   if (init.method === 'POST' && !path.startsWith('rpc/')) {
     headers.Prefer = 'return=minimal';
@@ -108,6 +132,23 @@ export async function logRequest(
 
   if (!res.ok) {
     console.error('failed to log request:', res.status, await res.text().catch(() => ''));
+  }
+}
+
+export async function upsertRequestReceipt(
+  url: string,
+  serviceKey: string,
+  row: RequestInsert,
+): Promise<void> {
+  const res = await postgrest(url, serviceKey, 'requests?on_conflict=id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(row),
+  });
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`request receipt upsert failed (${res.status}): ${detail}`);
   }
 }
 

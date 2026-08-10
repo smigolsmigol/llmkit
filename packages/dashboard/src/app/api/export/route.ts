@@ -4,15 +4,21 @@ import { getAccountPlan } from '@/lib/queries';
 import { createServerClient } from '@/lib/supabase';
 
 const DETAILED_COLUMNS = [
-  'timestamp', 'operator_id', 'system_id', 'end_user_id', 'model', 'provider',
+  'timestamp', 'request_id', 'operator_id', 'system_id', 'customer_id',
+  'workflow_id', 'agent_id', 'end_user_id', 'model', 'provider',
   'input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens',
-  'cost_usd', 'duration_ms', 'session_id', 'status', 'error_code',
+  'reserved_cost_usd', 'committed_cost_usd', 'budget_id', 'budget_reservation_id',
+  'settlement_status', 'idempotency_key_hash', 'response_sha256',
+  'duration_ms', 'session_id', 'status', 'error_code',
 ] as const;
 
 const RAW_COLUMNS = [
-  'created_at', 'api_key_id', 'end_user_id', 'model', 'provider',
+  'id', 'created_at', 'user_id', 'api_key_id', 'customer_id', 'workflow_id',
+  'agent_id', 'end_user_id', 'model', 'provider',
   'input_tokens', 'output_tokens', 'cache_read_tokens', 'cache_write_tokens',
-  'cost_cents', 'latency_ms', 'session_id', 'status', 'error_code',
+  'reserved_cost_cents', 'cost_cents', 'budget_id', 'budget_reservation_id',
+  'settlement_status', 'idempotency_key_hash', 'response_sha256',
+  'latency_ms', 'session_id', 'status', 'error_code',
 ] as const;
 
 function escCsv(v: string | number | null): string {
@@ -67,8 +73,12 @@ export async function GET(req: Request) {
     if (isDetailed) {
       return [
         escCsv(row.created_at as string),
+        escCsv(row.id as string),
         escCsv(row.user_id as string ?? userId),
         escCsv(row.api_key_id as string),
+        escCsv(row.customer_id as string),
+        escCsv(row.workflow_id as string),
+        escCsv(row.agent_id as string),
         escCsv(row.end_user_id as string),
         escCsv(row.model as string),
         escCsv(row.provider as string),
@@ -76,7 +86,13 @@ export async function GET(req: Request) {
         escCsv(row.output_tokens as number),
         escCsv(row.cache_read_tokens as number),
         escCsv(row.cache_write_tokens as number),
-        escCsv(Number(row.cost_cents ?? 0) / 100),
+        escCsv(row.reserved_cost_cents === null ? null : Number(row.reserved_cost_cents) / 100),
+        escCsv(row.cost_cents === null ? null : Number(row.cost_cents) / 100),
+        escCsv(row.budget_id as string),
+        escCsv(row.budget_reservation_id as string),
+        escCsv(row.settlement_status as string),
+        escCsv(row.idempotency_key_hash as string),
+        escCsv(row.response_sha256 as string),
         escCsv(row.latency_ms as number),
         escCsv(row.session_id as string),
         escCsv(row.status as string),
@@ -87,7 +103,9 @@ export async function GET(req: Request) {
   }
 
   // build CSV with metadata header
-  const totalSpend = rows.reduce((s, r) => s + Number(r.cost_cents ?? 0), 0) / 100;
+  const pricedRows = rows.filter((row) => row.cost_cents !== null);
+  const totalSpend = pricedRows.reduce((s, r) => s + Number(r.cost_cents), 0) / 100;
+  const unknownCostRows = rows.length - pricedRows.length;
   const csvLines: string[] = [];
 
   csvLines.push(`# LLMKit Export`);
@@ -95,8 +113,10 @@ export async function GET(req: Request) {
   csvLines.push(`# Period: ${days}d`);
   csvLines.push(`# Records: ${rows.length}`);
   csvLines.push(`# Total spend: $${totalSpend.toFixed(2)}`);
+  csvLines.push(`# Priced records: ${pricedRows.length}`);
+  csvLines.push(`# Unknown committed cost records: ${unknownCostRows}`);
   csvLines.push(`# Format: ${isDetailed ? 'detailed' : 'raw'}`);
-  csvLines.push(`# Note: cost estimates are approximate. This export is for operational use, not regulatory compliance.`);
+  csvLines.push(`# Note: unknown committed cost is blank and excluded from total spend. This export is for operational use, not regulatory compliance.`);
   csvLines.push(columns.join(','));
 
   for (const row of rows) {

@@ -10,7 +10,8 @@ function formatTime(iso: string) {
   });
 }
 
-function formatCost(cents: number) {
+function formatCost(cents: number | null) {
+  if (cents === null) return 'unknown';
   return `$${(cents / 100).toFixed(4)}`;
 }
 
@@ -42,10 +43,10 @@ export function RequestFeed({ requests }: { requests: RequestRow[] }) {
               <span className="text-muted-foreground">
                 {(req.input_tokens + req.output_tokens).toLocaleString()}tok
               </span>
-              <span className="text-primary">{formatCost(Number(req.cost_cents))}</span>
+              <span className="text-primary">{formatCost(req.cost_cents === null ? null : Number(req.cost_cents))}</span>
               <span className="text-muted-foreground">{req.latency_ms}ms</span>
-              <span className={req.status === 'error' ? 'text-destructive' : 'text-emerald-500'}>
-                {req.status === 'error' ? 'ERR' : 'OK'}
+              <span className={req.status === 'error' ? 'text-destructive' : req.status === 'pending' ? 'text-muted-foreground' : 'text-emerald-500'}>
+                {req.status === 'error' ? 'ERR' : req.status === 'pending' ? 'PENDING' : 'OK'}
               </span>
             </div>
           ))

@@ -243,15 +243,113 @@ pnpm dev
 # proxy running at http://localhost:8787
 ```
 
-Deploy to Cloudflare Workers:
+Validate the isolated staging Worker bundle locally:
 
 ```bash
-npx wrangler login
-npx wrangler secret put SUPABASE_URL
-npx wrangler secret put SUPABASE_KEY
-npx wrangler secret put ENCRYPTION_KEY
-npx wrangler deploy
+pnpm --filter @f3d1/llmkit-proxy build
 ```
+
+Generic Wrangler deploy and secret commands are intentionally not documented because omitting an
+environment can target production. Live staging and production deployments use the guarded
+`deploy:staging` and `deploy:production` scripts, require an explicit target confirmation and
+approval environment value, and refuse a dirty worktree.
+
+### Isolated hosted budget proof
+
+This proof may mutate only `llmkit-proxy-staging.<account>.workers.dev` and a separate staging
+Supabase project. It requires a clean committed worktree and separate approval for the live staging
+deployment and proof run. Production is not a valid target.
+
+For the first staging deployment, create an external `.env` or JSON file containing exactly these
+secret names. Keep the file outside the repository:
+
+```text
+ENCRYPTION_KEY
+STAGING_PROOF_TOKEN
+STAGING_SUPABASE_PROJECT_REF
+SUPABASE_KEY
+SUPABASE_URL
+```
+
+The deploy guard pins the exact Cloudflare account, verifies the authenticated identity, and permits
+bootstrap only when Wrangler returns a recognized Worker-not-found code. Auth, account, network, or
+unrecognized secret-readback failures stop the deployment.
+
+Create or select a disposable Supabase project, record both its ref and the production project ref,
+and stop if they match. After separate approval for the staging schema mutation, use the pinned CLI
+to inspect and apply only the repository's three migrations. Do not use the dashboard SQL editor.
+
+```powershell
+$stagingRef = 'abcdefghijklmnopqrst'
+$productionRef = 'zyxwvutsrqponmlkjihg'
+if ($stagingRef -eq $productionRef) { throw 'staging database matches production' }
+node node_modules/supabase/dist/supabase.js link --project-ref $stagingRef
+node node_modules/supabase/dist/supabase.js migration list --linked
+node node_modules/supabase/dist/supabase.js db push --linked --dry-run
+# Stop unless the pending set is exactly the three files in supabase/migrations.
+# After explicit approval for this database mutation:
+node node_modules/supabase/dist/supabase.js db push --linked
+node node_modules/supabase/dist/supabase.js test db --linked supabase/tests/database
+node node_modules/supabase/dist/supabase.js db lint --linked --schema public --level warning --fail-on warning
+node node_modules/supabase/dist/supabase.js migration list --linked
+node node_modules/supabase/dist/supabase.js unlink
+```
+
+After approval, the guarded bootstrap command is:
+
+```powershell
+$accountId = '0123456789abcdef0123456789abcdef'
+$deployApproval = "staging:llmkit-proxy-staging:account:$accountId:db:$stagingRef"
+$env:LLMKIT_DEPLOY_APPROVED = $deployApproval
+pnpm --filter @f3d1/llmkit-proxy deploy:staging -- `
+  --confirm $deployApproval `
+  --account-id $accountId `
+  --database-project-ref $stagingRef `
+  --production-database-project-ref $productionRef `
+  --bootstrap `
+  --secrets-file C:\secure\llmkit-staging.env
+```
+
+On later deployments, use the same account, database refs, and external secret file, and omit
+`--bootstrap`. The guard reads back the existing secret names, refuses missing or unexpected names,
+verifies the file's non-secret database binding, and reapplies that verified binding while deploying.
+
+Read back the deployed revision and secret names without printing secret values:
+
+```powershell
+$env:CLOUDFLARE_ACCOUNT_ID = $accountId
+node packages/proxy/node_modules/wrangler/bin/wrangler.js deployments list --config packages/proxy/wrangler.staging.toml --name llmkit-proxy-staging --json
+node packages/proxy/node_modules/wrangler/bin/wrangler.js secret list --config packages/proxy/wrangler.staging.toml --name llmkit-proxy-staging --format json
+```
+
+The proof runner requires the `LLMKIT_STAGING_*` values listed in `.env.example`, plus two matching
+approval values. It verifies the deployed source commit, creates unique proof identities, joins HTTP
+receipt IDs to database rows, and tests concurrency, retries, attribution, settlement, real Durable
+Object alarm crash recovery, real PostgREST outbox recovery, hosted coordination latency, and full
+cleanup. The server-side coordination kill thresholds are 50 ms median and 150 ms p95 over 40
+post-warmup samples. It writes the ignored proof receipt to
+`audits/llmkit-hosted-staging-budget-proof.json`.
+
+```powershell
+$host = 'llmkit-proxy-staging.<account>.workers.dev'
+$hostApproval = "staging:$host:db:$stagingRef"
+$env:LLMKIT_HOSTED_PROOF_APPROVED = $hostApproval
+pnpm --filter @f3d1/llmkit-proxy proof:hosted:staging -- --confirm $hostApproval
+```
+
+Before the first external mutation, the runner writes the non-secret fixture identities to
+`audits/llmkit-hosted-staging-recovery.json`. An unresolved journal blocks a new run. After an
+interruption, use the same approved target and database credentials to remove only those recorded
+fixtures; provider credentials are not required for recovery:
+
+```powershell
+pnpm --filter @f3d1/llmkit-proxy proof:hosted:staging -- --recover --confirm $hostApproval
+```
+
+A clean result requires zero proof database rows, API keys, and budgets; zero Budget Durable Object
+reservations, settlements, evidence, and outbox entries; zero RateLimit entries; and zero Idempotency
+entries or alarms. Deleting the staging Worker or rotating its proof token remains a separately
+approved operation.
 
 
 </details>

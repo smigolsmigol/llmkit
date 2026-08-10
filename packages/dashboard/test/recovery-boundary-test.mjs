@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { bucketByHour } from '../src/components/charts/types.ts';
 import {
   classifyRecoveryPath,
   getHttpsRedirectUrl,
@@ -72,6 +73,44 @@ assert.deepEqual(
 assert.equal(wrangler.env.staging.workers_dev, true);
 assert.equal(wrangler.env.staging.preview_urls, true);
 assert.deepEqual(wrangler.env.staging.routes, []);
+
+const [costBucket] = bucketByHour([
+  {
+    t: '2026-08-04T03:01:00.000Z',
+    costCents: 7,
+    inputTokens: 10,
+    outputTokens: 2,
+  },
+  {
+    t: '2026-08-04T03:20:00.000Z',
+    costCents: null,
+    inputTokens: 100,
+    outputTokens: 20,
+  },
+]);
+assert.equal(costBucket.costCents, 7);
+assert.equal(costBucket.pricedRequests, 1);
+assert.equal(costBucket.unknownCostRequests, 1);
+assert.equal(costBucket.pricedInputTokens, 10);
+assert.equal(costBucket.pricedOutputTokens, 2);
+assert.equal(costBucket.inputTokens, 110);
+assert.equal(costBucket.outputTokens, 22);
+
+const budgetActions = readFileSync(
+  `${packageRoot}/src/app/(auth)/dashboard/settings/actions.ts`,
+  'utf8',
+);
+assert.match(budgetActions, /\.from\('requests'\)[\s\S]*\.eq\('budget_id', budgetId\)/);
+assert.match(budgetActions, /error\.code === '23503'/);
+assert.match(budgetActions, /reason: 'receipt_history'/);
+assert.match(budgetActions, /reason: 'active_keys'/);
+
+const analyticsQueries = readFileSync(`${packageRoot}/src/lib/queries.ts`, 'utf8');
+assert.match(analyticsQueries, /select\('\*', \{ count: 'exact' \}\)/);
+assert.match(analyticsQueries, /rows\.length !== expectedTotal/);
+assert.match(analyticsQueries, /const bid = r\.budget_id/);
+assert.doesNotMatch(analyticsQueries, /keyToBudget/);
+assert.doesNotMatch(analyticsQueries, /\.limit\(50000\)/);
 
 const deploymentContract = readFileSync(`${packageRoot}/wrangler.jsonc`, 'utf8');
 assert.doesNotMatch(deploymentContract, /SUPABASE_SERVICE_KEY|CLERK_SECRET_KEY|ANALYTICS_API_KEY/);

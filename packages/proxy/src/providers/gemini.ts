@@ -1,4 +1,7 @@
 import type { TokenUsage } from '@f3d1/llmkit-shared';
+import { readJsonResponseBounded, readProviderErrorDetail } from '../response-body';
+import { providerRequestSignal } from './request';
+import { readSseLines } from './sse-lines';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
 const BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -85,15 +88,16 @@ export class GeminiAdapter implements ProviderAdapter {
         'x-goog-api-key': req.apiKey,
       },
       body: JSON.stringify(body),
+      signal: providerRequestSignal(),
     });
 
     if (!res.ok) {
-      const detail = await res.text();
+      const detail = await readProviderErrorDetail(res);
       console.error(`provider error (${this.name} ${res.status}): ${detail}`);
       throw new Error(`${this.name} returned ${res.status}`);
     }
 
-    const data = (await res.json()) as GeminiResponse;
+    const data = await readJsonResponseBounded<GeminiResponse>(res);
     return parseResponse(data, req.model);
   }
 
@@ -119,68 +123,53 @@ export class GeminiAdapter implements ProviderAdapter {
         'x-goog-api-key': req.apiKey,
       },
       body: JSON.stringify(body),
+      signal: providerRequestSignal(),
     });
 
     if (!res.ok) {
-      const detail = await res.text();
+      const detail = await readProviderErrorDetail(res);
       console.error(`provider error (${this.name} ${res.status}): ${detail}`);
       throw new Error(`${this.name} returned ${res.status}`);
     }
 
     if (!res.body) throw new Error('No response body for stream');
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
     let usage: TokenUsage | null = null;
     let finishReason = 'stop';
     let modelVersion = req.model;
     let responseId = '';
 
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+    for await (const line of readSseLines(res.body)) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (!raw) continue;
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
+      try {
+        const chunk = JSON.parse(raw) as GeminiResponse;
 
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const raw = line.slice(6).trim();
-          if (!raw) continue;
+        if (chunk.modelVersion) modelVersion = chunk.modelVersion;
+        if (chunk.responseId) responseId = chunk.responseId;
 
-          try {
-            const chunk = JSON.parse(raw) as GeminiResponse;
+        const candidate = chunk.candidates?.[0];
+        if (candidate?.finishReason) finishReason = candidate.finishReason;
 
-            if (chunk.modelVersion) modelVersion = chunk.modelVersion;
-            if (chunk.responseId) responseId = chunk.responseId;
-
-            const candidate = chunk.candidates?.[0];
-            if (candidate?.finishReason) finishReason = candidate.finishReason;
-
-            for (const part of candidate?.content?.parts ?? []) {
-              if (part.text) {
-                yield { type: 'text' as const, text: part.text };
-              }
-              const fc = (part as { functionCall?: { id?: string; name: string; args: unknown } }).functionCall;
-              if (fc) {
-                yield { type: 'tool' as const, toolCallId: fc.id || `call_${Date.now()}`, toolName: fc.name, toolArguments: JSON.stringify(fc.args) };
-              }
-            }
-
-            // full usage only on final chunk (has candidatesTokenCount)
-            if (chunk.usageMetadata?.candidatesTokenCount) {
-              usage = mapUsage(chunk.usageMetadata);
-            }
-          } catch {
-            // partial json across chunk boundary
+        for (const part of candidate?.content?.parts ?? []) {
+          if (part.text) {
+            yield { type: 'text' as const, text: part.text };
+          }
+          const fc = (part as { functionCall?: { id?: string; name: string; args: unknown } }).functionCall;
+          if (fc) {
+            yield { type: 'tool' as const, toolCallId: fc.id || `call_${Date.now()}`, toolName: fc.name, toolArguments: JSON.stringify(fc.args) };
           }
         }
+
+        // full usage only on final chunk (has candidatesTokenCount)
+        if (chunk.usageMetadata?.candidatesTokenCount) {
+          usage = mapUsage(chunk.usageMetadata);
+        }
+      } catch {
+        // Ignore malformed provider events.
       }
-    } finally {
-      reader.releaseLock();
     }
 
     yield { type: 'end', usage: usage ?? undefined, finishReason, id: responseId, model: modelVersion };

@@ -123,7 +123,8 @@ export default async function AdminRequestsPage({ searchParams }: PageProps) {
           </thead>
           <tbody>
             {result.data.map((req) => {
-              const ok = !req.error_code;
+              const pending = req.status === 'pending';
+              const ok = req.status === 'success' && !req.error_code;
               return (
                 <tr key={req.id} className="border-b border-border/50 transition-colors hover:bg-secondary/50">
                   <td className="px-4 py-2.5 text-muted-foreground">
@@ -146,14 +147,14 @@ export default async function AdminRequestsPage({ searchParams }: PageProps) {
                     {req.input_tokens.toLocaleString()} / {req.output_tokens.toLocaleString()}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">
-                    {formatCents(Number(req.cost_cents))}
+                    {req.cost_cents === null ? 'Unknown' : formatCents(Number(req.cost_cents))}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
                     {req.latency_ms}ms
                   </td>
                   <td className="px-4 py-2.5">
-                    <Badge variant={ok ? 'success' : 'destructive'}>
-                      {ok ? 'OK' : req.error_code || 'Error'}
+                    <Badge variant={pending ? 'secondary' : ok ? 'success' : 'destructive'}>
+                      {pending ? 'PENDING' : ok ? 'OK' : req.error_code || 'Error'}
                     </Badge>
                   </td>
                 </tr>

@@ -37,7 +37,18 @@ export default async function RequestsPage({ searchParams }: PageProps) {
   let result = { data: [] as Awaited<ReturnType<typeof getRequestsPaginated>>['data'], total: 0, page, pageSize };
   let providers: string[] = [];
   let models: string[] = [];
-  let summary = { totalRequests: 0, totalSpendCents: 0, totalInputTokens: 0, totalOutputTokens: 0, avgCostCents: 0, avgLatencyMs: 0, projectedMonthlyCents: 0 };
+  let summary = {
+    totalRequests: 0,
+    pricedRequests: 0,
+    unknownCostRequests: 0,
+    costComplete: true,
+    totalSpendCents: 0,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+    avgCostCents: 0,
+    avgLatencyMs: 0,
+    projectedMonthlyCents: 0,
+  };
   let connected = true;
 
   try {
@@ -82,10 +93,17 @@ export default async function RequestsPage({ searchParams }: PageProps) {
         </div>
       </div>
 
+      {summary.unknownCostRequests > 0 && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-300">
+          Spend is incomplete: {summary.unknownCostRequests.toLocaleString()} request cost
+          {summary.unknownCostRequests === 1 ? ' is' : 's are'} unknown. Spend and average cost include priced requests only.
+        </div>
+      )}
+
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         <div className="rounded-lg border border-border bg-card px-4 py-3">
-          <p className="text-xs text-muted-foreground">Total Spend</p>
+          <p className="text-xs text-muted-foreground">Known Spend</p>
           <p className="mt-0.5 font-mono text-lg font-semibold">{formatCents(summary.totalSpendCents)}</p>
         </div>
         <div className="rounded-lg border border-border bg-card px-4 py-3">
@@ -93,7 +111,7 @@ export default async function RequestsPage({ searchParams }: PageProps) {
           <p className="mt-0.5 font-mono text-lg font-semibold">{summary.totalRequests.toLocaleString()}</p>
         </div>
         <div className="rounded-lg border border-border bg-card px-4 py-3">
-          <p className="text-xs text-muted-foreground">Avg Cost</p>
+          <p className="text-xs text-muted-foreground">Avg Known Cost</p>
           <p className="mt-0.5 font-mono text-lg font-semibold">{formatCents(summary.avgCostCents)}</p>
         </div>
         <div className="rounded-lg border border-border bg-card px-4 py-3">
@@ -123,7 +141,8 @@ export default async function RequestsPage({ searchParams }: PageProps) {
           </thead>
           <tbody>
             {result.data.map((req) => {
-              const ok = !req.error_code;
+              const pending = req.status === 'pending';
+              const ok = req.status === 'success' && !req.error_code;
               return (
                 <tr key={req.id} className="border-b border-border/50 transition-colors hover:bg-secondary/50">
                   <td className="px-4 py-2.5 text-muted-foreground">
@@ -137,14 +156,14 @@ export default async function RequestsPage({ searchParams }: PageProps) {
                     {req.input_tokens.toLocaleString()} / {req.output_tokens.toLocaleString()}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs">
-                    {formatCents(Number(req.cost_cents))}
+                    {req.cost_cents === null ? 'Unknown' : formatCents(Number(req.cost_cents))}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-muted-foreground">
                     {req.latency_ms}ms
                   </td>
                   <td className="px-4 py-2.5">
-                    <Badge variant={ok ? 'success' : 'destructive'}>
-                      {ok ? 'OK' : req.error_code || 'Error'}
+                    <Badge variant={pending ? 'secondary' : ok ? 'success' : 'destructive'}>
+                      {pending ? 'PENDING' : ok ? 'OK' : req.error_code || 'Error'}
                     </Badge>
                   </td>
                 </tr>

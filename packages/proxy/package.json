@@ -8,6 +8,9 @@
   "scripts": {
     "dev": "wrangler dev --local",
     "test": "node test/log-secret-boundary-test.mjs && node test/log-secret-runtime-proof.mjs",
+    "test:budget-falsifier": "corepack pnpm@9.15.4 --filter @f3d1/llmkit-shared build && tsc --noEmit -p tsconfig.budget-falsifier.json && node ../../scripts/run-budget-falsifier.mjs",
+    "test:budget-falsifier:coverage": "corepack pnpm@9.15.4 --filter @f3d1/llmkit-shared build && tsc --noEmit -p tsconfig.budget-falsifier.json && node ../../scripts/run-budget-falsifier-coverage.mjs",
+    "test:budget-falsifier:raw": "vitest run --config vitest.budget-falsifier.config.ts --reporter=verbose",
     "test:security": "node test/log-secret-boundary-test.mjs && node test/log-secret-runtime-proof.mjs",
     "test:e2e": "node test/e2e.mjs",
     "build": "node ../../scripts/run-worker-deploy.mjs --target staging --dry-run",
@@ -15,6 +18,7 @@
     "deploy": "node ../../scripts/run-worker-deploy.mjs",
     "deploy:staging": "node ../../scripts/run-worker-deploy.mjs --target staging",
     "deploy:production": "node ../../scripts/run-worker-deploy.mjs --target production",
+    "proof:hosted:staging": "node ../../scripts/run-hosted-budget-proof.mjs",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist .wrangler"
   },
@@ -23,7 +27,10 @@
     "hono": "^4.12.34"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.18.6",
     "@cloudflare/workers-types": "^5.20260722.1",
+    "@vitest/coverage-istanbul": "4.1.10",
+    "vitest": "4.1.10",
     "wrangler": "4.114.0"
   }
 }

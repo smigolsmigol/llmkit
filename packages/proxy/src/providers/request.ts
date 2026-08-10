@@ -1,0 +1,10 @@
+import { MAX_PROVIDER_CHAIN_LENGTH } from './chain';
+
+export const PROVIDER_REQUEST_TIMEOUT_MS = 4 * 60_000;
+export const MAX_PROVIDER_EXECUTION_MS = PROVIDER_REQUEST_TIMEOUT_MS * MAX_PROVIDER_CHAIN_LENGTH;
+export const COORDINATION_LEASE_MARGIN_MS = 2 * 60_000;
+export const MAX_COORDINATED_REQUEST_LIFETIME_MS = MAX_PROVIDER_EXECUTION_MS + COORDINATION_LEASE_MARGIN_MS;
+
+export function providerRequestSignal(timeoutMs = PROVIDER_REQUEST_TIMEOUT_MS): AbortSignal {
+  return AbortSignal.timeout(timeoutMs);
+}

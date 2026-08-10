@@ -62,6 +62,45 @@ function assertWorkflowContract(workflow) {
 const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
 assertWorkflowContract(workflow);
 
+const qualityGate = readFileSync('scripts/run-quality-gate.mjs', 'utf8');
+const moneyPathGateFragments = [
+  "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier']);",
+  "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier:coverage']);",
+];
+
+function assertMoneyPathGate(contents) {
+  for (const fragment of moneyPathGateFragments) {
+    if (!contents.includes(fragment)) {
+      throw new Error(`Pre-PR quality contract is missing the money-path gate: ${fragment}`);
+    }
+  }
+}
+
+assertMoneyPathGate(qualityGate);
+for (const fragment of moneyPathGateFragments) {
+  let moneyPathViolationBlocked = false;
+  try {
+    assertMoneyPathGate(qualityGate.replace(fragment, ''));
+  } catch {
+    moneyPathViolationBlocked = true;
+  }
+  if (!moneyPathViolationBlocked) {
+    throw new Error(`Money-path quality-gate violation fixture was accepted: ${fragment}`);
+  }
+}
+
+const budgetCoverageGate = readFileSync('scripts/check-budget-falsifier-coverage.mjs', 'utf8');
+if (!budgetCoverageGate.includes('dirtyMaterialSha256: await dirtyMaterialHash()')) {
+  throw new Error('Changed money-path coverage receipt is not bound to the dirty worktree bytes.');
+}
+const budgetFalsifierGate = readFileSync('scripts/run-budget-falsifier.mjs', 'utf8');
+if (!budgetFalsifierGate.includes("['status', '--porcelain=v1', '-z', '--untracked-files=all']")) {
+  throw new Error('Gate 0 dirty-byte hashing must preserve raw porcelain and expand untracked files.');
+}
+if (!budgetCoverageGate.includes("git(['status', '--porcelain=v1', '-z', '--untracked-files=all'])")) {
+  throw new Error('Coverage dirty-byte hashing must preserve raw porcelain and expand untracked files.');
+}
+
 const workflowViolation = workflow.replace('name: scorecard-supply-chain', 'name: scorecard-advisory');
 let blocked = false;
 try {

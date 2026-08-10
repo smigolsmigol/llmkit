@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(49);
+select extensions.plan(65);
 
 insert into public.accounts (user_id, plan, stripe_customer_id)
 values
@@ -599,6 +599,283 @@ select extensions.throws_like(
   '%budgets_nonnegative_limit_check%',
   'negative budget limit is rejected'
 ); -- 49
+
+select extensions.is(
+  (
+    select count(*)
+    from public.requests
+    where settlement_status = 'legacy_recorded'
+  ),
+  4::bigint,
+  'pre-receipt request writes retain an explicit legacy settlement state'
+); -- 50
+
+select extensions.ok(
+  (
+    select relrowsecurity
+    from pg_class
+    where oid = 'public.requests'::regclass
+  ),
+  'request receipt extension preserves row-level security'
+); -- 51
+
+select extensions.is(
+  (
+    select count(*)
+    from pg_policies
+    where schemaname = 'public'
+      and tablename = 'requests'
+      and policyname = 'requests_select_own'
+  ),
+  1::bigint,
+  'request receipt extension preserves the tenant-select policy'
+); -- 52
+
+set local role service_role;
+
+select extensions.lives_ok(
+  $$insert into public.requests (
+      id, user_id, api_key_id, provider, model, status,
+      customer_id, workflow_id, agent_id, session_id, end_user_id,
+      budget_id, budget_reservation_id, reserved_cost_cents,
+      idempotency_key_hash, settlement_status
+    ) values (
+      '70000000-0000-4000-8000-000000000001',
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-receipt-pending',
+      'pending',
+      'customer-a',
+      'workflow-a',
+      'agent-a',
+      'session-receipt-a',
+      'end-user-receipt-a',
+      '10000000-0000-0000-0000-000000000001',
+      '71000000-0000-4000-8000-000000000001',
+      9.5,
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      'pending'
+    )$$,
+  'service role inserts a complete pending request receipt'
+); -- 53
+
+select extensions.is(
+  (
+    select count(*)
+    from public.requests
+    where id = '70000000-0000-4000-8000-000000000001'
+      and customer_id = 'customer-a'
+      and workflow_id = 'workflow-a'
+      and agent_id = 'agent-a'
+      and budget_id = '10000000-0000-0000-0000-000000000001'
+      and budget_reservation_id = '71000000-0000-4000-8000-000000000001'
+      and reserved_cost_cents = 9.5
+      and idempotency_key_hash =
+        'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+      and response_sha256 is null
+      and settlement_status = 'pending'
+  ),
+  1::bigint,
+  'request receipt persists reservation and attribution fields together'
+); -- 54
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status, customer_id
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-bad-customer',
+      'pending',
+      ' customer-a'
+    )$$,
+  '%requests_receipt_attribution_ids_check%',
+  'untrimmed attribution identifiers are rejected'
+); -- 55
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status, idempotency_key_hash
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-bad-idempotency-hash',
+      'pending',
+      'ABC123'
+    )$$,
+  '%requests_receipt_hashes_check%',
+  'non-SHA-256 idempotency hashes are rejected'
+); -- 56
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status, response_sha256
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-bad-response-hash',
+      'success',
+      'not-a-sha256'
+    )$$,
+  '%requests_receipt_hashes_check%',
+  'non-SHA-256 response hashes are rejected'
+); -- 57
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-bad-request-status',
+      'complete'
+    )$$,
+  '%requests_status_check%',
+  'unknown request lifecycle status is rejected'
+); -- 58
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status, settlement_status
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-bad-settlement-status',
+      'success',
+      'settled'
+    )$$,
+  '%requests_settlement_status_check%',
+  'ambiguous settlement status is rejected'
+); -- 59
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status, reserved_cost_cents
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-negative-reservation',
+      'pending',
+      -0.1
+    )$$,
+  '%requests_reserved_cost_check%',
+  'negative reserved cost is rejected'
+); -- 60
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status, budget_id
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-cross-tenant-budget',
+      'pending',
+      '10000000-0000-0000-0000-000000000002'
+    )$$,
+  '%requests_budget_owner_fkey%',
+  'request receipt cannot reference another tenant budget'
+); -- 61
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status, idempotency_key_hash
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000001',
+      'openai',
+      'gpt-duplicate-idempotency',
+      'pending',
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+    )$$,
+  '%requests_api_key_idempotency_key_hash_key%',
+  'one API key cannot record the same idempotency scope twice'
+); -- 62
+
+select extensions.lives_ok(
+  $$insert into public.requests (
+      id, user_id, api_key_id, provider, model, status,
+      idempotency_key_hash, response_sha256, settlement_status
+    ) values (
+      '70000000-0000-4000-8000-000000000002',
+      'user_a',
+      '20000000-0000-0000-0000-000000000004',
+      'openai',
+      'gpt-same-idempotency-other-key',
+      'success',
+      'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+      'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      'not_applicable'
+    )$$,
+  'idempotency uniqueness is scoped to one API key'
+); -- 63
+
+insert into public.requests (
+  id, user_id, api_key_id, provider, model, status,
+  customer_id, workflow_id, agent_id, budget_id,
+  budget_reservation_id, reserved_cost_cents, idempotency_key_hash,
+  response_sha256, settlement_status
+)
+values (
+  '70000000-0000-4000-8000-000000000003',
+  'user_b',
+  '20000000-0000-0000-0000-000000000002',
+  'anthropic',
+  'claude-receipt-b',
+  'success',
+  'customer-b',
+  'workflow-b',
+  'agent-b',
+  '10000000-0000-0000-0000-000000000002',
+  '71000000-0000-4000-8000-000000000003',
+  4.25,
+  'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+  'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+  'settled_actual'
+);
+
+reset role;
+set local role authenticated;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"user_a","role":"authenticated"}',
+  true
+);
+
+select extensions.is(
+  (
+    select count(*)
+    from public.requests
+    where id = '70000000-0000-4000-8000-000000000003'
+       or customer_id = 'customer-b'
+       or workflow_id = 'workflow-b'
+       or agent_id = 'agent-b'
+  ),
+  0::bigint,
+  'user A cannot observe user B receipt identifiers or attribution'
+); -- 64
+
+reset role;
+set local role service_role;
+
+update public.api_keys
+set budget_id = null
+where user_id = 'user_a'
+  and budget_id = '10000000-0000-0000-0000-000000000001';
+
+select extensions.throws_like(
+  $$delete from public.budgets
+    where id = '10000000-0000-0000-0000-000000000001'$$,
+  '%requests_budget_owner_fkey%',
+  'durable receipt attribution prevents deleting a referenced budget'
+); -- 65
 
 select * from extensions.finish();
 rollback;

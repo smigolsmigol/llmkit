@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { supabaseServiceHeaders } from '../db';
 import type { Env } from '../env';
 
 // MCP JSON-RPC over HTTP (Streamable HTTP transport)
@@ -77,7 +78,7 @@ const TOOLS = [
 // PostgREST query helper scoped to the authenticated user
 async function query<T>(supabaseUrl: string, supabaseKey: string, path: string): Promise<T[]> {
   const res = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
-    headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` },
+    headers: supabaseServiceHeaders(supabaseKey),
   });
   if (!res.ok) throw new Error(`query failed: ${res.status}`);
   return res.json() as Promise<T[]>;
