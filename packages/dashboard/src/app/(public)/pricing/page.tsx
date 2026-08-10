@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { PublicFooter } from '@/components/public-footer';
 import { PublicNavStatic } from '@/components/public-nav-static';
 import { TrackClick } from '@/components/track-event';
+import { RECOVERY_PUBLIC_CTA } from '@/lib/public-recovery';
 
 export const metadata: Metadata = {
   title: 'LLM API Pricing Comparison 2026 - 730+ Models, 11 Providers | LLMKit',
@@ -100,8 +101,8 @@ export default async function PricingPage() {
             Budget limits reject requests before they reach the provider.
           </p>
           <div className="mt-4 flex items-center justify-center gap-3">
-            <TrackClick event="cta_click" properties={{ label: "sign_up", location: "pricing" }} href="/sign-up" className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
-              Get started free
+            <TrackClick event="cta_click" properties={{ label: "local_setup", location: "pricing" }} href={RECOVERY_PUBLIC_CTA.href} className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
+              {RECOVERY_PUBLIC_CTA.label}
             </TrackClick>
             <TrackClick event="cta_click" properties={{ label: "view_source", location: "pricing" }} href="https://github.com/smigolsmigol/llmkit" className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] transition" target="_blank" rel="noopener noreferrer">
               View source

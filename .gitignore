@@ -56,6 +56,7 @@ htmlcov/
 .wrangler/
 .dev.vars
 .dev.keys
+packages/dashboard/cloudflare-env.d.ts
 
 # next.js
 .next/

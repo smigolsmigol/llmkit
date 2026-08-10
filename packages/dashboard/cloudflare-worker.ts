@@ -4,6 +4,7 @@ import openNextHandler from './.open-next/worker.js';
 import {
   classifyRecoveryPath,
   createHttpsRedirectResponse,
+  getWorkerVersionHeaders,
 } from './src/lib/public-recovery';
 
 const SECURITY_HEADERS = {
@@ -40,10 +41,11 @@ function withHeaders(response: Response, extraHeaders: Record<string, string> = 
 export default {
   async fetch(request: Request, env: unknown, context: unknown): Promise<Response> {
     const requestUrl = new URL(request.url);
+    const versionHeaders = getWorkerVersionHeaders(env);
     const httpsRedirectResponse = createHttpsRedirectResponse(requestUrl);
 
     if (httpsRedirectResponse) {
-      return withHeaders(httpsRedirectResponse);
+      return withHeaders(httpsRedirectResponse, versionHeaders);
     }
 
     const boundary = classifyRecoveryPath(requestUrl.pathname);
@@ -54,7 +56,7 @@ export default {
           { error: 'The authenticated LLMKit surface is being restored.' },
           { status: 503 },
         ),
-        RECOVERY_HEADERS,
+        { ...RECOVERY_HEADERS, ...versionHeaders },
       );
     }
 
@@ -73,9 +75,9 @@ export default {
         headers: recoveryPage.headers,
       });
 
-      return withHeaders(unavailablePage, RECOVERY_HEADERS);
+      return withHeaders(unavailablePage, { ...RECOVERY_HEADERS, ...versionHeaders });
     }
 
-    return withHeaders(await openNextHandler.fetch(request, env, context));
+    return withHeaders(await openNextHandler.fetch(request, env, context), versionHeaders);
   },
 };

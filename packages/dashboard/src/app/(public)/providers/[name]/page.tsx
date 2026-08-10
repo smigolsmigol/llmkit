@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PublicFooter } from '@/components/public-footer';
 import { PublicNavStatic } from '@/components/public-nav-static';
+import { RECOVERY_PUBLIC_CTA } from '@/lib/public-recovery';
 
 const PROVIDERS = [
   'openai', 'anthropic', 'gemini', 'xai', 'groq', 'together',
@@ -188,9 +189,9 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
             and session attribution. Set budget limits that actually reject requests before they hit the provider.
           </p>
           <div className="mt-4 flex items-center justify-center gap-3">
-            <a href="/sign-up" className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
-              Get started free
-            </a>
+            <Link href={RECOVERY_PUBLIC_CTA.href} className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
+              {RECOVERY_PUBLIC_CTA.label}
+            </Link>
             <a href="https://github.com/smigolsmigol/llmkit" className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] transition" target="_blank" rel="noopener noreferrer">
               View source
             </a>

@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PublicFooter } from '@/components/public-footer';
 import { PublicNavStatic } from '@/components/public-nav-static';
+import { RECOVERY_STATUS_HREF } from '@/lib/public-recovery';
 
 export const metadata: Metadata = {
   title: 'Getting Started - LLMKit',
@@ -48,7 +49,7 @@ export default function DocsPage() {
       <div className="mx-auto max-w-3xl space-y-16 px-6 pb-16">
 
         {/* MCP Server */}
-        <section>
+        <section id="local-setup" className="scroll-mt-20">
           <div className="mb-2 flex items-center gap-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 font-mono text-sm font-bold text-violet-400">1</span>
             <h2 className="text-lg font-semibold">MCP Server</h2>
@@ -166,29 +167,26 @@ export default function DocsPage() {
           </div>
         </section>
 
-        {/* API Gateway */}
+        {/* Hosted API Gateway */}
         <section>
-          <h2 className="mb-2 text-lg font-semibold">API Gateway (optional)</h2>
+          <h2 className="mb-2 text-lg font-semibold">Hosted API gateway</h2>
           <p className="mb-4 text-sm text-zinc-400">
-            For budget enforcement and centralized logging. Create an account, get an API key, and route requests through the proxy.
+            Hosted account creation and API-key management are temporarily unavailable while the authenticated service is restored.
           </p>
           <div className="space-y-4">
             <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
-              <p className="text-sm font-medium text-zinc-200">1. Create an account</p>
+              <p className="text-sm font-medium text-zinc-200">Available now</p>
               <p className="mt-1 text-xs text-zinc-500">
-                <Link href="/sign-up" className="text-violet-400 hover:text-violet-300 transition">Sign up free</Link> and get an API key from the dashboard.
+                The local SDK, CLI, and MCP paths above remain available without an LLMKit account.
               </p>
             </div>
             <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
-              <p className="text-sm font-medium text-zinc-200">2. Set your provider keys</p>
+              <p className="text-sm font-medium text-zinc-200">Hosted path</p>
               <p className="mt-1 text-xs text-zinc-500">
-                Add your Anthropic, OpenAI, or other provider API keys in Settings. Encrypted with AES-GCM.
-              </p>
-            </div>
-            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
-              <p className="text-sm font-medium text-zinc-200">3. Configure budgets</p>
-              <p className="mt-1 text-xs text-zinc-500">
-                Set per-key limits (daily, weekly, monthly). Budget enforcement uses a reservation pattern: cost is estimated before the request, rejected if over limit.
+                <Link href={RECOVERY_STATUS_HREF} className="text-violet-400 hover:text-violet-300 transition">
+                  Check the service status
+                </Link>{' '}
+                before attempting dashboard or gateway setup.
               </p>
             </div>
           </div>

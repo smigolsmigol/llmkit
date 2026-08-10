@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import { PublicFooter } from '@/components/public-footer';
 import { PublicNavStatic } from '@/components/public-nav-static';
+import { RECOVERY_PUBLIC_CTA } from '@/lib/public-recovery';
 import { Calculator } from './calculator';
 
 export const metadata: Metadata = {
@@ -63,8 +64,8 @@ export default async function ComparePage() {
             Budget limits reject requests before they reach the provider.
           </p>
           <div className="mt-4 flex items-center justify-center gap-3">
-            <a href="/sign-up" className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
-              Get started free
+            <a href={RECOVERY_PUBLIC_CTA.href} className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
+              {RECOVERY_PUBLIC_CTA.label}
             </a>
             <a href="/pricing" className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-5 py-2 text-sm text-zinc-300 hover:bg-white/[0.06] transition">
               Full pricing table
