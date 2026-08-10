@@ -77,7 +77,7 @@ function printUsage(): void {
 
   Then ask your AI assistant: ${dim('"how much did this session cost?"')}
 
-  ${dim('Docs: https://llmkit-dashboard.vercel.app/mcp')}
+  ${dim('Docs: https://llmkit.sh/mcp')}
   ${dim('Source: https://github.com/smigolsmigol/llmkit')}
 
 `);

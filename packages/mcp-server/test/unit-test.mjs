@@ -10,6 +10,40 @@ function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
 const { PROXY_TOOLS, LOCAL_TOOLS, HANDLER_MAP } = await import('../dist/tools.js');
 
+test('proxy client uses the canonical hosted API origin', async () => {
+  const previousKey = process.env.LLMKIT_API_KEY;
+  const previousProxy = process.env.LLMKIT_PROXY_URL;
+  process.env.LLMKIT_API_KEY = 'llmk_test';
+  delete process.env.LLMKIT_PROXY_URL;
+
+  try {
+    const { loadConfig } = await import('../dist/client.js?canonical-origin-test');
+    assert(loadConfig()?.proxyUrl === 'https://api.llmkit.sh', 'unexpected default proxy URL');
+  } finally {
+    if (previousKey === undefined) delete process.env.LLMKIT_API_KEY;
+    else process.env.LLMKIT_API_KEY = previousKey;
+    if (previousProxy === undefined) delete process.env.LLMKIT_PROXY_URL;
+    else process.env.LLMKIT_PROXY_URL = previousProxy;
+  }
+});
+
+test('proxy client preserves an explicit self-hosted origin', async () => {
+  const previousKey = process.env.LLMKIT_API_KEY;
+  const previousProxy = process.env.LLMKIT_PROXY_URL;
+  process.env.LLMKIT_API_KEY = 'llmk_test';
+  process.env.LLMKIT_PROXY_URL = 'http://127.0.0.1:8787';
+
+  try {
+    const { loadConfig } = await import('../dist/client.js?custom-origin-test');
+    assert(loadConfig()?.proxyUrl === 'http://127.0.0.1:8787', 'custom proxy URL was ignored');
+  } finally {
+    if (previousKey === undefined) delete process.env.LLMKIT_API_KEY;
+    else process.env.LLMKIT_API_KEY = previousKey;
+    if (previousProxy === undefined) delete process.env.LLMKIT_PROXY_URL;
+    else process.env.LLMKIT_PROXY_URL = previousProxy;
+  }
+});
+
 test('PROXY_TOOLS has 6 entries', () => {
   assert(PROXY_TOOLS.length === 6, `expected 6, got ${PROXY_TOOLS.length}`);
 });
@@ -56,7 +90,7 @@ test('no extra handlers in HANDLER_MAP', () => {
 
 for (const t of tests) {
   try {
-    t.fn();
+    await t.fn();
     passed++;
     console.log(`  \x1b[32m✓\x1b[0m ${t.name}`);
   } catch (e) {

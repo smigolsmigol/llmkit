@@ -160,7 +160,7 @@ app.get('/.well-known/mcp/server-card.json', (c) => c.json({
   name: 'llmkit',
   description: 'AI API cost tracking and budget enforcement across 11 providers',
   version: '0.1.0',
-  url: 'https://llmkit-proxy.smigolsmigol.workers.dev/mcp',
+  url: 'https://api.llmkit.sh/mcp',
   authentication: { type: 'bearer' },
   capabilities: { tools: true },
 }));

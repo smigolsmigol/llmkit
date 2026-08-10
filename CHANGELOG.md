@@ -17,6 +17,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Mobile responsive pass 2 (nav collapse, grids, widget, gradients)
 - CSP header for Vercel analytics
 
+### Changed
+- Canonicalized hosted package and API examples on `https://api.llmkit.sh` while preserving explicit self-hosted overrides
+- Prepared patch releases for the active npm packages and Python SDK so registry versions match their packed bytes and declared Python 3.11 floor
+
+### Security
+- Restricted manual package publication to `main`, refused existing registry versions, and added source, artifact, and Python-floor checks before publication
+
 ## [0.6.0] - 2026-03-27
 
 ### Added

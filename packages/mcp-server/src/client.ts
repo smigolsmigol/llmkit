@@ -14,7 +14,7 @@ export function loadConfig(): Config | null {
   configChecked = true;
 
   const apiKey = process.env.LLMKIT_API_KEY;
-  const proxyUrl = process.env.LLMKIT_PROXY_URL || 'https://llmkit-proxy.smigolsmigol.workers.dev';
+  const proxyUrl = process.env.LLMKIT_PROXY_URL || 'https://api.llmkit.sh';
 
   if (!apiKey) return null;
 
@@ -25,9 +25,9 @@ export function loadConfig(): Config | null {
 function requireConfig(): Config {
   const config = loadConfig();
   if (!config) {
-    const dashUrl = process.env.LLMKIT_DASHBOARD_URL || 'https://llmkit-dashboard.vercel.app';
+    const dashUrl = process.env.LLMKIT_DASHBOARD_URL || 'https://llmkit.sh';
     throw new Error(
-      `LLMKIT_API_KEY required. The llmkit_local_* tools work without a key.\nGet one at ${dashUrl}`,
+      `LLMKIT_API_KEY required. The llmkit_local_* tools work without a key.\nCheck account availability at ${dashUrl}`,
     );
   }
   return config;

@@ -41,8 +41,8 @@ if _sdk_src.exists():
 from llmkit import CostInfo, tracked, tracked_async
 from llmkit._pricing import _FLAT, _PRICING, calculate_cost, lookup_pricing
 
-PROXY = os.environ.get("LLMKIT_PROXY_URL", "https://llmkit-proxy.smigolsmigol.workers.dev")
-DASHBOARD = os.environ.get("LLMKIT_DASHBOARD_URL", "https://llmkit-dashboard.vercel.app")
+PROXY = os.environ.get("LLMKIT_PROXY_URL", "https://api.llmkit.sh")
+DASHBOARD = os.environ.get("LLMKIT_DASHBOARD_URL", "https://llmkit.sh")
 AUDITS_DIR = Path(__file__).resolve().parent.parent / "audits"
 
 OPENAI_MODEL = "gpt-4o-mini"

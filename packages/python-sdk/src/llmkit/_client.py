@@ -11,7 +11,7 @@ from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from ._pricing import calculate_cost
 from ._types import CostInfo, SessionStats
 
-DEFAULT_BASE_URL = "https://llmkit-proxy.smigolsmigol.workers.dev/v1"
+DEFAULT_BASE_URL = "https://api.llmkit.sh/v1"
 ENV_API_KEY = "LLMKIT_API_KEY"
 ENV_BASE_URL = "LLMKIT_BASE_URL"
 

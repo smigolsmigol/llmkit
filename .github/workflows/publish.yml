@@ -21,6 +21,7 @@ permissions:
 
 jobs:
   publish:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -35,11 +36,70 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      - name: read release metadata
+        id: release
+        env:
+          PACKAGE_DIR: ${{ inputs.package }}
+        run: |
+          node --input-type=module <<'NODE' >> "$GITHUB_OUTPUT"
+          import { readFile } from 'node:fs/promises';
+
+          const directory = process.env.PACKAGE_DIR;
+          if (!/^[a-z0-9-]+$/.test(directory)) throw new Error('Invalid package directory.');
+          const manifest = JSON.parse(await readFile(`packages/${directory}/package.json`, 'utf8'));
+          console.log(`name=${manifest.name}`);
+          console.log(`version=${manifest.version}`);
+          NODE
+
+      - name: refuse an existing registry version
+        run: >-
+          node scripts/assert-unpublished-version.mjs npm
+          "${{ steps.release.outputs.name }}"
+          "${{ steps.release.outputs.version }}"
+
+      - name: verify source contracts
+        run: |
+          pnpm test
+          pnpm typecheck
+
       - name: build
         run: pnpm turbo build --filter=@f3d1/llmkit-${{ inputs.package }}
 
       - name: pack tarball
         run: cd packages/${{ inputs.package }} && pnpm pack --pack-destination /tmp/pkg
+
+      - name: verify packed artifact
+        env:
+          PACKAGE_DIR: ${{ inputs.package }}
+          PACKAGE_NAME: ${{ steps.release.outputs.name }}
+          PACKAGE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          mkdir -p /tmp/pkg-check
+          tar -xzf /tmp/pkg/*.tgz -C /tmp/pkg-check
+          pnpm exec publint /tmp/pkg-check/package
+          node --input-type=module <<'NODE'
+          import { readFile } from 'node:fs/promises';
+
+          const packed = JSON.parse(await readFile('/tmp/pkg-check/package/package.json', 'utf8'));
+          if (packed.name !== process.env.PACKAGE_NAME) {
+            throw new Error(`Packed name mismatch: ${packed.name}`);
+          }
+          if (packed.version !== process.env.PACKAGE_VERSION) {
+            throw new Error(`Packed version mismatch: ${packed.version}`);
+          }
+
+          const source = JSON.parse(
+            await readFile(`packages/${process.env.PACKAGE_DIR}/package.json`, 'utf8'),
+          );
+          const sourceShared = source.dependencies?.['@f3d1/llmkit-shared'];
+          const shared = packed.dependencies?.['@f3d1/llmkit-shared'];
+          if (sourceShared) {
+            const expected = JSON.parse(await readFile('packages/shared/package.json', 'utf8')).version;
+            if (shared !== expected) {
+              throw new Error(`Packed shared dependency mismatch: ${shared} != ${expected}`);
+            }
+          }
+          NODE
 
       - name: attest artifact
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2

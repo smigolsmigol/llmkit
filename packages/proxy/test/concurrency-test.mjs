@@ -13,7 +13,7 @@
 // requests will fail at the provider stage (no provider key needed), but that's fine:
 // we're testing the budget gate, not the LLM call.
 
-const BASE = process.env.BASE_URL || 'https://llmkit-proxy.smigolsmigol.workers.dev';
+const BASE = process.env.BASE_URL || 'https://api.llmkit.sh';
 const API_KEY = process.env.API_KEY;
 const CONCURRENCY = Number(process.env.N) || 20;
 

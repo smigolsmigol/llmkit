@@ -22,6 +22,7 @@ const tests = [
   'packages/dashboard/test/recovery-boundary-test.mjs',
   'packages/dashboard/test/https-redirect-runtime-test.mjs',
   'packages/cli/test/parser-test.mjs',
+  'packages/sdk/test/client-test.mjs',
   'packages/sdk/test/tracker-test.mjs',
   'packages/mcp-server/test/smoke-test.mjs',
   'packages/ai-sdk-provider/test/smoke-test.mjs',
@@ -34,6 +35,7 @@ const tests = [
   'test/health-check-workflow-test.mjs',
   'test/notification-signal-workflow-test.mjs',
   'test/quality-gate-contract-test.mjs',
+  'test/release-workflow-contract-test.mjs',
 ];
 
 function run(command, args) {

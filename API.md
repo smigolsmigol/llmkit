@@ -1,9 +1,9 @@
 # LLMKit API Reference
 
-Base URL: `https://llmkit-proxy.smigolsmigol.workers.dev`
+Base URL: `https://api.llmkit.sh`
 
 All authenticated endpoints require a Bearer token in the `Authorization` header.
-Create API keys at [llmkit.sh](https://llmkit.sh).
+Hosted use requires an existing LLMKit API key. Check [llmkit.sh](https://llmkit.sh) for current account and service availability.
 
 ## Authentication
 
@@ -231,7 +231,7 @@ then `event: done` with full usage and cost breakdown.
 ### curl example
 
 ```bash
-curl -X POST https://llmkit-proxy.smigolsmigol.workers.dev/v1/chat/completions \
+curl -X POST https://api.llmkit.sh/v1/chat/completions \
   -H "Authorization: Bearer llmk_your_key" \
   -H "Content-Type: application/json" \
   -H "x-llmkit-provider-key: sk-your-openai-key" \
@@ -245,7 +245,7 @@ curl -X POST https://llmkit-proxy.smigolsmigol.workers.dev/v1/chat/completions \
 With fallback chain:
 
 ```bash
-curl -X POST https://llmkit-proxy.smigolsmigol.workers.dev/v1/chat/completions \
+curl -X POST https://api.llmkit.sh/v1/chat/completions \
   -H "Authorization: Bearer llmk_your_key" \
   -H "Content-Type: application/json" \
   -H "x-llmkit-fallback: anthropic,openai,gemini" \
@@ -339,7 +339,7 @@ Set `x-llmkit-format: llmkit`. Returns the provider response merged with LLMKit 
 ### curl example
 
 ```bash
-curl -X POST https://llmkit-proxy.smigolsmigol.workers.dev/v1/responses \
+curl -X POST https://api.llmkit.sh/v1/responses \
   -H "Authorization: Bearer llmk_your_key" \
   -H "Content-Type: application/json" \
   -H "x-llmkit-provider-key: sk-your-openai-key" \
@@ -401,10 +401,10 @@ Models are sorted by `totalCost` ascending (cheapest first). Response is cached 
 
 ```bash
 # Compare cost of 10k input + 2k output tokens across all providers
-curl "https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=10000&output=2000"
+curl "https://api.llmkit.sh/v1/pricing/compare?input=10000&output=2000"
 
 # Filter to Anthropic only
-curl "https://llmkit-proxy.smigolsmigol.workers.dev/v1/pricing/compare?input=10000&output=2000&provider=anthropic"
+curl "https://api.llmkit.sh/v1/pricing/compare?input=10000&output=2000&provider=anthropic"
 ```
 
 ---
@@ -446,7 +446,7 @@ tied to your user ID.
 ### curl example
 
 ```bash
-curl -X POST https://llmkit-proxy.smigolsmigol.workers.dev/v1/provider-keys \
+curl -X POST https://api.llmkit.sh/v1/provider-keys \
   -H "Authorization: Bearer llmk_your_key" \
   -H "Content-Type: application/json" \
   -d '{"provider": "openai", "key": "sk-proj-abc123...", "name": "production"}'
@@ -494,7 +494,7 @@ Revoke a stored provider key.
 ### curl example
 
 ```bash
-curl -X DELETE https://llmkit-proxy.smigolsmigol.workers.dev/v1/provider-keys/uuid-here \
+curl -X DELETE https://api.llmkit.sh/v1/provider-keys/uuid-here \
   -H "Authorization: Bearer llmk_your_key"
 ```
 
