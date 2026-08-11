@@ -49,6 +49,8 @@ jobs:
           node ../../scripts/assert-unpublished-version.mjs pypi llmkit-sdk "$VERSION"
 
       - name: test declared Python floor
+        env:
+          PYTHONPATH: src
         run: python -m pytest
 
       - name: build
