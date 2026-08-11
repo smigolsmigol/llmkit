@@ -13,6 +13,10 @@ on:
           - cli
           - mcp-server
           - ai-sdk-provider
+      expected_sha:
+        description: 'Full commit SHA this publication is authorized to release'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -25,6 +29,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: verify expected commit
+        run: >-
+          node scripts/assert-unpublished-version.mjs expected-sha
+          "${{ inputs.expected_sha }}"
+          "${{ github.sha }}"
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
 
@@ -79,6 +89,7 @@ jobs:
           pnpm exec publint /tmp/pkg-check/package
           node --input-type=module <<'NODE'
           import { readFile } from 'node:fs/promises';
+          import { assertPublishedVersion } from './scripts/assert-unpublished-version.mjs';
 
           const packed = JSON.parse(await readFile('/tmp/pkg-check/package/package.json', 'utf8'));
           if (packed.name !== process.env.PACKAGE_NAME) {
@@ -98,6 +109,7 @@ jobs:
             if (shared !== expected) {
               throw new Error(`Packed shared dependency mismatch: ${shared} != ${expected}`);
             }
+            await assertPublishedVersion('npm', '@f3d1/llmkit-shared', expected);
           }
           NODE
 

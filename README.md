@@ -65,9 +65,9 @@ npx @f3d1/llmkit-cli -- python my_agent.py
 
 Use `-v` for per-request output or `--json` for machine-readable results.
 
-### Gateway mode
+### Gateway mode (existing key)
 
-Create a key at [llmkit.sh](https://llmkit.sh), then point an OpenAI-compatible client at the gateway:
+Gateway examples require an existing LLMKit API key. Account creation and key management are temporarily unavailable while the authenticated service is restored. Use the local tracking paths above if you do not already have a key.
 
 ```python
 from openai import OpenAI
