@@ -120,8 +120,6 @@ jobs:
 
       - name: publish with provenance
         run: npm publish /tmp/pkg/*.tgz --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: alert on failure
         if: failure()
