@@ -19,6 +19,8 @@ assert.match(npmWorkflow, /expected-sha[\s\S]*\$\{\{ github\.sha \}\}/);
 assert.match(pypiWorkflow, /expected-sha[\s\S]*\$\{\{ github\.sha \}\}/);
 assert.match(npmWorkflow, /assert-unpublished-version\.mjs npm/);
 assert.match(pypiWorkflow, /assert-unpublished-version\.mjs pypi/);
+assert.match(npmWorkflow, /id-token: write/);
+assert.doesNotMatch(npmWorkflow, /NODE_AUTH_TOKEN|secrets\.NPM_TOKEN/);
 assert.match(npmWorkflow, /pnpm exec publint \/tmp\/pkg-check\/package/);
 assert.match(npmWorkflow, /tar -xzf \/tmp\/pkg\/\*\.tgz -C \/tmp\/pkg-check/);
 assert.match(npmWorkflow, /source\.dependencies\?\.\['@f3d1\/llmkit-shared'\]/);
@@ -50,6 +52,13 @@ const publishAt = npmWorkflow.indexOf('npm publish /tmp/pkg/*.tgz');
 assert(packAt >= 0 && packAt < verifyAt, 'artifact verification must follow the canonical pack');
 assert(verifyAt < attestAt, 'the verified artifact must be attested');
 assert(attestAt < publishAt, 'the attested artifact must be published');
+
+const publishStepStart = npmWorkflow.indexOf('      - name: publish with provenance');
+const publishStepEnd = npmWorkflow.indexOf('\n      - name:', publishStepStart + 1);
+assert(publishStepStart >= 0 && publishStepEnd > publishStepStart, 'publish step must exist');
+const publishStep = npmWorkflow.slice(publishStepStart, publishStepEnd);
+assert.match(publishStep, /npm publish \/tmp\/pkg\/\*\.tgz --provenance --access public/);
+assert.doesNotMatch(publishStep, /env:|NODE_AUTH_TOKEN|NPM_TOKEN/);
 
 assert.equal(
   registryVersionUrl('npm', '@f3d1/llmkit-sdk', '0.0.8'),
