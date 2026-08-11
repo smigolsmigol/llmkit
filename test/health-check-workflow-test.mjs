@@ -17,6 +17,11 @@ const runtimeTruthCalls = [
     pattern: /check_http_contains "Docs recovery disclosure"\s+\\\s+"https:\/\/llmkit\.sh\/docs"\s+\\\s+"Hosted account creation and API-key management are temporarily unavailable"/,
     violation: '"Hosted account creation and API-key management are temporarily unavailable"',
   },
+  {
+    label: 'dashboard recovery',
+    pattern: /check_http_contains "Dashboard recovery"\s+\\\s+"https:\/\/llmkit\.sh\/service-restoring" "Controlled restoration"/,
+    violation: '"Controlled restoration"',
+  },
 ];
 
 function assertRuntimeTruthContract(contents) {
@@ -65,11 +70,6 @@ for (const call of runtimeTruthCalls) {
 assert(
   workflow.includes('check_http_contains()') && workflow.includes('grep -Fq "$expected"'),
   'dashboard recovery must verify both a successful response and its recovery marker',
-);
-assert(
-  workflow.includes('https://llmkit.sh/service-restoring') &&
-    workflow.includes('"Controlled restoration"'),
-  'dashboard recovery must check the canonical public recovery page',
 );
 assert(
   !workflow.includes('llmkit-dashboard.vercel.app'),
