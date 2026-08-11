@@ -2,6 +2,11 @@ name: Publish Python SDK
 
 on:
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: 'Full commit SHA this publication is authorized to release'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -18,6 +23,12 @@ jobs:
         working-directory: packages/python-sdk
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: verify expected commit
+        run: >-
+          node ../../scripts/assert-unpublished-version.mjs expected-sha
+          "${{ inputs.expected_sha }}"
+          "${{ github.sha }}"
 
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:

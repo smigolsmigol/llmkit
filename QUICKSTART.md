@@ -1,9 +1,8 @@
 # Quickstart
 
-Get AI cost tracking running in under 5 minutes.
+Start with a local path below. The CLI and local Python transport need no LLMKit account.
 
-**Prerequisites:** Create a free account at [llmkit.sh](https://llmkit.sh)
-and grab an API key from the Keys tab. Add your provider key (OpenAI, Anthropic, etc.) in the Providers tab.
+Gateway examples require an existing LLMKit API key. Account creation and key management are temporarily unavailable while the authenticated service is restored.
 
 ---
 
@@ -87,7 +86,7 @@ const { text } = await generateText({
 pip install llmkit-sdk
 ```
 
-**With the proxy** (budget enforcement, logging, dashboard):
+**With the proxy** (budget enforcement and logging, requires an existing LLMKit API key):
 
 ```python
 from openai import OpenAI
@@ -123,7 +122,7 @@ that accepts `http_client` (OpenAI, Anthropic, Mistral, etc.).
 
 ---
 
-## Direct API (curl)
+## Direct API (curl, existing key)
 
 No SDK needed. Point any HTTP client at the proxy.
 
@@ -142,10 +141,11 @@ Cost comes back in the `x-llmkit-cost` response header.
 
 ---
 
-## What's next
+## Gateway follow-up
 
-- Open [llmkit.sh](https://llmkit.sh) to see your costs, requests, and sessions
-- Set a budget in the dashboard to cap spend per key or per session
+- Local CLI and Python tracking above are available without an LLMKit account
+- Existing-key gateway users can query spend and budgets through the MCP proxy tools
+- New account creation and dashboard key or budget management remain temporarily unavailable while the authenticated service is restored
 - Add `x-llmkit-session-id` headers to group requests by agent run
 - Add `x-llmkit-user-id` headers to track costs per end-user
 - Set up the [MCP server](packages/mcp-server) to query costs from Claude Code, Cline, or Cursor

@@ -30,8 +30,40 @@ export async function assertUnpublishedVersion(registry, name, version, fetchImp
   throw new Error(`Could not verify ${name}@${version} on ${registry}: HTTP ${response.status}.`);
 }
 
+export async function assertPublishedVersion(registry, name, version, fetchImpl = fetch) {
+  const url = registryVersionUrl(registry, name, version);
+  const response = await fetchImpl(url, {
+    headers: { accept: 'application/json' },
+    signal: AbortSignal.timeout(15_000),
+  });
+
+  if (response.ok) return url;
+  throw new Error(`${name}@${version} is not available on ${registry}: HTTP ${response.status}.`);
+}
+
+export function assertExpectedSha(expectedSha, actualSha) {
+  if (!/^[0-9a-f]{40}$/i.test(expectedSha)) {
+    throw new Error('Expected SHA must be a full 40-character commit SHA.');
+  }
+  if (expectedSha !== actualSha) {
+    throw new Error(`Expected SHA ${expectedSha} does not match checked-out SHA ${actualSha}.`);
+  }
+  return actualSha;
+}
+
 async function main() {
-  const [registry, name, version] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  if (args[0] === 'expected-sha') {
+    const [, expectedSha, actualSha] = args;
+    if (!expectedSha || !actualSha) {
+      throw new Error('Usage: node scripts/assert-unpublished-version.mjs expected-sha <expected> <actual>');
+    }
+    assertExpectedSha(expectedSha, actualSha);
+    console.log(`EXPECTED_SHA PASS ${actualSha}`);
+    return;
+  }
+
+  const [registry, name, version] = args;
   if (!registry || !name || !version) {
     throw new Error('Usage: node scripts/assert-unpublished-version.mjs <npm|pypi> <name> <version>');
   }

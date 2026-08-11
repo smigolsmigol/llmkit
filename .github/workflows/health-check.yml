@@ -49,6 +49,22 @@ jobs:
             fi
           }
 
+          check_http_contains() {
+            local name="$1" url="$2" expected="$3"
+            local response status body
+            response=$(curl -sSL -w '\n%{http_code}' \
+              --max-time 15 --retry 2 --retry-all-errors "$url" || true)
+            status="${response##*$'\n'}"
+            body="${response%$'\n'*}"
+            if [ "$status" = "000" ] || [ -z "$status" ]; then
+              record_failure "${name}: connection failed"
+            elif [ "$status" != "200" ]; then
+              record_failure "${name}: got ${status}, expected 200"
+            elif ! printf '%s' "$body" | grep -Fq "$expected"; then
+              record_failure "${name}: missing expected recovery marker"
+            fi
+          }
+
           check_port() {
             local name="$1" host="$2" port="$3"
             local status
@@ -93,7 +109,13 @@ jobs:
           # Parked or private runtime surfaces are checked only on an explicit manual run.
           if [ "$CHECK_RUNTIME" = "true" ]; then
             check_http "Proxy" "https://api.llmkit.sh/health"
-            check_http "Dashboard" "https://llmkit-dashboard.vercel.app/sign-in"
+            check_http_contains "Dashboard recovery" \
+              "https://llmkit.sh/service-restoring" "Controlled restoration"
+            check_http_contains "Homepage recovery disclosure" \
+              "https://llmkit.sh/" "Hosted accounts are temporarily unavailable"
+            check_http_contains "Docs recovery disclosure" \
+              "https://llmkit.sh/docs" \
+              "Hosted account creation and API-key management are temporarily unavailable"
             if [ -n "$HETZNER_IP" ]; then
               check_port "Analytics API" "$HETZNER_IP" 3200
             fi
