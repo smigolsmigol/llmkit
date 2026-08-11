@@ -35,7 +35,11 @@ assert.match(
 );
 assert.match(verifyPackedStep, /await assertPublishedVersion\('npm', '@f3d1\/llmkit-shared', expected\)/);
 assert.doesNotMatch(npmWorkflow, /publint[^\n]*--pack=npm/);
-assert.match(pypiWorkflow, /python -m pytest/);
+const pythonFloorStart = pypiWorkflow.indexOf('      - name: test declared Python floor');
+const pythonFloorEnd = pypiWorkflow.indexOf('\n      - name:', pythonFloorStart + 1);
+assert(pythonFloorStart >= 0 && pythonFloorEnd > pythonFloorStart, 'Python floor step must exist');
+const pythonFloorStep = pypiWorkflow.slice(pythonFloorStart, pythonFloorEnd);
+assert.match(pythonFloorStep, /env:\n\s+PYTHONPATH: src\n\s+run: python -m pytest/);
 assert.match(pypiWorkflow, /python -m pip install --force-reinstall --no-deps dist\/\*\.whl/);
 assert.match(pypiWorkflow, /packages-dir: packages\/python-sdk\/dist\//);
 
