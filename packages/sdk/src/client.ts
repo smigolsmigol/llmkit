@@ -1,6 +1,6 @@
 import type { CostBreakdown, LLMKitConfig, LLMRequest, LLMResponse, TokenUsage } from '@f3d1/llmkit-shared';
 
-const DEFAULT_BASE_URL = 'https://llmkit-proxy.smigolsmigol.workers.dev';
+const DEFAULT_BASE_URL = 'https://api.llmkit.sh';
 
 type ChatRequest = Omit<LLMRequest, 'provider'> & { provider?: string };
 

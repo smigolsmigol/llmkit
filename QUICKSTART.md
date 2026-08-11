@@ -93,7 +93,7 @@ pip install llmkit-sdk
 from openai import OpenAI
 
 client = OpenAI(
-    base_url="https://llmkit-proxy.smigolsmigol.workers.dev/v1",
+    base_url="https://api.llmkit.sh/v1",
     api_key="llmk_your_key_here",
 )
 
@@ -128,7 +128,7 @@ that accepts `http_client` (OpenAI, Anthropic, Mistral, etc.).
 No SDK needed. Point any HTTP client at the proxy.
 
 ```bash
-curl -X POST https://llmkit-proxy.smigolsmigol.workers.dev/v1/chat/completions \
+curl -X POST https://api.llmkit.sh/v1/chat/completions \
   -H "Authorization: Bearer llmk_your_key_here" \
   -H "Content-Type: application/json" \
   -H "x-llmkit-provider-key: sk-your-openai-key" \

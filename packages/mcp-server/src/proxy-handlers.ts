@@ -1,6 +1,6 @@
 import { getBudgets, getCosts, getKeys, getSessions, getUsage, loadConfig } from './client.js';
 
-const DASHBOARD_URL = process.env.LLMKIT_DASHBOARD_URL || 'https://llmkit-dashboard.vercel.app';
+const DASHBOARD_URL = process.env.LLMKIT_DASHBOARD_URL || 'https://llmkit.sh';
 
 export function ok(text: string, structured: Record<string, unknown>) {
   return {
@@ -108,7 +108,7 @@ export async function handleBudgetStatus(args: Record<string, unknown> | undefin
 export async function handleHealth() {
   const config = loadConfig();
   if (!config) {
-    return fail(`LLMKIT_API_KEY required. The llmkit_local_* tools work without a key.\nGet one at ${DASHBOARD_URL}`);
+    return fail(`LLMKIT_API_KEY required. The llmkit_local_* tools work without a key.\nCheck account availability at ${DASHBOARD_URL}`);
   }
   const start = Date.now();
   try {

@@ -8,7 +8,52 @@ let failed = 0;
 function test(name, fn) { tests.push({ name, fn }); }
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
-const { mapFinishReason, parseUsage, flattenPrompt, buildHeaders } = await import('../dist/index.js');
+const { createLLMKit, mapFinishReason, parseUsage, flattenPrompt, buildHeaders } = await import('../dist/index.js');
+
+async function captureGenerateRequest(config) {
+  const originalFetch = globalThis.fetch;
+  let request;
+  globalThis.fetch = async (url, init) => {
+    request = { url: String(url), init };
+    return new Response(JSON.stringify({
+      content: 'ok',
+      finishReason: 'stop',
+      usage: { inputTokens: 1, outputTokens: 1 },
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const model = createLLMKit(config).chat('gpt-4.1');
+    await model.doGenerate({
+      prompt: [{ role: 'user', content: [{ type: 'text', text: 'hello' }] }],
+    });
+    return request;
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+}
+
+test('createLLMKit uses the canonical hosted API origin', async () => {
+  const request = await captureGenerateRequest({ apiKey: 'llmk_test' });
+  assert(
+    request?.url === 'https://api.llmkit.sh/v1/chat/completions',
+    `unexpected URL: ${request?.url}`,
+  );
+});
+
+test('createLLMKit preserves an explicit self-hosted origin', async () => {
+  const request = await captureGenerateRequest({
+    apiKey: 'llmk_test',
+    baseUrl: 'http://127.0.0.1:8787/',
+  });
+  assert(
+    request?.url === 'http://127.0.0.1:8787/v1/chat/completions',
+    `unexpected URL: ${request?.url}`,
+  );
+});
 
 // mapFinishReason
 test('mapFinishReason: stop', () => {

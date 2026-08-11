@@ -1,6 +1,6 @@
 # @f3d1/llmkit-ai-sdk-provider
 
-[Vercel AI SDK](https://sdk.vercel.ai) v6 custom provider for [LLMKit](https://github.com/smigolsmigol/llmkit). Routes requests through the LLMKit proxy with cost tracking, budget enforcement, and provider fallback.
+[Vercel AI SDK](https://sdk.vercel.ai) v6 custom provider for [LLMKit](https://github.com/smigolsmigol/llmkit). Routes requests through the LLMKit proxy with cost tracking, budget enforcement, and provider fallback. Hosted calls require an existing LLMKit API key; `baseUrl` can target a self-hosted deployment.
 
 ## Install
 

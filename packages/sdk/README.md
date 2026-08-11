@@ -1,6 +1,6 @@
 # @f3d1/llmkit-sdk
 
-TypeScript client for [LLMKit](https://github.com/smigolsmigol/llmkit) - cost tracking, provider routing, and budget enforcement for LLM APIs.
+TypeScript client and local cost tracker for [LLMKit](https://github.com/smigolsmigol/llmkit). `CostTracker` runs locally with no account or proxy. The hosted client adds provider routing, request receipts, and budget enforcement for existing LLMKit API keys.
 
 ## Install
 
@@ -10,7 +10,9 @@ npm install @f3d1/llmkit-sdk
 pnpm add @f3d1/llmkit-sdk
 ```
 
-## Quick start
+## Hosted client
+
+Hosted calls require an existing LLMKit API key. Check [llmkit.sh](https://llmkit.sh) for current account and service availability. For local cost estimation with no account, skip to [CostTracker](#costtracker-local-no-proxy).
 
 ```ts
 import { LLMKit } from '@f3d1/llmkit-sdk';
@@ -226,7 +228,7 @@ const unsub = tracker.on((entry) => {
 
 ```ts
 const llm = new LLMKit({
-  apiKey: 'llmk_...',                     // required - your LLMKit API key
+  apiKey: 'llmk_...',                     // required - an existing LLMKit API key
   baseUrl: 'https://my-proxy.example.com', // default: LLMKit cloud proxy
   sessionId: 'agent-run-42',              // attach a session ID to all requests
 });
@@ -234,8 +236,8 @@ const llm = new LLMKit({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `apiKey` | `string` | (required) | LLMKit API key from the dashboard |
-| `baseUrl` | `string` | `https://llmkit-proxy.smigolsmigol.workers.dev` | Proxy URL. Change for self-hosted deployments. |
+| `apiKey` | `string` | (required) | Existing LLMKit API key |
+| `baseUrl` | `string` | `https://api.llmkit.sh` | Proxy URL. Change for self-hosted deployments. |
 | `sessionId` | `string` | `undefined` | Session ID sent with every request |
 
 For self-hosted setups, point `baseUrl` at your own Cloudflare Workers deployment.

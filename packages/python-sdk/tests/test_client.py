@@ -45,7 +45,7 @@ def test_client_sets_base_url():
     with patch("llmkit._client.OpenAI") as mock_openai:
         LLMKit(api_key="llmk_test")
         kw = mock_openai.call_args.kwargs
-        assert kw["base_url"] == "https://llmkit-proxy.smigolsmigol.workers.dev/v1"
+        assert kw["base_url"] == "https://api.llmkit.sh/v1"
         assert kw["api_key"] == "llmk_test"
 
 
@@ -164,10 +164,7 @@ def test_context_manager():
 def test_async_client_sets_base_url():
     with patch("llmkit._client.AsyncOpenAI") as mock_openai:
         AsyncLLMKit(api_key="llmk_test")
-        assert (
-            mock_openai.call_args.kwargs["base_url"]
-            == "https://llmkit-proxy.smigolsmigol.workers.dev/v1"
-        )
+        assert mock_openai.call_args.kwargs["base_url"] == "https://api.llmkit.sh/v1"
 
 
 def test_async_session():
