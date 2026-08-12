@@ -50,17 +50,33 @@ node node_modules/supabase/dist/supabase.js migration list --linked
 node node_modules/supabase/dist/supabase.js db push --linked --dry-run
 ```
 
-Stop unless the pending set matches the repository migration set. Applying migrations is a separate database mutation decision.
+Supabase data-less branches created from an unversioned production project may contain one synthetic
+`remote_schema` migration. That record is a branch bootstrap marker, not proof that the repository
+migrations ran. For a disposable branch only:
+
+1. Generate `db diff --from migrations --to linked --schema public` and retain the output as the
+   pre-migration drift observation.
+2. Mark the synthetic `remote_schema` version reverted and the repository baseline version applied.
+3. Repeat the dry-run. It must name exactly the remaining repository migrations. The first pending
+   migration contains a fail-closed baseline preflight; do not bypass it if it rejects the inherited
+   schema.
+
+Do not repair migration history on production. Applying migrations remains a separate database
+mutation decision.
 
 After approval:
 
 ```powershell
 node node_modules/supabase/dist/supabase.js db push --linked
-node node_modules/supabase/dist/supabase.js test db --linked supabase/tests/database
 node node_modules/supabase/dist/supabase.js db lint --linked --schema public --level warning --fail-on warning
 node node_modules/supabase/dist/supabase.js migration list --linked
+node node_modules/supabase/dist/supabase.js db diff --from migrations --to linked --schema public
 node node_modules/supabase/dist/supabase.js unlink
 ```
+
+The final schema diff must be empty. SQL pgTAP tests remain a local/CI gate because hosted branch
+login roles may not be allowed to execute the `extensions.plan` helper. The hosted proof below is
+the branch's real-consumer gate; a remote pgTAP permission error is `NOT RUN`, never a pass.
 
 ## Guarded deployment
 
