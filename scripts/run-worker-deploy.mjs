@@ -216,7 +216,6 @@ if (!dryRun) {
     }
     if (secretFile) selected.wrangler.push('--secrets-file', secretFile.path);
   }
-  selected.wrangler.push('--yes');
 }
 
 if (dryRun) selected.wrangler.push('--dry-run');
