@@ -8,7 +8,19 @@ let failed = 0;
 function test(name, fn) { tests.push({ name, fn }); }
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
+import { readFile } from 'node:fs/promises';
+
 const mod = await import('../dist/index.js');
+const packageJson = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+);
+
+test('package peer boundary matches its AI SDK v6 provider protocol', () => {
+  assert(
+    packageJson.peerDependencies?.ai === '>=6.0.0 <7.0.0',
+    `unexpected ai peer range: ${packageJson.peerDependencies?.ai}`,
+  );
+});
 
 test('createLLMKit is exported and is a function', () => {
   assert(typeof mod.createLLMKit === 'function', 'createLLMKit should be a function');
