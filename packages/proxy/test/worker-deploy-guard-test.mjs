@@ -93,6 +93,10 @@ assert(
   'Deploy guard does not bind staging to the source commit.',
 );
 assert(
+  !readFileSync(deployScript, 'utf8').includes("'--yes'"),
+  'Deploy guard passes the removed --yes option to Wrangler.',
+);
+assert(
   readFileSync(deployScript, 'utf8').includes("'--format',\n      'json'")
     && readFileSync(deployScript, 'utf8').includes("'--secrets-file'")
     && readFileSync(deployScript, 'utf8').includes("'--account-id'")
