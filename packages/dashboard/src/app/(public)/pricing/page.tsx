@@ -1,66 +1,51 @@
 
 import type { Metadata } from 'next';
-import { PublicFooter } from '@/components/public-footer';
-import { PublicNavStatic } from '@/components/public-nav-static';
+import { PublicPageHero } from '@/components/public/public-page-hero';
+import { PublicShell } from '@/components/public/public-shell';
 import { TrackClick } from '@/components/track-event';
+import {
+  getPublicPricingModels,
+  getPublicPricingProviders,
+  PRICING_SNAPSHOT_DATE,
+} from '@/lib/public-pricing';
 import { RECOVERY_PUBLIC_CTA } from '@/lib/public-recovery';
 
-export const metadata: Metadata = {
-  title: 'LLM API Pricing Comparison 2026 - 730+ Models, 11 Providers | LLMKit',
-  description: 'Compare AI API pricing across OpenAI, Anthropic, Google Gemini, xAI Grok, DeepSeek, Mistral, Groq, and more. 730+ models with input, output, and cache token costs.',
-  openGraph: {
-    title: 'LLM API Pricing Comparison 2026 - All Models',
-    description: 'Compare costs across 730+ AI models from 11 providers. Updated weekly.',
-  },
-};
+export function generateMetadata(): Metadata {
+  const models = getPublicPricingModels();
+  const providers = getPublicPricingProviders(models);
+  const description = `Reference input and output rates for ${models.length} model entries across ${providers.length} populated provider tables. Bundled snapshot dated ${PRICING_SNAPSHOT_DATE}; model modality is not encoded.`;
 
-interface ModelPrice {
-  provider: string;
-  model: string;
-  input: number;
-  output: number;
-  cacheRead?: number;
+  return {
+    title: `LLM API pricing reference - ${models.length} model entries | LLMKit`,
+    description,
+    openGraph: {
+      title: 'LLM API pricing reference | LLMKit',
+      description,
+    },
+  };
 }
 
-async function getPricing(): Promise<ModelPrice[]> {
-  const { PRICING } = await import('@f3d1/llmkit-shared');
-
-  const models: ModelPrice[] = [];
-  for (const [provider, providerModels] of Object.entries(PRICING)) {
-    for (const [model, p] of Object.entries(providerModels)) {
-      models.push({
-        provider,
-        model,
-        input: p.inputPerMillion,
-        output: p.outputPerMillion,
-        cacheRead: p.cacheReadPerMillion,
-      });
-    }
-  }
-  models.sort((a, b) => a.input - b.input);
-  return models;
-}
-
-export default async function PricingPage() {
-  const models = await getPricing();
-  const providers = [...new Set(models.map(m => m.provider))].sort();
+export default function PricingPage() {
+  const models = getPublicPricingModels();
+  const providers = getPublicPricingProviders(models);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-100">
-      <PublicNavStatic />
+    <PublicShell>
+      <PublicPageHero
+        eyebrow={`Pricing index / snapshot ${PRICING_SNAPSHOT_DATE}`}
+        title="Provider pricing without the tab graveyard."
+        description={<>{models.length} priced model entries across {providers.length} populated provider tables. The bundled schema exposes input and output rates but does not encode model modality.</>}
+        aside={(
+          <a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500" className="public-panel-soft block rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500 transition hover:border-violet-300/25 hover:text-zinc-300">
+            <span className="text-cyan-300">GET</span> /v1/pricing/compare<br />programmatic access
+          </a>
+        )}
+      />
 
-      <div className="mx-auto max-w-6xl px-6 pt-12 pb-16">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          LLM API Pricing Comparison
-        </h1>
-        <p className="mt-3 text-lg text-zinc-400">
-          {models.length} models across {providers.length} providers. Prices per 1M tokens in USD. Updated weekly.
-        </p>
-
-        <p className="mt-2 text-sm text-zinc-500">
-          Providers: {providers.join(', ')}. Data sourced from official pricing pages.
-          Use the <a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500" className="text-violet-400 hover:text-violet-300">free API</a> for programmatic access.
-        </p>
+      <div className="mx-auto max-w-6xl px-6 pb-16">
+        <div className="public-panel-soft rounded-lg px-4 py-3 text-xs leading-5 text-zinc-500">
+          This is a bundled reference snapshot dated {PRICING_SNAPSHOT_DATE}, not a live quote. For text models, interpret the /1M columns as token rates only after verifying the provider's billing unit. Non-text modalities may use different units that this snapshot does not represent.
+        </div>
 
         {providers.map(provider => {
           const providerModels = models.filter(m => m.provider === provider);
@@ -68,7 +53,7 @@ export default async function PricingPage() {
             <section key={provider} className="mt-10" id={provider}>
               <h2 className="text-xl font-semibold capitalize mb-3"><a href={`/providers/${provider}`} className="hover:text-violet-400 transition">{provider}</a></h2>
               <p className="text-xs text-zinc-500 mb-2">{providerModels.length} models</p>
-              <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+              <div className="public-panel-soft overflow-x-auto rounded-lg">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-500">
@@ -84,7 +69,7 @@ export default async function PricingPage() {
                         <td className="px-3 py-1.5 font-mono text-xs">{m.model}</td>
                         <td className="px-3 py-1.5 text-right text-zinc-300">${m.input}</td>
                         <td className="px-3 py-1.5 text-right text-zinc-300">${m.output}</td>
-                        <td className="px-3 py-1.5 text-right text-zinc-500">{m.cacheRead ? `$${m.cacheRead}` : '-'}</td>
+                        <td className="px-3 py-1.5 text-right text-zinc-500">{m.cacheRead !== undefined ? `$${m.cacheRead}` : '-'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -94,11 +79,11 @@ export default async function PricingPage() {
           );
         })}
 
-        <div className="mt-16 rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 text-center">
-          <h2 className="text-lg font-semibold">Track what your AI agents actually cost</h2>
+        <div className="public-panel mt-16 rounded-xl p-6 text-center">
+          <h2 className="text-lg font-semibold">Move from list-price estimates to request evidence</h2>
           <p className="mt-2 text-sm text-zinc-400">
-            LLMKit sits between your app and AI providers. Every request gets logged with token counts and dollar costs.
-            Budget limits reject requests before they reach the provider.
+            Local clients can estimate supported responses from returned usage. The gateway path adds request identity,
+            persisted cost evidence, and pre-dispatch budget checks for existing authenticated accounts.
           </p>
           <div className="mt-4 flex items-center justify-center gap-3">
             <TrackClick event="cta_click" properties={{ label: "local_setup", location: "pricing" }} href={RECOVERY_PUBLIC_CTA.href} className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
@@ -111,7 +96,6 @@ export default async function PricingPage() {
         </div>
       </div>
 
-      <PublicFooter />
-    </div>
+    </PublicShell>
   );
 }

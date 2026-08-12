@@ -13,6 +13,7 @@ interface ModelPrice {
 interface Props {
   models: ModelPrice[];
   providers: string[];
+  pricingSnapshotDate: string;
 }
 
 function fmt(n: number): string {
@@ -30,7 +31,7 @@ const PRESETS = [
   { label: 'RAG pipeline (100 queries)', input: 500000, output: 100000 },
 ];
 
-export function Calculator({ models, providers }: Props) {
+export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
   const [inputTokens, setInputTokens] = useState(1000);
   const [outputTokens, setOutputTokens] = useState(500);
   const [monthlyRequests, setMonthlyRequests] = useState(1000);
@@ -39,10 +40,13 @@ export function Calculator({ models, providers }: Props) {
   const [sortBy, setSortBy] = useState<'total' | 'input' | 'output'>('total');
 
   const results = useMemo(() => {
+    const modelSearch = search.trim().toLowerCase();
+    if (!modelSearch) return [];
+
     const perM = 1_000_000;
     return models
       .filter(m => selectedProviders.has(m.provider))
-      .filter(m => !search || m.model.toLowerCase().includes(search.toLowerCase()) || m.provider.toLowerCase().includes(search.toLowerCase()))
+      .filter(m => m.model.toLowerCase().includes(modelSearch))
       .map(m => {
         const inputCost = (inputTokens / perM) * m.input;
         const outputCost = (outputTokens / perM) * m.output;
@@ -61,7 +65,7 @@ export function Calculator({ models, providers }: Props) {
   };
 
   return (
-    <div className="mt-8 space-y-6">
+    <div className="public-panel mt-2 space-y-6 rounded-xl p-5 sm:p-7">
       {/* Token inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
@@ -113,7 +117,7 @@ export function Calculator({ models, providers }: Props) {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <input
-          placeholder="Search models..."
+          placeholder="Search a verified token-billed model..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm focus:border-violet-500 focus:outline-none"
@@ -136,8 +140,12 @@ export function Calculator({ models, providers }: Props) {
         </div>
       </div>
 
+      <div className="rounded-lg border border-amber-400/20 bg-amber-400/[0.05] px-4 py-3 text-xs leading-5 text-amber-100/70">
+        The source snapshot has no modality field. Use these estimates only for models you have independently verified are billed per input and output token. The sorted rows are not a cross-modality cheapest-model ranking.
+      </div>
+
       {/* Results table */}
-      <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+      <div className="overflow-x-auto rounded-lg border border-white/[0.07] bg-black/25">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-500">
@@ -156,8 +164,17 @@ export function Calculator({ models, providers }: Props) {
             </tr>
           </thead>
           <tbody>
-            {results.map((r, i) => (
-              <tr key={`${r.provider}-${r.model}`} className={`border-b border-white/[0.04] hover:bg-white/[0.02] ${i < 3 ? 'bg-emerald-500/[0.03]' : ''}`}>
+            {results.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-3 py-8 text-center text-xs text-zinc-600">
+                  {search.trim()
+                    ? 'No model entries match the current provider and model filters.'
+                    : 'Search for a specific model you have verified as token-billed to calculate an estimate.'}
+                </td>
+              </tr>
+            )}
+            {results.map((r) => (
+              <tr key={`${r.provider}-${r.model}`} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
                 <td className="px-3 py-1.5 text-xs text-zinc-500 capitalize">{r.provider}</td>
                 <td className="px-3 py-1.5 font-mono text-xs">{r.model}</td>
                 <td className="px-3 py-1.5 text-right text-zinc-400">{fmt(r.inputCost)}</td>
@@ -171,7 +188,8 @@ export function Calculator({ models, providers }: Props) {
       </div>
 
       <p className="text-xs text-zinc-600 text-center">
-        Showing top 50 cheapest models. {models.length} total across {providers.length} providers. Data from pricing.json, updated weekly.
+        Search-gated estimates cover up to 50 matching rows from {models.length} model entries across {providers.length} populated provider tables.
+        {' '}Bundled snapshot: {pricingSnapshotDate}. For verified token-billed models, estimates exclude cache tiers, tools, media, batch discounts, taxes, and negotiated rates.
         {' '}<a href="/pricing" className="text-violet-400 hover:text-violet-300">Full table</a>
         {' | '}<a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500" className="text-violet-400 hover:text-violet-300">API</a>
       </p>

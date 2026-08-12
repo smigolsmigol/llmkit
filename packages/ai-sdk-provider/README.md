@@ -1,6 +1,6 @@
 # @f3d1/llmkit-ai-sdk-provider
 
-[Vercel AI SDK](https://sdk.vercel.ai) v6 custom provider for [LLMKit](https://github.com/smigolsmigol/llmkit). Routes requests through the LLMKit proxy with cost tracking, budget enforcement, and provider fallback. Hosted calls require an existing LLMKit API key; `baseUrl` can target a self-hosted deployment.
+[Vercel AI SDK](https://sdk.vercel.ai) v6 custom provider for [LLMKit](https://github.com/smigolsmigol/llmkit). Routes requests through the LLMKit proxy with cost tracking, budget enforcement, and provider fallback. Hosted calls require an existing LLMKit API key while new account creation is closed; `baseUrl` can target a self-hosted deployment.
 
 ## Install
 
@@ -14,7 +14,7 @@ npm install @f3d1/llmkit-ai-sdk-provider ai
 import { generateText } from 'ai';
 import { createLLMKit } from '@f3d1/llmkit-ai-sdk-provider';
 
-const llmkit = createLLMKit({ apiKey: 'llmk_...' });
+const llmkit = createLLMKit({ apiKey: process.env.LLMKIT_API_KEY! });
 
 const { text, providerMetadata } = await generateText({
   model: llmkit.chat('claude-sonnet-4-6'),

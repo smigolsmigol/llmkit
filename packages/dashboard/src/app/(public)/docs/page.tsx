@@ -1,23 +1,23 @@
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { PublicFooter } from '@/components/public-footer';
-import { PublicNavStatic } from '@/components/public-nav-static';
+import { PublicPageHero } from '@/components/public/public-page-hero';
+import { PublicShell } from '@/components/public/public-shell';
 import { RECOVERY_STATUS_HREF } from '@/lib/public-recovery';
 
 export const metadata: Metadata = {
   title: 'Getting Started - LLMKit',
-  description: 'Three ways to track AI costs: MCP server for Claude Code/Cursor/Cline, Python SDK, or CLI. Get running in 30 seconds.',
+  description: 'Choose a verified LLMKit surface: local MCP tools, Python response tracking, CLI interception, or the existing-key gateway client.',
   openGraph: {
     title: 'LLMKit - Getting Started',
-    description: 'Track AI costs in 30 seconds. MCP server, Python SDK, or CLI.',
+    description: 'Local cost evidence first, gateway enforcement when the authenticated boundary is available.',
     url: 'https://llmkit.sh/docs',
   },
 };
 
 function CodeBlock({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-[#111]">
+    <div className="public-panel overflow-hidden rounded-xl">
       <div className="border-b border-white/[0.06] px-4 py-2.5">
         <span className="text-xs text-zinc-500">{title}</span>
       </div>
@@ -28,34 +28,30 @@ function CodeBlock({ title, children }: { title: string; children: React.ReactNo
 
 export default function DocsPage() {
   return (
-    <div className="relative min-h-screen bg-[#0a0a0a] text-white selection:bg-violet-500/30">
-      <div
-        className="pointer-events-none fixed inset-0 z-50 opacity-[0.02]"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
+    <PublicShell>
+      <PublicPageHero
+        eyebrow="Docs / local first"
+        title="Start with one surface, not a platform migration."
+        description="Run the local tools in seconds. Add application instrumentation or gateway enforcement only when the ownership boundary calls for it."
+        aside={(
+          <div className="public-panel-soft rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500">
+            <p className="text-emerald-300">available now</p>
+            <p className="mt-1">MCP / CLI / Python tracker</p>
+            <p>no hosted account required</p>
+          </div>
+        )}
       />
 
-      <PublicNavStatic />
-
-      <div className="relative">
-        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[400px] w-full max-w-[700px] bg-[radial-gradient(ellipse,_rgba(34,211,238,0.06),_transparent_70%)]" />
-        <div className="relative mx-auto max-w-3xl px-6 pt-16 pb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Getting Started</h1>
-          <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-zinc-400">
-            Three ways to track costs. Pick what fits your workflow.
-          </p>
-        </div>
-      </div>
-
-      <div className="mx-auto max-w-3xl space-y-16 px-6 pb-16">
+      <div className="mx-auto max-w-4xl space-y-14 px-6 pb-16">
 
         {/* MCP Server */}
-        <section id="local-setup" className="scroll-mt-20">
+        <section id="local-setup" className="scroll-mt-24 border-t border-white/[0.07] pt-8">
           <div className="mb-2 flex items-center gap-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-violet-500/10 font-mono text-sm font-bold text-violet-400">1</span>
             <h2 className="text-lg font-semibold">MCP Server</h2>
           </div>
           <p className="mb-4 text-sm text-zinc-400">
-            Cost tracking inside Claude Code, Cursor, or Cline. Local tools work without an account.
+            Inspect supported Claude Code sessions and Cline task data. Cline data can be discovered in VS Code, Cursor, Windsurf, and remote server storage.
           </p>
           <CodeBlock title="install + run">
             <p><span className="text-emerald-400">$</span> <span className="text-zinc-300">npx @f3d1/llmkit-mcp-server</span></p>
@@ -66,7 +62,7 @@ export default function DocsPage() {
   "mcpServers": {
     "llmkit": {
       "command": "npx",
-      "args": ["@f3d1/llmkit-mcp-server"]
+      "args": ["-y", "@f3d1/llmkit-mcp-server"]
     }
   }
 }`}</pre>
@@ -79,13 +75,13 @@ export default function DocsPage() {
         </section>
 
         {/* Python SDK */}
-        <section>
+        <section className="border-t border-white/[0.07] pt-8">
           <div className="mb-2 flex items-center gap-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 font-mono text-sm font-bold text-cyan-400">2</span>
             <h2 className="text-lg font-semibold">Python SDK</h2>
           </div>
           <p className="mb-4 text-sm text-zinc-400">
-            One-line integration. Wraps any OpenAI-compatible SDK via httpx transport hooks. Zero migration.
+            Add an httpx transport hook to estimate cost from supported OpenAI- and Anthropic-style chat responses. No LLMKit account or proxy is required.
           </p>
           <CodeBlock title="install">
             <p><span className="text-emerald-400">$</span> <span className="text-zinc-300">pip install llmkit-sdk</span></p>
@@ -107,18 +103,18 @@ export default function DocsPage() {
             </CodeBlock>
           </div>
           <p className="mt-3 text-xs text-zinc-500">
-            Works with OpenAI, Anthropic, Gemini, xAI, DeepSeek, Groq, Together, Fireworks, Mistral. Any SDK that accepts http_client.
+            Use this path only with clients that accept an httpx client. Estimates use the bundled pricing snapshot and the usage fields returned by the provider.
           </p>
         </section>
 
         {/* TypeScript */}
-        <section>
+        <section className="border-t border-white/[0.07] pt-8">
           <div className="mb-2 flex items-center gap-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-500/10 font-mono text-sm font-bold text-blue-400">3</span>
-            <h2 className="text-lg font-semibold">TypeScript SDK</h2>
+            <h2 className="text-lg font-semibold">TypeScript gateway SDK</h2>
           </div>
           <p className="mb-4 text-sm text-zinc-400">
-            Full client with sessions, cost tracking, and streaming. Also available as a Vercel AI SDK provider.
+            Typed sessions, cost metadata, and streaming through the hosted gateway. This path requires an existing LLMKit API key while new account creation is closed.
           </p>
           <CodeBlock title="install">
             <p><span className="text-emerald-400">$</span> <span className="text-zinc-300">npm install @f3d1/llmkit-sdk</span></p>
@@ -128,7 +124,7 @@ export default function DocsPage() {
               <div className="space-y-1 text-zinc-300">
                 <p><span className="text-violet-400">import</span> {'{'} LLMKit {'}'} <span className="text-violet-400">from</span> <span className="text-emerald-400">&apos;@f3d1/llmkit-sdk&apos;</span></p>
                 <p className="text-zinc-600">&nbsp;</p>
-                <p><span className="text-violet-400">const</span> kit = <span className="text-violet-400">new</span> <span className="text-amber-300">LLMKit</span>({'{'} apiKey: process.env.LLMKIT_KEY {'}'})</p>
+                <p><span className="text-violet-400">const</span> kit = <span className="text-violet-400">new</span> <span className="text-amber-300">LLMKit</span>({'{'} apiKey: process.env.LLMKIT_API_KEY! {'}'})</p>
                 <p><span className="text-violet-400">const</span> res = <span className="text-violet-400">await</span> kit.<span className="text-amber-300">chat</span>({'{'}</p>
                 <p>  provider: <span className="text-emerald-400">&apos;openai&apos;</span>,</p>
                 <p>  model: <span className="text-emerald-400">&apos;gpt-4o&apos;</span>,</p>
@@ -142,33 +138,36 @@ export default function DocsPage() {
         </section>
 
         {/* CLI */}
-        <section>
+        <section className="border-t border-white/[0.07] pt-8">
           <div className="mb-2 flex items-center gap-3">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 font-mono text-sm font-bold text-amber-400">4</span>
             <h2 className="text-lg font-semibold">CLI</h2>
           </div>
           <p className="mb-4 text-sm text-zinc-400">
-            Wrap any command. The CLI intercepts API calls, prints a cost summary when the process exits. Zero code changes.
+            Wrap a command that uses an OpenAI or Anthropic client honoring the standard base-URL environment variable. The CLI runs a local proxy and prints a cost summary on exit.
           </p>
           <CodeBlock title="wrap a command">
             <p><span className="text-emerald-400">$</span> <span className="text-zinc-300">npx @f3d1/llmkit-cli -- python my_agent.py</span></p>
           </CodeBlock>
           <div className="mt-4">
-            <CodeBlock title="output">
+            <CodeBlock title="illustrative output shape">
               <div className="text-xs text-zinc-400">
                 <p className="text-violet-400 font-bold">    LLMKIT</p>
                 <p>&nbsp;</p>
                 <p>    <span className="text-white font-bold">$0.0847</span> <span className="text-zinc-600">total</span>  12 requests  <span className="text-zinc-600">34.2s</span>  <span className="text-zinc-600">~$8.96/hr</span></p>
                 <p>&nbsp;</p>
-                <p>    <span className="text-zinc-600">claude-sonnet-4-20250514</span>  8 reqs   $0.0623  <span className="text-violet-400">████████████████</span><span className="text-zinc-700">░░░░</span></p>
-                <p>    <span className="text-zinc-600">gpt-4o-mini</span>              4 reqs   $0.0224  <span className="text-cyan-400">██████</span><span className="text-zinc-700">░░░░░░░░░░░░░░</span></p>
+                <p>    <span className="text-zinc-600">claude-sonnet-4-20250514</span>  8 reqs   $0.0623  <span className="text-violet-400">================</span><span className="text-zinc-700">----</span></p>
+                <p>    <span className="text-zinc-600">gpt-4o-mini</span>              4 reqs   $0.0224  <span className="text-cyan-400">======</span><span className="text-zinc-700">--------------</span></p>
               </div>
             </CodeBlock>
           </div>
+          <p className="mt-3 text-xs text-zinc-500">
+            The command is unchanged, but coverage is protocol-specific. Calls that bypass OPENAI_BASE_URL or ANTHROPIC_BASE_URL are not observed.
+          </p>
         </section>
 
         {/* Hosted API Gateway */}
-        <section>
+        <section className="border-t border-white/[0.07] pt-8">
           <h2 className="mb-2 text-lg font-semibold">Hosted API gateway</h2>
           <p className="mb-4 text-sm text-zinc-400">
             Hosted account creation and API-key management are temporarily unavailable while the authenticated service is restored.
@@ -177,7 +176,7 @@ export default function DocsPage() {
             <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
               <p className="text-sm font-medium text-zinc-200">Available now</p>
               <p className="mt-1 text-xs text-zinc-500">
-                The local SDK, CLI, and MCP paths above remain available without an LLMKit account.
+                The MCP local tools, CLI, and Python tracked() path above remain available without an LLMKit account.
               </p>
             </div>
             <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
@@ -193,7 +192,7 @@ export default function DocsPage() {
         </section>
 
         {/* links */}
-        <section>
+        <section className="border-t border-white/[0.07] pt-8">
           <h2 className="mb-4 text-lg font-semibold">Resources</h2>
           <div className="grid gap-2 sm:grid-cols-2">
             {[
@@ -218,7 +217,6 @@ export default function DocsPage() {
         </section>
       </div>
 
-      <PublicFooter />
-    </div>
+    </PublicShell>
   );
 }

@@ -5,7 +5,7 @@ import { generateText, streamText } from 'ai'
 import { createLLMKit } from '@f3d1/llmkit-ai-sdk-provider'
 
 const llmkit = createLLMKit({
-  apiKey: process.env.LLMKIT_KEY!,
+  apiKey: process.env.LLMKIT_API_KEY!,
   provider: 'anthropic',
   // baseUrl: 'http://localhost:8787', // uncomment for local dev
 })

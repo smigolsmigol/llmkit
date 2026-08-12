@@ -1,270 +1,159 @@
-
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ProviderIcon } from '@/components/provider-icons';
-import { PublicFooter } from '@/components/public-footer';
-import { PublicNavStatic } from '@/components/public-nav-static';
-import { TerminalDemo } from '@/components/terminal-demo';
+import { BrandSignal } from '@/components/public/brand-signal';
+import { DeveloperQuickstart } from '@/components/public/developer-quickstart';
+import { PublicShell } from '@/components/public/public-shell';
 import { TrackClick } from '@/components/track-event';
 import { RECOVERY_PUBLIC_CTA, RECOVERY_STATUS_HREF } from '@/lib/public-recovery';
 
 export const metadata: Metadata = {
-  title: 'LLMKit - Know what your AI agents cost',
-  description: 'Open-source API gateway that tracks every AI request with token counts and dollar costs. Budget limits reject requests before reaching the provider. 11 providers, 730+ models.',
+  title: 'LLMKit - Cost control for AI systems',
+  description:
+    'Open-source cost attribution and pre-dispatch budget enforcement across SDK, CLI, MCP, and gateway workflows.',
   openGraph: {
-    title: 'LLMKit - Know what your AI agents cost',
-    description: 'Track spend, enforce budgets, and log every request across OpenAI, Anthropic, Gemini, xAI, and 7 more providers.',
+    title: 'LLMKit - Cost control for AI systems',
+    description: 'Give every AI request an identity, a budget decision, and an inspectable receipt.',
   },
 };
 
+const lifecycle = [
+  ['01', 'Identify', 'Bind provider, model, key, session, and price to one request.'],
+  ['02', 'Reserve', 'Hold the estimated cost against the budget before dispatch.'],
+  ['03', 'Decide', 'Allow or reject at the boundary, before provider spend occurs.'],
+  ['04', 'Settle', 'Reconcile actual usage and preserve the decision trail.'],
+] as const;
 
-const providers = [
-  { id: 'anthropic', name: 'Anthropic', models: 29, bg: 'bg-orange-500/15 text-orange-400', accent: 'border-l-orange-400' },
-  { id: 'openai', name: 'OpenAI', models: 145, bg: 'bg-emerald-500/15 text-emerald-400', accent: 'border-l-emerald-400' },
-  { id: 'gemini', name: 'Google Gemini', models: 50, bg: 'bg-blue-500/15 text-blue-400', accent: 'border-l-blue-400' },
-  { id: 'xai', name: 'xAI Grok', models: 39, bg: 'bg-zinc-500/15 text-zinc-300', accent: 'border-l-zinc-300' },
-  { id: 'deepseek', name: 'DeepSeek', models: 6, bg: 'bg-sky-500/15 text-sky-400', accent: 'border-l-sky-400' },
-  { id: 'groq', name: 'Groq', models: 37, bg: 'bg-orange-500/15 text-orange-300', accent: 'border-l-orange-300' },
-  { id: 'mistral', name: 'Mistral', models: 63, bg: 'bg-amber-500/15 text-amber-400', accent: 'border-l-amber-400' },
-  { id: 'together', name: 'Together', models: 105, bg: 'bg-violet-500/15 text-violet-400', accent: 'border-l-violet-400' },
-  { id: 'fireworks', name: 'Fireworks', models: 257, bg: 'bg-red-500/15 text-red-400', accent: 'border-l-red-400' },
-  { id: 'ollama', name: 'Ollama', models: 0, bg: 'bg-zinc-500/15 text-zinc-400', accent: 'border-l-zinc-500', tag: 'local' },
-  { id: 'openrouter', name: 'OpenRouter', models: 0, bg: 'bg-purple-500/15 text-purple-400', accent: 'border-l-purple-400', tag: 'meta-gateway' },
+const surfaces = [
+  {
+    label: 'MCP',
+    title: 'Inspect coding-agent sessions',
+    body: 'Read supported Claude Code sessions and Cline task data without an LLMKit account.',
+    href: '/mcp',
+  },
+  {
+    label: 'CLI',
+    title: 'Wrap an existing process',
+    body: 'Add a cost summary to an agent command without changing its application code.',
+    href: '/docs#local-setup',
+  },
+  {
+    label: 'SDK',
+    title: 'Instrument the request in process',
+    body: 'Use typed Python and TypeScript clients when attribution belongs in your code.',
+    href: '/docs#local-setup',
+  },
+  {
+    label: 'API',
+    title: 'Move enforcement to the gateway',
+    body: 'Apply the same identity and budget policy across provider-compatible traffic.',
+    href: '/docs#local-setup',
+  },
 ];
 
 export default function Home() {
-  const { href: ctaHref, label: ctaLabel } = RECOVERY_PUBLIC_CTA;
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-[#0a0a0a] text-white selection:bg-violet-500/30">
-      <div
-        className="pointer-events-none fixed inset-0 z-50 opacity-[0.02]"
-        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")` }}
-      />
+    <PublicShell>
+      <section className="mx-auto grid max-w-6xl gap-10 px-6 pb-14 pt-12 lg:grid-cols-[minmax(0,1fr)_minmax(390px,.9fr)] lg:items-center lg:pt-16">
+        <div>
+          <div className="mb-5 flex flex-wrap items-center gap-3">
+            <span className="public-kicker">LLMKit / request control</span>
+            <span className="h-px w-8 bg-zinc-800" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-600">Open source / MIT</span>
+          </div>
 
-      <PublicNavStatic />
+          <h1 className="public-display max-w-[13ch] text-white">
+            Cost control for agents that actually run.
+          </h1>
 
-      {/* hero - split layout */}
-      <div className="relative overflow-hidden">
-        <div className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 h-[600px] w-full max-w-[900px] bg-[radial-gradient(ellipse,_rgba(192,132,252,0.08),_transparent_70%)]" />
+          <p className="mt-6 max-w-xl text-base leading-7 text-zinc-400 sm:text-lg">
+            Give every request an identity, a budget decision, and a receipt. Start locally, then move
+            enforcement to the gateway when the system needs it.
+          </p>
 
-        <div className="relative mx-auto max-w-6xl px-6 pt-16 pb-12">
-          <div className="grid items-center gap-12 md:grid-cols-2">
-            {/* left: text */}
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link
+              href={RECOVERY_PUBLIC_CTA.href}
+              className="inline-flex h-10 items-center rounded-md bg-zinc-100 px-5 text-sm font-semibold text-zinc-950 transition hover:bg-white"
+            >
+              Start locally
+            </Link>
+            <TrackClick
+              event="cta_click"
+              properties={{ label: 'view_source', location: 'signal_hero' }}
+              href="https://github.com/smigolsmigol/llmkit"
+              className="inline-flex h-10 items-center rounded-md border border-zinc-800 bg-zinc-950/50 px-5 text-sm font-medium text-zinc-300 transition hover:border-violet-300/30 hover:text-white"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Read the source
+            </TrackClick>
+          </div>
+
+          <Link
+            href={RECOVERY_STATUS_HREF}
+            className="mt-6 inline-flex max-w-xl items-start gap-2 font-mono text-[11px] leading-5 text-zinc-500 transition hover:text-zinc-300"
+          >
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300 shadow-[0_0_9px_rgba(252,211,77,.45)]" />
+            Hosted accounts are temporarily unavailable. Local tools remain available.
+          </Link>
+        </div>
+
+        <BrandSignal />
+      </section>
+
+      <section className="mx-auto max-w-6xl px-6 pb-16">
+        <DeveloperQuickstart />
+      </section>
+
+      <section className="border-y border-white/[0.06] bg-white/[0.012]">
+        <div className="mx-auto max-w-6xl px-6 py-16">
+          <div className="grid gap-9 lg:grid-cols-[250px_1fr]">
             <div>
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.03] px-4 py-1.5 text-xs text-zinc-400">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Open source, MIT licensed
-              </div>
-
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-                Track what your<br />AI agents{' '}
-                <span className="bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent">spend</span>.
-              </h1>
-
-              <p className="mt-6 max-w-md text-lg leading-relaxed text-zinc-400">
-                Set a dollar limit per key, session, or user.
-                Requests get rejected before they reach the provider.
-              </p>
-
-              <div className="mt-8 flex items-center gap-3">
-                <Link
-                  href={ctaHref}
-                  className="rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-500 transition"
-                >
-                  {ctaLabel}
-                </Link>
-                <TrackClick
-                  event="cta_click"
-                  properties={{ label: "view_source", location: "hero" }}
-                  href="https://github.com/smigolsmigol/llmkit"
-                  className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-6 py-2.5 text-sm text-zinc-300 hover:bg-white/[0.06] hover:text-white transition"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  View source
-                </TrackClick>
-              </div>
-
-              <p className="mt-4 text-xs text-zinc-600">
-                by{' '}
-                <a href="https://github.com/smigolsmigol" className="text-zinc-500 hover:text-zinc-300 transition" target="_blank" rel="noopener noreferrer">
-                  @smigolsmigol
-                </a>
+              <p className="public-kicker">The request lifecycle</p>
+              <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">A small boundary with hard edges.</h2>
+              <p className="mt-4 text-sm leading-6 text-zinc-500">
+                In gateway mode, pricing describes the request. Enforcement decides whether it is allowed to become spend.
               </p>
             </div>
-
-            {/* right: floating provider icons */}
-            <div className="relative hidden h-[420px] md:block">
-              {providers.map((p, i) => {
-                const positions = [
-                  { top: '5%', left: '15%', rotate: '-6deg', scale: '1.1' },
-                  { top: '2%', left: '55%', rotate: '4deg', scale: '1.2' },
-                  { top: '8%', left: '85%', rotate: '-3deg', scale: '0.95' },
-                  { top: '28%', left: '5%', rotate: '5deg', scale: '1' },
-                  { top: '32%', left: '40%', rotate: '-4deg', scale: '1.15' },
-                  { top: '25%', left: '72%', rotate: '7deg', scale: '1.05' },
-                  { top: '52%', left: '18%', rotate: '-5deg', scale: '1.1' },
-                  { top: '55%', left: '50%', rotate: '3deg', scale: '0.9' },
-                  { top: '48%', left: '80%', rotate: '-7deg', scale: '1' },
-                  { top: '75%', left: '10%', rotate: '4deg', scale: '0.95' },
-                  { top: '72%', left: '55%', rotate: '-3deg', scale: '1.05' },
-                ];
-                const pos = positions[i] ?? { top: '50%', left: '50%', rotate: '0deg', scale: '1' };
-                return (
-                  <div
-                    key={p.name}
-                    className="absolute rounded-xl border border-white/[0.08] bg-[#111] p-3 shadow-lg shadow-black/30 transition hover:-translate-y-1 hover:shadow-xl"
-                    style={{
-                      top: pos.top,
-                      left: pos.left,
-                      transform: `rotate(${pos.rotate}) scale(${pos.scale})`,
-                    }}
-                  >
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${p.bg}`}>
-                      <ProviderIcon provider={p.id} className="h-5 w-5" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <ol className="grid gap-px overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.07] sm:grid-cols-2 xl:grid-cols-4">
+              {lifecycle.map(([index, title, body]) => (
+                <li key={index} className="bg-[#0b0c11] p-5">
+                  <p className="font-mono text-[10px] text-violet-300">{index}</p>
+                  <h3 className="mt-7 text-sm font-semibold text-zinc-100">{title}</h3>
+                  <p className="mt-2 text-xs leading-5 text-zinc-500">{body}</p>
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* terminal */}
-      <div className="mx-auto max-w-3xl px-6 pb-10">
-        <TerminalDemo />
-      </div>
-
-      {/* three pillars */}
-      <div className="mx-auto max-w-5xl px-6 pb-12">
-        <div className="grid gap-4 sm:grid-cols-3">
-          {/* MCP Server */}
-          <Link href="/mcp" className="group">
-            <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition hover:border-violet-500/20 hover:bg-white/[0.04]">
-              <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10 text-violet-400">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>
-              </div>
-              <h3 className="text-base font-semibold">MCP Server</h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                11 tools for cost tracking inside your IDE. 5 work locally by reading Claude Code, Cursor, and Cline session data. No account needed.
-              </p>
-              <p className="mt-4 text-xs text-violet-400 group-hover:text-violet-300 transition">
-                Learn more {'->'}
-              </p>
-            </div>
-          </Link>
-
-          {/* API Gateway */}
-          <Link href="/docs" className="group">
-            <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition hover:border-cyan-500/20 hover:bg-white/[0.04]">
-              <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
-              </div>
-              <h3 className="text-base font-semibold">API Gateway</h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Budget enforcement that actually blocks requests. Reservation pattern: estimate before, reject if over, settle after. Per-key and per-session limits.
-              </p>
-              <p className="mt-4 text-xs text-cyan-400 group-hover:text-cyan-300 transition">
-                Set up locally {'->'}
-              </p>
-            </div>
-          </Link>
-
-          {/* Dashboard */}
-          <Link href={RECOVERY_STATUS_HREF} className="group">
-            <div className="h-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 transition hover:border-amber-500/20 hover:bg-white/[0.04]">
-              <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-400">
-                <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-              </div>
-              <h3 className="text-base font-semibold">Hosted dashboard</h3>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Hosted accounts are temporarily unavailable while the authenticated service is restored. Local SDK, CLI, and MCP tools remain available.
-              </p>
-              <p className="mt-4 text-xs text-amber-400 group-hover:text-amber-300 transition">
-                View service status {'->'}
-              </p>
-            </div>
+      <section className="mx-auto max-w-6xl px-6 py-16">
+        <div className="flex flex-col justify-between gap-4 border-b border-white/[0.07] pb-5 sm:flex-row sm:items-end">
+          <div>
+            <p className="public-kicker">Four ways in</p>
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Meet the code where it already runs.</h2>
+          </div>
+          <Link href="/docs" className="font-mono text-xs text-zinc-500 transition hover:text-violet-200">
+            Integration docs -&gt;
           </Link>
         </div>
-      </div>
 
-      {/* providers */}
-      <div className="mx-auto max-w-5xl px-6 pb-10">
-        <p className="mb-5 text-center text-sm text-zinc-500">
-          11 providers. 730+ models priced. Cache-aware pricing that tracks read and write tokens separately.
-        </p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-          {providers.map((p) => (
-            <div
-              key={p.name}
-              className={`rounded-lg border border-white/[0.06] border-l-2 ${p.accent} bg-white/[0.02] px-3 py-2.5 transition hover:-translate-y-px hover:bg-white/[0.04] hover:border-white/[0.12]`}
+        <div className="divide-y divide-white/[0.06]">
+          {surfaces.map((surface) => (
+            <Link
+              key={surface.label}
+              href={surface.href}
+              className="public-row-link grid gap-2 border-l border-transparent px-1 py-5 sm:grid-cols-[82px_1fr_1.3fr_24px] sm:items-center"
             >
-              <div className="flex items-center gap-2">
-                <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${p.bg}`}>
-                  <ProviderIcon provider={p.id} className="h-3.5 w-3.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-zinc-200">{p.name}</p>
-                  <p className="text-[10px] text-zinc-600">{p.tag ?? `${p.models} models`}</p>
-                </div>
-              </div>
-            </div>
+              <span className="font-mono text-[11px] text-violet-300">{surface.label}</span>
+              <span className="text-sm font-semibold text-zinc-200">{surface.title}</span>
+              <span className="text-sm leading-6 text-zinc-500">{surface.body}</span>
+              <span aria-hidden="true" className="hidden text-right text-zinc-700 sm:block">-&gt;</span>
+            </Link>
           ))}
         </div>
-      </div>
-
-      {/* differentiators */}
-      <div className="relative mx-auto max-w-5xl px-6 pb-10">
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[300px] w-[600px] bg-[radial-gradient(ellipse,_rgba(34,211,238,0.04),_transparent_70%)]" />
-        <div className="relative grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-            <h3 className="text-sm font-semibold text-zinc-200">Budget enforcement</h3>
-            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-              Cost is reserved before the request. Exceeded means rejected, not logged after the fact.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-            <h3 className="text-sm font-semibold text-zinc-200">Accurate costs</h3>
-            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-              Prompt caching makes tokens up to 90% cheaper. We track cached and uncached separately.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5">
-            <h3 className="text-sm font-semibold text-zinc-200">Open source</h3>
-            <p className="mt-2 text-xs leading-relaxed text-zinc-500">
-              MIT licensed. Self-host on Cloudflare Workers free tier. Your keys stay in your infra.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* cta */}
-      <div className="mx-auto max-w-2xl px-6 pb-8 pt-6 text-center">
-        <p className="mb-4 text-sm text-zinc-500">
-          Hosted accounts are temporarily unavailable. Local tools remain available without an account.
-        </p>
-        <div className="flex items-center justify-center gap-3">
-          <Link
-            href={ctaHref}
-            className="rounded-lg bg-violet-600 px-6 py-2.5 text-sm font-medium text-white hover:bg-violet-500 transition"
-          >
-            {ctaLabel}
-          </Link>
-          <TrackClick
-            event="cta_click"
-            properties={{ label: "view_source", location: "footer" }}
-            href="https://github.com/smigolsmigol/llmkit"
-            className="rounded-lg border border-white/[0.08] bg-white/[0.03] px-6 py-2.5 text-sm text-zinc-300 hover:bg-white/[0.06] hover:text-white transition"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View source
-          </TrackClick>
-        </div>
-      </div>
-
-      <PublicFooter />
-    </div>
+      </section>
+    </PublicShell>
   );
 }

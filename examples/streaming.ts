@@ -4,7 +4,7 @@
 import { LLMKit } from '@f3d1/llmkit-sdk'
 
 const kit = new LLMKit({
-  apiKey: process.env.LLMKIT_KEY!,
+  apiKey: process.env.LLMKIT_API_KEY!,
   // baseUrl: 'http://localhost:8787', // uncomment for local dev
 })
 

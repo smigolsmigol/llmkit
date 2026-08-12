@@ -108,8 +108,8 @@ pretending that an unbounded provider feature has a dollar ceiling.
 
 ## POST /v1/chat/completions
 
-Main proxy endpoint. Accepts OpenAI-compatible request bodies and routes to 11 providers.
-Supports text, multimodal (images), tool calling, and streaming.
+Main proxy endpoint. Accepts OpenAI-compatible request bodies and routes through the supported
+provider adapters. Supports text, multimodal (images), tool calling, and streaming.
 
 **Auth:** required
 
@@ -354,7 +354,10 @@ curl -X POST https://api.llmkit.sh/v1/responses \
 
 ## GET /v1/pricing/compare
 
-Public endpoint. No auth required. Compare costs across all 730+ models in the pricing table.
+Public endpoint. No auth required. Compare costs across the 731 model entries in the bundled
+pricing snapshot dated 2026-03-25. This is a reference snapshot, not a live provider quote.
+The snapshot does not encode model modality. Interpret input and output values as token rates only
+for models you have independently verified are billed per token.
 
 ### Query parameters
 

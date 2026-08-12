@@ -5,7 +5,7 @@ Shared types, constants, and pricing data for [LLMKit](https://github.com/smigol
 ## What's in it
 
 - **TypeScript types**: `LLMRequest`, `LLMResponse`, `CostBreakdown`, `TokenUsage`, `ProviderName`, `Budget`, and more
-- **Pricing table**: per-token costs for 11 providers (OpenAI, Anthropic, Gemini, Groq, Together, Fireworks, DeepSeek, Mistral, xAI, Ollama, OpenRouter) and 700+ models, including cache read/write rates where applicable
+- **Pricing snapshot**: 731 model entries across 9 populated provider tables, dated 2026-03-25, including cache read/write rates where available. The snapshot does not encode model modality, so values are token rates only for models independently verified as token-billed. `ProviderName` also reserves Ollama and OpenRouter identifiers, but this bundled snapshot contains no priced entries for them.
 - **Cost calculation**: `calculateCost()`, `calculateCostBreakdown()`, `getModelPricing()`
 - **Provider inference**: `inferProvider()` resolves a model name to its provider
 - **Error types**: shared error definitions across LLMKit packages
