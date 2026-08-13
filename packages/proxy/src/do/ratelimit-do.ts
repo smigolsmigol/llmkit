@@ -52,7 +52,10 @@ export class RateLimitDO extends DurableObject {
     }
 
     this.count++;
-    await this.ctx.storage.put({ count: this.count, window: this.window });
+    await this.ctx.storage.transaction(async (storage) => {
+      await storage.put({ count: this.count, window: this.window });
+      await storage.setAlarm((this.window + 1) * 60_000);
+    });
 
     return {
       allowed: true,
@@ -72,6 +75,22 @@ export class RateLimitDO extends DurableObject {
   }
 
   async stagingProofPurge(): Promise<void> {
+    await this.ctx.storage.deleteAlarm();
+    await this.ctx.storage.deleteAll();
+    this.count = 0;
+    this.window = 0;
+    this.loaded = true;
+  }
+
+  async alarm(): Promise<void> {
+    await this.load();
+    const currentMinute = Math.floor(Date.now() / 60_000);
+    if (currentMinute <= this.window) {
+      await this.ctx.storage.setAlarm((this.window + 1) * 60_000);
+      return;
+    }
+
+    await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
     this.count = 0;
     this.window = 0;

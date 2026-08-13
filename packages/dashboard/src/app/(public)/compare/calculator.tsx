@@ -191,7 +191,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
         Search-gated estimates cover up to 50 matching rows from {models.length} model entries across {providers.length} populated provider tables.
         {' '}Bundled snapshot: {pricingSnapshotDate}. For verified token-billed models, estimates exclude cache tiers, tools, media, batch discounts, taxes, and negotiated rates.
         {' '}<a href="/pricing" className="text-violet-400 hover:text-violet-300">Full table</a>
-        {' | '}<a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500" className="text-violet-400 hover:text-violet-300">API</a>
+        {' | '}<a href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=500&cacheRead=0&cacheWrite=0" className="text-violet-400 hover:text-violet-300">API</a>
       </p>
     </div>
   );

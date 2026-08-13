@@ -36,7 +36,7 @@ export default function PricingPage() {
         title="Provider pricing without the tab graveyard."
         description={<>{models.length} priced model entries across {providers.length} populated provider tables. The bundled schema exposes input and output rates but does not encode model modality.</>}
         aside={(
-          <a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500" className="public-panel-soft block rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500 transition hover:border-violet-300/25 hover:text-zinc-300">
+          <a href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=500&cacheRead=0&cacheWrite=0" className="public-panel-soft block rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500 transition hover:border-violet-300/25 hover:text-zinc-300">
             <span className="text-cyan-300">GET</span> /v1/pricing/compare<br />programmatic access
           </a>
         )}

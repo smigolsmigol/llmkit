@@ -38,6 +38,12 @@ const tests = [
   'test/quality-gate-contract-test.mjs',
   'test/release-workflow-contract-test.mjs',
 ];
+const typedTests = [
+  {
+    packageName: '@f3d1/llmkit-proxy',
+    file: 'test/pricing-route.test.ts',
+  },
+];
 
 function run(command, args) {
   const result = spawnSync(command, args, {
@@ -77,4 +83,9 @@ for (const testFile of tests) {
   run(process.execPath, [testFile]);
 }
 
-console.log(`\nJS_TEST_GATE PASS (${tests.length} test programs)`);
+for (const { packageName, file } of typedTests) {
+  console.log(`\nTEST ${packageName}/${file}`);
+  pnpm(['--filter', packageName, 'exec', 'vitest', 'run', file, '--environment', 'node']);
+}
+
+console.log(`\nJS_TEST_GATE PASS (${tests.length + typedTests.length} test programs)`);

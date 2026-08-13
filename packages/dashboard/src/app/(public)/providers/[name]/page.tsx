@@ -156,7 +156,7 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
           </Link>
           <span className="text-zinc-600">|</span>
           <a
-            href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=500"
+            href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=500&cacheRead=0&cacheWrite=0"
             className="text-violet-400 hover:text-violet-300 transition"
             target="_blank"
             rel="noopener noreferrer"

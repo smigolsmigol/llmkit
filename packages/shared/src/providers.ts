@@ -1,4 +1,4 @@
-import { PREFIXES, PRICING_DATA } from './pricing-data.js';
+import { PREFIXES, PRICING_DATA, UPDATED_AT } from './pricing-data.js';
 import type { CostBreakdown, ExtraCost, ExtraCostDimension, ProviderName, TokenUsage } from './types.js';
 
 export interface ExtraRateDefinition {
@@ -25,6 +25,7 @@ type PricingTable = Record<string, ModelPricing>;
 
 // pricing data loaded from pricing.json via generated pricing-data.ts
 const PRICING: Record<ProviderName, PricingTable> = {} as Record<ProviderName, PricingTable>;
+export const PRICING_UPDATED_AT = UPDATED_AT;
 
 for (const [provider, models] of Object.entries(PRICING_DATA)) {
   const table: PricingTable = {};

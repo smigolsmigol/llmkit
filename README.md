@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://llmkit.sh">Website</a> | <a href="https://llmkit.sh/docs">Docs</a> | <a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=1000">Pricing API</a> | <a href="SECURITY.md">Security</a>
+  <a href="https://llmkit.sh">Website</a> | <a href="https://llmkit.sh/docs">Docs</a> | <a href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=1000&cacheRead=0&cacheWrite=0">Pricing API</a> | <a href="SECURITY.md">Security</a>
 </p>
 
 LLMKit is an open-source AI gateway and SDK suite for cost attribution, budget admission, and
@@ -138,10 +138,12 @@ files. The public site renders only populated provider tables and displays the s
 The public comparison endpoint requires no account:
 
 ```text
-https://api.llmkit.sh/v1/pricing/compare?input=1000&output=1000
+https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=1000&cacheRead=0&cacheWrite=0
 ```
 
-Pricing is an estimate, not a provider invoice. Provider billing rules and catalog freshness remain part of the error boundary.
+The endpoint prices only the exact model keys supplied by the caller. It does not search for or
+recommend the cheapest model. Pricing is an estimate, not a provider invoice. Provider billing rules,
+model modality, and catalog freshness remain part of the error boundary.
 
 ## Evidence and current boundary
 
