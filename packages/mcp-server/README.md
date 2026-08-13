@@ -1,6 +1,7 @@
 # @f3d1/llmkit-mcp-server
 
-AI cost inspection for supported Claude Code sessions and Cline task data discovered in VS Code-family storage. Eleven tools cover local session evidence plus authenticated gateway spend and budget queries.
+AI cost inspection for supported Claude Code sessions and Cline task data found in VS Code-family
+storage. Eleven tools cover local session evidence, authenticated gateway spend, and budget queries.
 
 Part of [LLMKit](https://github.com/smigolsmigol/llmkit), an open-source API gateway with cost tracking and budget enforcement.
 
@@ -19,7 +20,9 @@ Add to your `.mcp.json` (Claude Code) or `.cursor/mcp.json` (Cursor):
 }
 ```
 
-The local tools (`llmkit_local_*`) need no API key. They read supported Claude Code sessions and Cline task data found in supported editor storage. Proxy tools require an existing LLMKit API key in `LLMKIT_API_KEY`; check [llmkit.sh](https://llmkit.sh) for current account and service availability.
+The local tools (`llmkit_local_*`) need no API key. They read supported Claude Code sessions and
+Cline task data from supported editor storage. Proxy tools require an existing LLMKit API key in
+`LLMKIT_API_KEY`. Check [llmkit.sh](https://llmkit.sh) for current account and service availability.
 
 ## Tools
 
@@ -36,7 +39,7 @@ The local tools (`llmkit_local_*`) need no API key. They read supported Claude C
 
 ### Local tools (no key needed)
 
-Auto-detect installed AI coding tools and aggregate data from all of them.
+The local tools detect supported installations and aggregate their session data.
 
 | Tool | What it does |
 |------|-------------|

@@ -17,6 +17,7 @@ const { PROXY_TOOLS, LOCAL_TOOLS } = await import('../packages/mcp-server/dist/t
 const serverJson = JSON.parse(readFileSync('packages/mcp-server/server.json', 'utf8'));
 const mcpPkg = JSON.parse(readFileSync('packages/mcp-server/package.json', 'utf8'));
 const readme = readFileSync('README.md', 'utf8');
+const budgetPathDiagram = readFileSync('.github/budget-path.svg', 'utf8');
 const pyPricingData = readFileSync('packages/python-sdk/src/llmkit/_pricing_data.py', 'utf8');
 const pricingJson = JSON.parse(readFileSync('packages/shared/pricing.json', 'utf8'));
 
@@ -107,6 +108,19 @@ test('README distinguishes the bundled snapshot from provider identifiers', () =
     'README should describe pricing as a bundled reference snapshot');
   assert(!readme.includes('pricing has 11 providers'),
     'README must not turn empty provider identifiers into populated pricing coverage');
+});
+
+test('README budget path avoids GitHub Mermaid controls', () => {
+  assert(readme.includes('src=".github/budget-path.svg"'),
+    'README should render the static budget path diagram');
+  assert(!readme.includes('```mermaid'),
+    'README should not use GitHub Mermaid controls for the budget path');
+  assert(budgetPathDiagram.includes('viewBox="0 0 1200 390"'),
+    'budget path diagram should scale to the README width');
+  assert(budgetPathDiagram.includes('<title id="title">'),
+    'budget path diagram should include an accessible title');
+  assert(budgetPathDiagram.includes('<desc id="description">'),
+    'budget path diagram should include an accessible description');
 });
 
 // run

@@ -1,6 +1,8 @@
 # @f3d1/llmkit-cli
 
-Local AI cost tracking for OpenAI and Anthropic clients that honor their standard base-URL environment variables. Wrap a command, observe compatible calls through a local proxy, and print a cost summary when it exits.
+Local AI cost tracking for OpenAI and Anthropic clients that honor their standard base-URL
+environment variables. The CLI wraps a command, observes compatible calls through a local proxy,
+and prints a cost summary when the process exits.
 
 ## Usage
 
@@ -10,7 +12,8 @@ npx @f3d1/llmkit-cli -- node agent.js
 npx @f3d1/llmkit-cli -- your-binary --flag
 ```
 
-The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` for the child process. Calls that ignore those variables, use another protocol, or bypass that environment are not observed.
+The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` for the child process. It cannot observe
+calls that ignore those variables, use another protocol, or bypass that environment.
 
 ## Options
 
@@ -44,7 +47,7 @@ The numbers above illustrate the output format; actual values come from the call
 
 ## Docs
 
-Full documentation and proxy setup: [github.com/smigolsmigol/llmkit](https://github.com/smigolsmigol/llmkit)
+See the [LLMKit repository](https://github.com/smigolsmigol/llmkit) for gateway and proxy setup.
 
 ## License
 

@@ -73,7 +73,9 @@ Framework integrations are optional. Install the framework you use separately.
 
 ## Sessions and gateway mode
 
-Use the hosted or self-hosted LLMKit gateway when you need shared budgets, request receipts, provider routing, or dashboard analytics. Hosted calls require an existing key; new hosted account creation and key management are temporarily unavailable.
+Use the hosted or self-hosted LLMKit gateway when you need shared budgets, request receipts,
+provider routing, or dashboard analytics. Hosted calls require an existing key. New hosted account
+creation and key management are temporarily unavailable.
 
 ```python
 from llmkit import LLMKit
@@ -121,7 +123,9 @@ completion, cost = await client.chat(
 
 ## LLMKit repository
 
-The [LLMKit monorepo](https://github.com/smigolsmigol/llmkit) also contains the Cloudflare Worker gateway, dashboard, TypeScript SDK, CLI, Vercel AI SDK provider, MCP server, database migrations, and deterministic budget-control fixtures.
+The [LLMKit monorepo](https://github.com/smigolsmigol/llmkit) also contains the Cloudflare Worker
+gateway, dashboard, TypeScript SDK, CLI, Vercel AI SDK provider, MCP server, database migrations,
+and deterministic budget-control fixtures.
 
 ## License
 
