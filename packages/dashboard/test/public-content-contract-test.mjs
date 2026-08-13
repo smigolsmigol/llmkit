@@ -170,6 +170,22 @@ assert.match(
   'the calculator must stay empty until a specific model search is provided',
 );
 
+const pricingApiReferences = [
+  readRepo('README.md'),
+  readRepo('API.md'),
+  readDashboard('src/app/(public)/pricing/page.tsx'),
+  readDashboard('src/app/(public)/providers/[name]/page.tsx'),
+  readDashboard('src/app/(public)/compare/calculator.tsx'),
+].join('\n');
+assert.doesNotMatch(
+  pricingApiReferences,
+  /pricing\/compare\?input=/,
+  'public pricing API links must not trigger an implicit all-model ranking',
+);
+assert.match(pricingApiReferences, /mode=text-token/);
+assert.match(pricingApiReferences, /models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o/);
+assert.match(pricingApiReferences, /cacheRead=0&cacheWrite=0/);
+
 console.log(
   `PUBLIC_CONTENT_CONTRACT PASS (${modelCount} model entries, ${populatedProviders.length} populated providers, snapshot ${pricing.updatedAt})`,
 );

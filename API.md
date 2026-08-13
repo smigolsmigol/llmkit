@@ -354,60 +354,86 @@ curl -X POST https://api.llmkit.sh/v1/responses \
 
 ## GET /v1/pricing/compare
 
-Public endpoint. No auth required. Compare costs across the 731 model entries in the bundled
-pricing snapshot dated 2026-03-25. This is a reference snapshot, not a live provider quote.
-The snapshot does not encode model modality. Interpret input and output values as token rates only
-for models you have independently verified are billed per token.
+Public endpoint. No auth required. Estimate costs for up to 20 exact model keys from the bundled
+pricing snapshot dated 2026-03-25. This is a reference snapshot, not a live provider quote or a
+cheapest-model recommendation. The snapshot does not encode model modality, so callers must select
+models they have independently verified are billed per input and output token.
 
 ### Query parameters
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `input` | number | 0 | Input tokens to price |
-| `output` | number | 0 | Output tokens to price |
-| `cacheRead` | number | 0 | Cache read tokens |
-| `cacheWrite` | number | 0 | Cache write tokens |
-| `provider` | string | all | Filter to one provider |
+| Param | Type | Required | Description |
+|-------|------|----------|-------------|
+| `mode` | string | yes | Must be `text-token` |
+| `models` | string | yes | Comma-separated exact `provider/model` keys, maximum 20 |
+| `input` | non-negative integer | yes | Input tokens to price |
+| `output` | non-negative integer | yes | Output tokens to price |
+| `cacheRead` | non-negative integer | yes | Cache read tokens |
+| `cacheWrite` | non-negative integer | yes | Cache write tokens |
+
+Every parameter must appear exactly once. Empty, negative, fractional, non-finite, unsafe integer,
+duplicate, unknown model, and unknown query values are rejected with `400 INVALID_PRICING_QUERY` or
+`400 UNKNOWN_PRICING_MODEL`. At least one token count must be greater than zero.
 
 ### Response
 
 ```json
 {
-  "input": 1000,
-  "output": 1000,
-  "cacheRead": 0,
-  "cacheWrite": 0,
-  "provider": "all",
-  "count": 731,
+  "schemaVersion": 2,
+  "snapshot": {
+    "date": "2026-03-25",
+    "liveQuote": false,
+    "sourceModalityEncoded": false,
+    "rateUnit": "USD_PER_MILLION_TOKENS"
+  },
+  "selection": {
+    "mode": "text-token",
+    "basis": "explicit-model-keys",
+    "recommendation": false
+  },
+  "usage": {
+    "input": 1000,
+    "output": 1000,
+    "cacheRead": 0,
+    "cacheWrite": 0
+  },
+  "count": 1,
   "models": [
     {
-      "provider": "gemini",
-      "model": "gemini-2.0-flash-lite",
-      "inputCost": 0.000075,
-      "outputCost": 0.0003,
-      "totalCost": 0.000375
-    },
-    {
-      "provider": "deepseek",
-      "model": "deepseek-chat",
-      "inputCost": 0.00014,
-      "outputCost": 0.00028,
-      "totalCost": 0.00042
+      "key": "openai/gpt-4o",
+      "provider": "openai",
+      "model": "gpt-4o",
+      "rates": {
+        "inputPerMillion": 2.5,
+        "outputPerMillion": 10,
+        "cacheReadPerMillion": 1.25,
+        "cacheWritePerMillion": null
+      },
+      "costs": {
+        "input": 0.0025,
+        "output": 0.01,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0.0125,
+        "currency": "USD"
+      }
     }
+  ],
+  "exclusions": [
+    "Model modality is not encoded in the source snapshot; callers must verify that every selected model is token-billed."
   ]
 }
 ```
 
-Models are sorted by `totalCost` ascending (cheapest first). Response is cached for 1 hour.
+Selected models are sorted by total estimate, then provider and model for deterministic ties. This
+ordering compares only the caller's explicit selection and is not a global recommendation. Responses
+are cached for 1 hour. Rate-limit failures remain `429 RATE_LIMITED` and are separate from pricing
+input validation.
 
 ### curl example
 
 ```bash
-# Compare cost of 10k input + 2k output tokens across all providers
-curl "https://api.llmkit.sh/v1/pricing/compare?input=10000&output=2000"
-
-# Filter to Anthropic only
-curl "https://api.llmkit.sh/v1/pricing/compare?input=10000&output=2000&provider=anthropic"
+# Compare two exact model entries you have verified are token-billed
+curl "https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=10000&output=2000&cacheRead=0&cacheWrite=0"
 ```
 
 ---

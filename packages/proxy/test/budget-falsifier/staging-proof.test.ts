@@ -1,4 +1,9 @@
-import { env, runInDurableObject } from 'cloudflare:test';
+import {
+  env,
+  evictAllDurableObjects,
+  runDurableObjectAlarm,
+  runInDurableObject,
+} from 'cloudflare:test';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { BudgetDO, BudgetState } from '../../src/do/budget-do';
 import type { IdempotencyDO } from '../../src/do/idempotency-do';
@@ -33,6 +38,77 @@ function proofRequest(path: string, init: RequestInit = {}, overrides: Partial<E
 }
 
 describe('isolated staging proof surface', () => {
+  it('shares the public pricing limit across Worker and Durable Object restarts', async () => {
+    const clientIp = '198.51.100.77';
+    const objectName = `public-pricing:${clientIp}`;
+    const stub = env.RATE_LIMIT_DO.get(env.RATE_LIMIT_DO.idFromName(objectName));
+    await stub.stagingProofPurge();
+
+    const query = [
+      'mode=text-token',
+      'models=openai%2Fgpt-4o',
+      'input=1',
+      'output=0',
+      'cacheRead=0',
+      'cacheWrite=0',
+    ].join('&');
+    const hit = () => stagingApp.request(`/v1/pricing/compare?${query}`, {
+      headers: { 'cf-connecting-ip': clientIp },
+    }, bindings());
+
+    try {
+      for (let index = 0; index < 15; index++) {
+        const response = await hit();
+        expect(response.status).toBe(200);
+      }
+
+      await evictAllDurableObjects();
+
+      for (let index = 15; index < 30; index++) {
+        const response = await hit();
+        expect(response.status).toBe(200);
+      }
+
+      const blocked = await hit();
+      expect(blocked.status).toBe(429);
+      expect(blocked.headers.get('x-ratelimit-limit')).toBe('30');
+      expect(blocked.headers.get('x-ratelimit-remaining')).toBe('0');
+      expect(Number(blocked.headers.get('retry-after'))).toBeGreaterThan(0);
+      expect(await blocked.json()).toEqual({
+        error: { code: 'RATE_LIMITED', message: 'pricing API rate limit exceeded' },
+      });
+
+      const currentStub = env.RATE_LIMIT_DO.get(env.RATE_LIMIT_DO.idFromName(objectName));
+      await runInDurableObject(currentStub, async (_instance, state) => {
+        await state.storage.put('window', Math.floor(Date.now() / 60_000));
+        await state.storage.setAlarm(Date.now() + 60_000);
+      });
+      expect(await runDurableObjectAlarm(currentStub)).toBe(true);
+      await evictAllDurableObjects();
+      expect((await hit()).status).toBe(429);
+
+      const retainedStub = env.RATE_LIMIT_DO.get(env.RATE_LIMIT_DO.idFromName(objectName));
+      await runInDurableObject(retainedStub, async (_instance, state) => {
+        await state.storage.put('window', Math.floor(Date.now() / 60_000) - 1);
+        await state.storage.setAlarm(Date.now() + 60_000);
+      });
+      await evictAllDurableObjects();
+      const expiredStub = env.RATE_LIMIT_DO.get(env.RATE_LIMIT_DO.idFromName(objectName));
+      expect(await runDurableObjectAlarm(expiredStub)).toBe(true);
+      await runInDurableObject(expiredStub, async (_instance, state) => {
+        await expect(state.storage.list()).resolves.toHaveProperty('size', 0);
+        await expect(state.storage.getAlarm()).resolves.toBeNull();
+      });
+
+      const afterExpiry = await hit();
+      expect(afterExpiry.status).toBe(200);
+      expect(afterExpiry.headers.get('x-ratelimit-remaining')).toBe('29');
+    } finally {
+      const currentStub = env.RATE_LIMIT_DO.get(env.RATE_LIMIT_DO.idFromName(objectName));
+      await currentStub.stagingProofPurge();
+    }
+  });
+
   it('fails closed on disabled proof mode, database drift, and bad authorization', async () => {
     const budgetId = crypto.randomUUID();
     const disabled = await proofRequest(`${PROOF_PREFIX}/budget/${budgetId}`, {}, {

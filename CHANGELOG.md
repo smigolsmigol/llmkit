@@ -12,6 +12,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `/compare` cost calculator page on the dashboard
 
 ### Fixed
+- Restricted the public pricing comparison API to explicit exact model keys, rejected invalid token counts, and removed global cross-modality ranking behavior
 - 15 adapter fixes from cross-reference audit
 - xAI tool name mapping, o1-mini pricing, grok-4 alias
 - Mobile responsive pass 2 (nav collapse, grids, widget, gradients)
