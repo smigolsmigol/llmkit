@@ -16,10 +16,12 @@ export function PublicNavStatic() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-        <Link href="/">
-          <AnimatedLogo className="h-[38px] w-auto" />
+    <nav className="sticky top-0 z-40 border-b border-white/[0.06] bg-[#08090c]/88 backdrop-blur-xl">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <Link href="/" aria-label="LLMKit home" className="flex items-center gap-3">
+          <AnimatedLogo className="h-[42px] w-auto" />
+          <span className="hidden h-5 w-px bg-white/[0.08] md:block" />
+          <span className="hidden font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-600 md:inline">agent cost control</span>
         </Link>
         <div className="flex items-center gap-3 sm:gap-5">
           <div className="hidden sm:flex items-center gap-5">
@@ -41,7 +43,7 @@ export function PublicNavStatic() {
           </a>
           <Link
             href={RECOVERY_PUBLIC_CTA.href}
-            className="rounded-lg bg-white px-4 py-1.5 text-sm font-medium text-black hover:bg-zinc-200 transition"
+            className="rounded-md border border-violet-300/20 bg-violet-400/[0.10] px-4 py-1.5 text-sm font-semibold text-violet-100 transition hover:border-violet-300/35 hover:bg-violet-400/[0.16]"
           >
             {RECOVERY_PUBLIC_CTA.label}
           </Link>

@@ -204,7 +204,8 @@ class CostTrackingTransport(httpx.BaseTransport):
     responses, parses the JSON body. For streaming (SSE), scans chunks
     as they pass through with O(1) memory overhead.
 
-    Works with OpenAI, Anthropic, Groq, Together, Cohere, Mistral SDKs.
+    Supports OpenAI-compatible ``/chat/completions`` responses and Anthropic
+    ``/messages`` responses when the client accepts an httpx transport.
     """
 
     def __init__(
@@ -276,7 +277,8 @@ def tracked(
 ) -> httpx.Client:
     """Create an httpx.Client with transparent LLM cost tracking.
 
-    Works with any SDK that accepts an http_client parameter:
+    Works with supported OpenAI-compatible clients that accept an
+    ``http_client`` parameter:
 
         from openai import OpenAI
         from llmkit import tracked
@@ -288,8 +290,8 @@ def tracked(
 
     Extracts token usage from API responses (both streaming and
     non-streaming) and calculates cost from the bundled pricing table.
-    No proxy required. Works with OpenAI, Anthropic, Groq, Together,
-    Cohere, and Mistral SDKs.
+    No proxy required. The transport recognizes OpenAI-compatible
+    ``/chat/completions`` and Anthropic ``/messages`` usage shapes.
     """
     transport = CostTrackingTransport(on_cost=on_cost)
     return httpx.Client(transport=transport, **kwargs)

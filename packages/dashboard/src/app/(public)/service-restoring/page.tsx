@@ -1,61 +1,52 @@
+import Link from 'next/link';
+import { PublicPageHero } from '@/components/public/public-page-hero';
+import { PublicShell } from '@/components/public/public-shell';
+
 export const metadata = {
   title: 'Dashboard restoration in progress | LLMKit',
   robots: { index: false, follow: false },
 };
 
+const services = [
+  ['Product site and docs', 'LIVE', 'text-emerald-300'],
+  ['Public API and pricing', 'LIVE', 'text-emerald-300'],
+  ['Dashboard and auth', 'CLOSED', 'text-amber-300'],
+] as const;
+
 export default function ServiceRestoringPage() {
   return (
-    <main className="noise-overlay relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-16">
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[760px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse,_rgba(124,58,237,0.16),_transparent_68%)]" />
-      <section className="relative w-full max-w-2xl rounded-2xl border border-violet-400/20 bg-card/90 p-8 shadow-2xl shadow-violet-950/30 backdrop-blur md:p-12">
-        <div className="mb-7 flex items-center gap-3">
-          <span className="relative flex h-3 w-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-60" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-400" />
-          </span>
-          <span className="font-mono text-xs uppercase tracking-[0.22em] text-amber-300">
-            Controlled restoration
-          </span>
-        </div>
-
-        <h1 className="max-w-xl text-4xl font-semibold tracking-tight text-foreground md:text-5xl">
-          The public site is back. The dashboard is next.
-        </h1>
-        <p className="mt-5 max-w-xl text-base leading-7 text-muted-foreground md:text-lg">
-          We are moving LLMKit onto its new production stack. Authenticated data access stays closed
-          until its tenant-isolation checks pass in the new runtime.
-        </p>
-
-        <div className="mt-8 grid gap-3 text-sm sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-background/60 p-4">
-            <div className="font-mono text-xs text-emerald-400">LIVE</div>
-            <div className="mt-1 text-muted-foreground">Docs and product site</div>
+    <PublicShell>
+      <PublicPageHero
+        eyebrow="Controlled restoration"
+        title="The public surface is live. Auth stays closed until it is proved."
+        description="Authenticated account and data access remain unavailable while tenant-isolation checks are completed. Public docs, pricing references, and local tools remain available."
+        aside={(
+          <div className="public-panel-soft rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500">
+            <p className="flex items-center gap-2 text-amber-300"><span className="h-1.5 w-1.5 rounded-full bg-amber-300" />restoration active</p>
+            <p className="mt-2">fail closed / no data exposure</p>
           </div>
-          <div className="rounded-xl border border-border bg-background/60 p-4">
-            <div className="font-mono text-xs text-emerald-400">LIVE</div>
-            <div className="mt-1 text-muted-foreground">API proxy</div>
-          </div>
-          <div className="rounded-xl border border-border bg-background/60 p-4">
-            <div className="font-mono text-xs text-amber-300">VERIFYING</div>
-            <div className="mt-1 text-muted-foreground">Dashboard and auth</div>
-          </div>
-        </div>
+        )}
+      />
 
-        <div className="mt-9 flex flex-wrap gap-3">
-          <a
-            href="/"
-            className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground transition-transform hover:-translate-y-0.5 hover:bg-primary/90"
-          >
-            Back to LLMKit
-          </a>
-          <a
-            href="/docs"
-            className="rounded-lg border border-border px-5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-violet-400/40 hover:bg-secondary"
-          >
-            Read the docs
-          </a>
+      <section className="mx-auto max-w-6xl px-6 pb-20">
+        <div className="public-panel overflow-hidden rounded-xl">
+          <div className="grid gap-px bg-white/[0.07] sm:grid-cols-3">
+            {services.map(([name, state, color]) => (
+              <div key={name} className="bg-[#0c0d12] p-5">
+                <p className={`font-mono text-[10px] ${color}`}>{state}</p>
+                <p className="mt-2 text-sm text-zinc-300">{name}</p>
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/[0.07] px-5 py-4">
+            <p className="max-w-2xl text-xs leading-5 text-zinc-500">Local MCP, CLI, and Python paths remain usable without a hosted account.</p>
+            <div className="flex gap-3">
+              <Link href="/" className="text-sm text-zinc-400 transition hover:text-white">Home</Link>
+              <Link href="/docs#local-setup" className="text-sm text-violet-300 transition hover:text-violet-200">Local setup -&gt;</Link>
+            </div>
+          </div>
         </div>
       </section>
-    </main>
+    </PublicShell>
   );
 }

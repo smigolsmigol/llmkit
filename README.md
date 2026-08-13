@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://llmkit.sh">Dashboard</a> | <a href="https://llmkit.sh/docs">Docs</a> | <a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=1000">Pricing API</a> | <a href="SECURITY.md">Security</a>
+  <a href="https://llmkit.sh">Website</a> | <a href="https://llmkit.sh/docs">Docs</a> | <a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=1000">Pricing API</a> | <a href="SECURITY.md">Security</a>
 </p>
 
 LLMKit is an open-source AI gateway and SDK suite for cost attribution, budget admission, and request evidence. The gateway reserves estimated spend before provider dispatch, rejects requests that cannot fit the active budget, and settles the reservation to actual usage when the response completes.
@@ -26,8 +26,8 @@ The repository also ships local tracking surfaces that do not require an LLMKit 
 | Surface | Use it when | Package |
 | --- | --- | --- |
 | Python transport | You want local cost estimates around existing SDK calls | [`llmkit-sdk`](https://pypi.org/project/llmkit-sdk/) |
-| CLI wrapper | You want a cost summary without changing application code | [`@f3d1/llmkit-cli`](https://www.npmjs.com/package/@f3d1/llmkit-cli) |
-| TypeScript SDK | You want sessions, streaming, and gateway access from TypeScript | [`@f3d1/llmkit-sdk`](packages/sdk) |
+| CLI wrapper | Your OpenAI or Anthropic client honors its standard base-URL environment variable | [`@f3d1/llmkit-cli`](https://www.npmjs.com/package/@f3d1/llmkit-cli) |
+| TypeScript SDK | You have an existing key and want sessions, streaming, and gateway access from TypeScript | [`@f3d1/llmkit-sdk`](packages/sdk) |
 | MCP server | You want spend, budget, and local coding-session tools inside an MCP client | [`@f3d1/llmkit-mcp-server`](packages/mcp-server) |
 | AI SDK provider | You use Vercel AI SDK 6 | [`@f3d1/llmkit-ai-sdk-provider`](packages/ai-sdk-provider) |
 | Gateway and dashboard | You need shared budgets, provider routing, receipts, and analytics | [`packages/proxy`](packages/proxy), [`packages/dashboard`](packages/dashboard) |
@@ -117,11 +117,11 @@ Request receipts bind the admission decision, provider attempt, settlement, and 
 }
 ```
 
-Five local tools inspect supported Claude Code, Cursor, and Cline session data without an LLMKit key. Six gateway tools query spend, budgets, keys, sessions, and service health when `LLMKIT_API_KEY` is configured. Together they expose 11 tools.
+Five local tools inspect supported Claude Code sessions and Cline task data discovered in supported editor storage without an LLMKit key. Six gateway tools query spend, budgets, keys, sessions, and service health when an existing key is configured in `LLMKIT_API_KEY`. Together they expose 11 tools.
 
 ## Pricing data
 
-The pinned catalog currently contains 731 model entries across 11 providers. One source file, [`packages/shared/pricing.json`](packages/shared/pricing.json), generates the TypeScript, Python, and MCP tables; CI rejects drift between the source and generated files.
+The pinned catalog is a bundled reference snapshot, not a live quote. One source file, [`packages/shared/pricing.json`](packages/shared/pricing.json), records its own snapshot date and generates the TypeScript, Python, and MCP tables; CI rejects drift between the source and generated files. The public site renders only populated provider tables and displays that source date.
 
 The public comparison endpoint requires no account:
 

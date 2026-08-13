@@ -91,10 +91,22 @@ test('README claims 11 tools, actual is 11', () => {
   assert(readme.includes('11 tools'), 'README should mention 11 tools');
 });
 
-test('README claims 11 providers, pricing has 11', () => {
-  const providerCount = Object.keys(PRICING).length;
-  assert(providerCount === 11, `actual provider count is ${providerCount}`);
-  assert(readme.includes('11 providers'), 'README should mention 11 providers');
+test('README distinguishes the bundled snapshot from provider identifiers', () => {
+  const providerIdentifiers = Object.keys(PRICING).length;
+  const populatedProviders = Object.values(PRICING)
+    .filter((models) => Object.keys(models).length > 0)
+    .length;
+  const populatedJsonProviders = Object.values(pricingJson.providers)
+    .filter((models) => Object.keys(models).length > 0)
+    .length;
+
+  assert(providerIdentifiers === 11, `provider identifier count is ${providerIdentifiers}`);
+  assert(populatedProviders === populatedJsonProviders,
+    `shared has ${populatedProviders} populated providers but pricing.json has ${populatedJsonProviders}`);
+  assert(readme.includes('bundled reference snapshot'),
+    'README should describe pricing as a bundled reference snapshot');
+  assert(!readme.includes('pricing has 11 providers'),
+    'README must not turn empty provider identifiers into populated pricing coverage');
 });
 
 // run

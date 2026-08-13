@@ -1,13 +1,14 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { PublicFooter } from '@/components/public-footer';
-import { PublicNavStatic } from '@/components/public-nav-static';
+import { PublicPageHero } from '@/components/public/public-page-hero';
+import { PublicShell } from '@/components/public/public-shell';
+import { getPublicProviderModels, PRICING_SNAPSHOT_DATE } from '@/lib/public-pricing';
 import { RECOVERY_PUBLIC_CTA } from '@/lib/public-recovery';
 
 const PROVIDERS = [
   'openai', 'anthropic', 'gemini', 'xai', 'groq', 'together',
-  'fireworks', 'deepseek', 'mistral', 'ollama', 'openrouter',
+  'fireworks', 'deepseek', 'mistral',
 ] as const;
 
 type ProviderSlug = (typeof PROVIDERS)[number];
@@ -22,22 +23,18 @@ const DISPLAY_NAMES: Record<ProviderSlug, string> = {
   fireworks: 'Fireworks AI',
   deepseek: 'DeepSeek',
   mistral: 'Mistral',
-  ollama: 'Ollama',
-  openrouter: 'OpenRouter',
 };
 
 const DESCRIPTIONS: Record<ProviderSlug, string> = {
-  openai: 'GPT-4o, GPT-4.1, o3, o4-mini and all OpenAI models',
-  anthropic: 'Claude Opus, Sonnet, Haiku and all Anthropic models',
-  gemini: 'Gemini 2.5 Pro, Flash, and all Google AI models',
-  xai: 'Grok 3, Grok 3 Mini, and all xAI models',
-  groq: 'LLaMA, Mixtral, Gemma on Groq inference hardware',
-  together: 'Open-source models on Together AI infrastructure',
-  fireworks: 'LLaMA, Mixtral, and open models on Fireworks AI',
-  deepseek: 'DeepSeek V3, R1, and all DeepSeek models',
-  mistral: 'Mistral Large, Medium, Small, and Codestral models',
-  ollama: 'Local models via Ollama (free, self-hosted)',
-  openrouter: 'Multi-provider routing with unified API',
+  openai: 'OpenAI entries in the bundled pricing snapshot',
+  anthropic: 'Anthropic entries in the bundled pricing snapshot',
+  gemini: 'Google Gemini entries in the bundled pricing snapshot',
+  xai: 'xAI entries in the bundled pricing snapshot',
+  groq: 'Groq-hosted entries in the bundled pricing snapshot',
+  together: 'Together AI entries in the bundled pricing snapshot',
+  fireworks: 'Fireworks AI entries in the bundled pricing snapshot',
+  deepseek: 'DeepSeek entries in the bundled pricing snapshot',
+  mistral: 'Mistral entries in the bundled pricing snapshot',
 };
 
 interface ModelPrice {
@@ -47,22 +44,8 @@ interface ModelPrice {
   cacheRead?: number;
 }
 
-async function getProviderModels(provider: string): Promise<ModelPrice[]> {
-  const { PRICING } = await import('@f3d1/llmkit-shared');
-  const providerData = PRICING[provider as keyof typeof PRICING];
-  if (!providerData) return [];
-
-  const models: ModelPrice[] = [];
-  for (const [model, p] of Object.entries(providerData)) {
-    models.push({
-      model,
-      input: p.inputPerMillion,
-      output: p.outputPerMillion,
-      cacheRead: p.cacheReadPerMillion,
-    });
-  }
-  models.sort((a, b) => a.input - b.input);
-  return models;
+function getProviderModels(provider: string): ModelPrice[] {
+  return getPublicProviderModels(provider);
 }
 
 export function generateStaticParams() {
@@ -75,15 +58,15 @@ export async function generateMetadata({ params }: { params: Promise<{ name: str
   if (!PROVIDERS.includes(slug)) return {};
 
   const display = DISPLAY_NAMES[slug];
-  const models = await getProviderModels(slug);
+  const models = getProviderModels(slug);
   const desc = DESCRIPTIONS[slug];
 
   return {
-    title: `${display} API Pricing 2026 - All ${models.length} Models | LLMKit`,
-    description: `${display} API pricing for ${models.length} models. ${desc}. Compare input, output, and cache token costs per 1M tokens.`,
+    title: `${display} API pricing reference - ${models.length} entries | LLMKit`,
+    description: `${display} reference pricing for ${models.length} model entries. Snapshot dated ${PRICING_SNAPSHOT_DATE}. Source rate fields are shown as encoded; model modality is not encoded.`,
     openGraph: {
-      title: `${display} API Pricing 2026 - ${models.length} Models`,
-      description: `Compare costs across all ${display} models. ${desc}.`,
+      title: `${display} API pricing reference | LLMKit`,
+      description: `${desc}. Bundled snapshot dated ${PRICING_SNAPSHOT_DATE}.`,
     },
   };
 }
@@ -94,7 +77,7 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
 
   if (!PROVIDERS.includes(slug)) notFound();
 
-  const models = await getProviderModels(slug);
+  const models = getProviderModels(slug);
   const display = DISPLAY_NAMES[slug];
   const desc = DESCRIPTIONS[slug];
 
@@ -102,44 +85,44 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
   const mostExpensive = models[models.length - 1];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-zinc-100">
-      <PublicNavStatic />
+    <PublicShell>
+      <PublicPageHero
+        eyebrow={`Pricing / ${display}`}
+        title={`${display} API pricing`}
+        description={<>{models.length} model entries. {desc}. Source rate fields are shown as encoded in the snapshot dated {PRICING_SNAPSHOT_DATE}; model modality is not encoded.</>}
+        aside={(
+          <Link href="/pricing" className="public-panel-soft block rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500 transition hover:border-violet-300/25 hover:text-zinc-300">
+            pricing index<br /><span className="text-violet-300">all providers -&gt;</span>
+          </Link>
+        )}
+      />
 
-      <div className="mx-auto max-w-6xl px-6 pt-12 pb-16">
-        <div className="flex items-center gap-2 text-sm text-zinc-500 mb-6">
-          <Link href="/pricing" className="hover:text-zinc-300 transition">All providers</Link>
-          <span>/</span>
-          <span className="text-zinc-300">{display}</span>
-        </div>
-
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-          {display} API Pricing
-        </h1>
-        <p className="mt-3 text-lg text-zinc-400">
-          {models.length} models. {desc}. Prices per 1M tokens in USD.
-        </p>
+      <div className="mx-auto max-w-6xl px-6 pb-16">
 
         {models.length > 1 && cheapest && mostExpensive && (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
-              <p className="text-xs text-zinc-500">Cheapest input</p>
+            <div className="public-panel-soft rounded-lg p-4">
+              <p className="text-xs text-zinc-500">Lowest encoded input rate</p>
               <p className="mt-1 text-lg font-semibold">${cheapest.input}<span className="text-sm text-zinc-500">/1M</span></p>
               <p className="text-xs text-zinc-400 font-mono truncate">{cheapest.model}</p>
             </div>
-            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
-              <p className="text-xs text-zinc-500">Most expensive input</p>
+            <div className="public-panel-soft rounded-lg p-4">
+              <p className="text-xs text-zinc-500">Highest encoded input rate</p>
               <p className="mt-1 text-lg font-semibold">${mostExpensive.input}<span className="text-sm text-zinc-500">/1M</span></p>
               <p className="text-xs text-zinc-400 font-mono truncate">{mostExpensive.model}</p>
             </div>
-            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-4">
+            <div className="public-panel-soft rounded-lg p-4">
               <p className="text-xs text-zinc-500">Models with cache pricing</p>
-              <p className="mt-1 text-lg font-semibold">{models.filter(m => m.cacheRead).length}<span className="text-sm text-zinc-500"> of {models.length}</span></p>
+              <p className="mt-1 text-lg font-semibold">{models.filter(m => m.cacheRead !== undefined).length}<span className="text-sm text-zinc-500"> of {models.length}</span></p>
             </div>
           </div>
         )}
 
         <section className="mt-10">
-          <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
+          <p className="mb-3 text-xs leading-5 text-zinc-500">
+            Interpret the /1M columns as token rates only for models independently verified as token-billed. Non-text billing units are not represented in this snapshot schema.
+          </p>
+          <div className="public-panel-soft overflow-x-auto rounded-lg">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-500">
@@ -155,7 +138,7 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
                     <td className="px-3 py-1.5 font-mono text-xs">{m.model}</td>
                     <td className="px-3 py-1.5 text-right text-zinc-300">${m.input}</td>
                     <td className="px-3 py-1.5 text-right text-zinc-300">${m.output}</td>
-                    <td className="px-3 py-1.5 text-right text-zinc-500">{m.cacheRead ? `$${m.cacheRead}` : '-'}</td>
+                    <td className="px-3 py-1.5 text-right text-zinc-500">{m.cacheRead !== undefined ? `$${m.cacheRead}` : '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -182,11 +165,11 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
           </a>
         </div>
 
-        <div className="mt-16 rounded-xl border border-white/[0.06] bg-white/[0.02] p-6 text-center">
-          <h2 className="text-lg font-semibold">Track {display} costs with LLMKit</h2>
+        <div className="public-panel mt-16 rounded-xl p-6 text-center">
+          <h2 className="text-lg font-semibold">Use the {display} snapshot as a reference, then measure the request</h2>
           <p className="mt-2 text-sm text-zinc-400">
-            Proxy your {display} requests through LLMKit. Every call gets logged with token counts, dollar costs,
-            and session attribution. Set budget limits that actually reject requests before they hit the provider.
+            Local tracking can estimate supported responses from provider usage fields. The authenticated gateway path adds
+            request identity, persisted cost evidence, session attribution, and pre-dispatch budget checks.
           </p>
           <div className="mt-4 flex items-center justify-center gap-3">
             <Link href={RECOVERY_PUBLIC_CTA.href} className="rounded-lg bg-violet-600 px-5 py-2 text-sm font-medium text-white hover:bg-violet-500 transition">
@@ -199,7 +182,6 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
         </div>
       </div>
 
-      <PublicFooter />
-    </div>
+    </PublicShell>
   );
 }

@@ -6,20 +6,19 @@ Gateway examples require an existing LLMKit API key. Account creation and key ma
 
 ---
 
-## Option 1: CLI proxy (any language, zero code changes)
+## Option 1: CLI proxy (OpenAI or Anthropic protocol)
 
-Wraps any command. Intercepts API calls, tracks costs, prints a summary when the process exits.
+Wrap a command whose OpenAI or Anthropic client honors the standard base-URL environment variable. The CLI tracks observed calls and prints a summary when the process exits.
 
 ```bash
 npx @f3d1/llmkit-cli -- python my_agent.py
 ```
 
-That's it. Your existing code talks to OpenAI/Anthropic as usual - the CLI rewrites `base_url` to
-route through the proxy. Use `-v` for per-request costs as they happen.
+The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` for the child process so compatible clients route through its local proxy. Use `-v` for per-request costs as they happen.
 
 The CLI runs a local proxy - no LLMKit account needed. Just make sure your provider key is set (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`).
 
-Works with Python, Node, Go, Rust, Ruby - anything that hits the OpenAI or Anthropic API.
+Calls that ignore those variables, use another protocol, or bypass the child-process environment are not observed.
 
 ---
 
@@ -32,7 +31,7 @@ npm install @f3d1/llmkit-sdk
 ```typescript
 import { LLMKit } from '@f3d1/llmkit-sdk'
 
-const kit = new LLMKit({ apiKey: process.env.LLMKIT_KEY })
+const kit = new LLMKit({ apiKey: process.env.LLMKIT_API_KEY! })
 const agent = kit.session()
 
 const res = await agent.chat({
@@ -49,7 +48,7 @@ console.log(res.cost)
 Streaming:
 
 ```typescript
-const stream = await llm.chatStream({
+const stream = await kit.chatStream({
   model: 'gpt-4.1-mini',
   messages: [{ role: 'user', content: 'hello' }],
 });
@@ -70,7 +69,7 @@ npm install @f3d1/llmkit-ai-sdk-provider
 import { createLLMKit } from '@f3d1/llmkit-ai-sdk-provider'
 import { generateText } from 'ai'
 
-const llmkit = createLLMKit({ apiKey: process.env.LLMKIT_KEY })
+const llmkit = createLLMKit({ apiKey: process.env.LLMKIT_API_KEY! })
 
 const { text } = await generateText({
   model: llmkit('claude-sonnet-4-20250514'),
@@ -117,8 +116,7 @@ response = client.chat.completions.create(
 # costs estimated locally from bundled pricing table
 ```
 
-`tracked()` wraps your HTTP client and estimates costs from token usage. Works with any SDK
-that accepts `http_client` (OpenAI, Anthropic, Mistral, etc.).
+`tracked()` is an httpx client that estimates cost from supported OpenAI- and Anthropic-style response usage. Use it with SDK clients that accept an httpx client; unknown response shapes remain unpriced.
 
 ---
 
@@ -148,5 +146,5 @@ Cost comes back in the `x-llmkit-cost` response header.
 - New account creation and dashboard key or budget management remain temporarily unavailable while the authenticated service is restored
 - Add `x-llmkit-session-id` headers to group requests by agent run
 - Add `x-llmkit-user-id` headers to track costs per end-user
-- Set up the [MCP server](packages/mcp-server) to query costs from Claude Code, Cline, or Cursor
+- Set up the [MCP server](packages/mcp-server) to inspect supported Claude Code sessions and Cline task data found in supported editor storage
 - See [API.md](API.md) for full endpoint docs

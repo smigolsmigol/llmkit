@@ -1,6 +1,6 @@
 # @f3d1/llmkit-cli
 
-Zero-code AI cost tracking. Wraps any command, intercepts OpenAI and Anthropic API calls via a local proxy, prints a cost summary when it exits.
+Local AI cost tracking for OpenAI and Anthropic clients that honor their standard base-URL environment variables. Wrap a command, observe compatible calls through a local proxy, and print a cost summary when it exits.
 
 ## Usage
 
@@ -10,11 +10,11 @@ npx @f3d1/llmkit-cli -- node agent.js
 npx @f3d1/llmkit-cli -- your-binary --flag
 ```
 
-No code changes needed. The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` to a local proxy that records every request and calculates cost from the token usage.
+The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` for the child process. Calls that ignore those variables, use another protocol, or bypass that environment are not observed.
 
-### Options
+## Options
 
-```
+```text
 --port <N>      proxy port (default: random)
 -v, --verbose   per-request costs as they happen
 --json          machine-readable output
@@ -22,21 +22,25 @@ No code changes needed. The CLI sets `OPENAI_BASE_URL` and `ANTHROPIC_BASE_URL` 
 -h, --help      show this help
 ```
 
-### Example output
+## Illustrative output shape
 
+```text
+LLMKit cost summary
+
+$0.0342 total  |  5 requests  |  12.8s  |  ~$9.62/hr
+
+claude-sonnet  3 requests  $0.0291
+gpt-4.1-mini   2 requests  $0.0051
 ```
-    ██╗     ██╗     ███╗   ███╗██╗  ██╗██╗████████╗
-    ██║     ██║     ████╗ ████║██║ ██╔╝██║╚══██╔══╝
-    ██║     ██║     ██╔████╔██║█████╔╝ ██║   ██║
-    ██║     ██║     ██║╚██╔╝██║██╔═██╗ ██║   ██║
-    ███████╗███████╗██║ ╚═╝ ██║██║  ██╗██║   ██║
-    ╚══════╝╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝   ╚═╝
 
-    $0.0342 total  5 requests  12.8s  ~$9.62/hr
+The numbers above illustrate the output format; actual values come from the calls observed in your wrapped process.
 
-    claude-sonnet-4-6  3 reqs   $0.0291  ████████████████████
-    gpt-4.1-mini       2 reqs   $0.0051  ███░░░░░░░░░░░░░░░░░
-```
+## Accuracy boundary
+
+- Cost is estimated from provider usage fields and the bundled pricing snapshot.
+- Calls without recognized usage metadata remain unpriced.
+- Provider invoice adjustments, discounts, and later price changes may differ.
+- The CLI observes cost; budget rejection requires gateway mode.
 
 ## Docs
 

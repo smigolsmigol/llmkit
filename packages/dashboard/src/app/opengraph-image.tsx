@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const alt = 'LLMKit - Track what your AI agents spend';
+export const alt = 'LLMKit - Cost control for AI systems';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -9,7 +9,7 @@ export default function OGImage() {
     (
       <div
         style={{
-          background: '#0a0a0a',
+          background: '#08090c',
           width: '100%',
           height: '100%',
           display: 'flex',
@@ -26,10 +26,10 @@ export default function OGImage() {
             top: '50%',
             left: '50%',
             transform: 'translate(-50%, -50%)',
-            width: 600,
-            height: 300,
+            width: 720,
+            height: 360,
             borderRadius: '50%',
-            background: 'radial-gradient(ellipse, rgba(192,132,252,0.15), transparent 70%)',
+            background: 'radial-gradient(ellipse, rgba(192,132,252,0.18), rgba(34,211,238,0.05) 38%, transparent 70%)',
           }}
         />
 
@@ -56,7 +56,7 @@ export default function OGImage() {
             marginTop: 16,
           }}
         >
-          Track what your AI agents spend.
+          Cost control for AI systems.
         </div>
 
         {/* badges */}
@@ -67,7 +67,7 @@ export default function OGImage() {
             marginTop: 32,
           }}
         >
-          {['11 providers', '730+ models', '11 MCP tools', 'MIT licensed'].map((t) => (
+          {['local first', 'request evidence', 'budget gate', 'MIT licensed'].map((t) => (
             <div
               key={t}
               style={{

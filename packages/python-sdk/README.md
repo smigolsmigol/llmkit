@@ -73,7 +73,7 @@ Framework integrations are optional. Install the framework you use separately.
 
 ## Sessions and gateway mode
 
-Use the hosted or self-hosted LLMKit gateway when you need shared budgets, request receipts, provider routing, or dashboard analytics:
+Use the hosted or self-hosted LLMKit gateway when you need shared budgets, request receipts, provider routing, or dashboard analytics. Hosted calls require an existing key; new hosted account creation and key management are temporarily unavailable.
 
 ```python
 from llmkit import LLMKit

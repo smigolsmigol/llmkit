@@ -21,12 +21,12 @@ const orbitron = Orbitron({
 });
 
 export const metadata: Metadata = {
-  title: 'LLMKit - Track what your AI agents spend',
-  description: 'Open-source API gateway with cost tracking and budget enforcement. Per-request logging, per-key budgets across 11 AI providers. Free during beta.',
+  title: 'LLMKit - Cost control for AI systems',
+  description: 'Open-source cost attribution, request evidence, and pre-dispatch budget enforcement across local tools, SDKs, MCP, and gateway workflows.',
   keywords: ['AI cost tracking', 'LLM budget', 'API gateway', 'Claude Code cost', 'AI agent cost', 'OpenAI budget', 'MCP server', 'cost tracking', 'budget enforcement'],
   openGraph: {
-    title: 'LLMKit - Track what your AI agents spend',
-    description: 'Open-source API gateway with cost tracking and budget enforcement. 11 providers, 730+ models, budget limits that actually reject requests.',
+    title: 'LLMKit - Cost control for AI systems',
+    description: 'Give every AI request an identity, a budget decision, and an inspectable receipt.',
     url: 'https://llmkit.sh',
     siteName: 'LLMKit',
     type: 'website',
@@ -35,14 +35,14 @@ export const metadata: Metadata = {
         url: '/opengraph-image',
         width: 1200,
         height: 630,
-        alt: 'LLMKit - Track what your AI agents spend',
+        alt: 'LLMKit - Cost control for AI systems',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'LLMKit - AI cost tracking and budget enforcement',
-    description: 'Open-source API gateway that tracks what your AI agents cost and stops them from overspending.',
+    title: 'LLMKit - Cost control for AI systems',
+    description: 'Open-source cost attribution, request evidence, and pre-dispatch budget enforcement.',
     images: ['/opengraph-image'],
   },
   metadataBase: new URL('https://llmkit.sh'),

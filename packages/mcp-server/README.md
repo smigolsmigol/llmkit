@@ -1,6 +1,6 @@
 # @f3d1/llmkit-mcp-server
 
-AI cost tracking for Claude Code, Cline, Cursor, and Claude Desktop. 11 tools for spend queries, budgets, local session costs, and agent attribution across 11 LLM providers.
+AI cost inspection for supported Claude Code sessions and Cline task data discovered in VS Code-family storage. Eleven tools cover local session evidence plus authenticated gateway spend and budget queries.
 
 Part of [LLMKit](https://github.com/smigolsmigol/llmkit), an open-source API gateway with cost tracking and budget enforcement.
 
@@ -13,16 +13,13 @@ Add to your `.mcp.json` (Claude Code) or `.cursor/mcp.json` (Cursor):
   "mcpServers": {
     "llmkit": {
       "command": "npx",
-      "args": ["@f3d1/llmkit-mcp-server"],
-      "env": {
-        "LLMKIT_API_KEY": "llmk_your_key_here"
-      }
+      "args": ["-y", "@f3d1/llmkit-mcp-server"]
     }
   }
 }
 ```
 
-The local tools (`llmkit_local_*`) work immediately with no API key. They auto-detect Claude Code, Cline, and Cursor data on your machine. Proxy tools require an existing LLMKit API key; check [llmkit.sh](https://llmkit.sh) for current account and service availability.
+The local tools (`llmkit_local_*`) need no API key. They read supported Claude Code sessions and Cline task data found in supported editor storage. Proxy tools require an existing LLMKit API key in `LLMKIT_API_KEY`; check [llmkit.sh](https://llmkit.sh) for current account and service availability.
 
 ## Tools
 
@@ -43,10 +40,10 @@ Auto-detect installed AI coding tools and aggregate data from all of them.
 
 | Tool | What it does |
 |------|-------------|
-| `llmkit_local_session` | Current session cost across all detected tools |
+| `llmkit_local_session` | Current Claude Code session or latest detected Cline task cost |
 | `llmkit_local_projects` | Cumulative cost across all projects and sessions |
 | `llmkit_local_cache` | Prompt caching savings analysis |
-| `llmkit_local_forecast` | Monthly projection vs Max subscription |
+| `llmkit_local_forecast` | 30-day API-rate projection from detected local history |
 | `llmkit_local_agents` | Subagent cost attribution (Claude Code) |
 
 ### SessionEnd hook
@@ -76,11 +73,11 @@ Auto-log session costs when Claude Code exits:
 
 ## Supported tools
 
-The local tools detect data from:
+The local tools read data from:
 - Claude Code (`~/.claude/projects/`)
-- Cline (VS Code, Insiders, VSCodium, Cursor, Windsurf globalStorage)
+- Cline extension storage in VS Code, Insiders, VSCodium, Cursor, and Windsurf
 - WSL installations (scans all distros via UNC paths on Windows)
-- VS Code Server / Cursor Server (remote SSH/WSL extensions)
+- VS Code, Cursor, and Windsurf server directories for supported remote extension storage
 
 ## License
 

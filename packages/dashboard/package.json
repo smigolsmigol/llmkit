@@ -14,7 +14,7 @@
     "cloudflare:deploy:staging": "opennextjs-cloudflare build --env staging && opennextjs-cloudflare deploy --env staging",
     "cloudflare:deploy:production": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "cloudflare:typegen": "wrangler types --env staging --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "test": "node test/recovery-boundary-test.mjs",
+    "test": "node test/recovery-boundary-test.mjs && node test/public-content-contract-test.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
@@ -30,6 +30,7 @@
     "next": "15.5.23",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
+    "server-only": "0.0.1",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {

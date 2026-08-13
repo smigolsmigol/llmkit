@@ -73,10 +73,10 @@ export default async function SettingsPage() {
             )}
             {(account?.plan === 'free' || !account?.plan) && (
               <div className="mt-5 rounded-lg bg-violet-500/5 border border-violet-500/10 p-4">
-                <p className="text-sm font-medium text-violet-400">Free during beta</p>
+                <p className="text-sm font-medium text-amber-400">Hosted access paused</p>
                 <p className="mt-2 text-xs leading-relaxed text-zinc-400">
-                  Unlimited requests, all 11 providers, budget enforcement, no credit card.
-                  You bring your own provider API keys.
+                  Authenticated dashboard and gateway access remain unavailable while
+                  tenant-isolation verification is completed. Local tools remain available.
                 </p>
               </div>
             )}

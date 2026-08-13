@@ -17,7 +17,7 @@ Hosted calls require an existing LLMKit API key. Check [llmkit.sh](https://llmki
 ```ts
 import { LLMKit } from '@f3d1/llmkit-sdk';
 
-const llm = new LLMKit({ apiKey: process.env.LLMKIT_KEY! });
+const llm = new LLMKit({ apiKey: process.env.LLMKIT_API_KEY! });
 
 const res = await llm.chat({
   model: 'claude-sonnet-4-20250514',
@@ -117,15 +117,15 @@ const code = await agent.chat({
   ],
 });
 
-// both requests tagged with the same session ID
-// visible in dashboard under Sessions, queryable via MCP server
+// both gateway requests carry the same session ID
+// queryable through authenticated surfaces when they are available
 ```
 
 `session()` returns a new `LLMKit` instance that shares config but adds the session header to every request. The original client is unchanged.
 
 ## CostTracker (local, no proxy)
 
-`CostTracker` estimates costs locally using the bundled pricing table (730+ models, 11 providers). No proxy or API key required. Useful for tracking spend across multiple SDK clients, or when you want cost data without routing through LLMKit.
+`CostTracker` estimates costs locally using the bundled pricing snapshot. No proxy or API key is required. The result is a list-price estimate from the token counts you provide or from supported OpenAI- and Anthropic-style response usage.
 
 ### With OpenAI SDK responses
 
@@ -288,9 +288,9 @@ import type {
 
 | Package | What it does |
 |---------|-------------|
-| [@f3d1/llmkit-cli](https://github.com/smigolsmigol/llmkit/tree/main/packages/cli) | `npx @f3d1/llmkit-cli -- python agent.py` - zero-code cost tracking for any language |
+| [@f3d1/llmkit-cli](https://github.com/smigolsmigol/llmkit/tree/main/packages/cli) | Local proxy for OpenAI and Anthropic clients that honor their base-URL environment variables |
 | [@f3d1/llmkit-ai-sdk-provider](https://github.com/smigolsmigol/llmkit/tree/main/packages/ai-sdk-provider) | Vercel AI SDK v6 custom provider with cache token support |
-| [@f3d1/llmkit-mcp-server](https://github.com/smigolsmigol/llmkit/tree/main/packages/mcp-server) | Query costs from Claude Code, Cline, Cursor (11 tools) |
+| [@f3d1/llmkit-mcp-server](https://github.com/smigolsmigol/llmkit/tree/main/packages/mcp-server) | Inspect supported Claude Code sessions and Cline task data, plus authenticated gateway state (11 tools) |
 | [llmkit-sdk](https://pypi.org/project/llmkit-sdk/) (PyPI) | Python SDK with `tracked()` transport and local cost estimation |
 
 ## License
