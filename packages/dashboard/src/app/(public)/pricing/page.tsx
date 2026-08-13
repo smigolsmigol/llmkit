@@ -36,14 +36,14 @@ export default function PricingPage() {
         title="Provider pricing without the tab graveyard."
         description={<>{models.length} priced model entries across {providers.length} populated provider tables. The bundled schema exposes input and output rates but does not encode model modality.</>}
         aside={(
-          <a href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=500&cacheRead=0&cacheWrite=0" className="public-panel-soft block rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500 transition hover:border-violet-300/25 hover:text-zinc-300">
+          <a href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=500&cacheRead=0&cacheWrite=0" className="public-panel-soft block rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-400 transition hover:border-violet-300/25 hover:text-zinc-300">
             <span className="text-cyan-300">GET</span> /v1/pricing/compare<br />programmatic access
           </a>
         )}
       />
 
       <div className="mx-auto max-w-6xl px-6 pb-16">
-        <div className="public-panel-soft rounded-lg px-4 py-3 text-xs leading-5 text-zinc-500">
+        <div className="public-panel-soft rounded-lg px-4 py-3 text-xs leading-5 text-zinc-400">
           This is a bundled reference snapshot dated {PRICING_SNAPSHOT_DATE}, not a live quote. For text models, interpret the /1M columns as token rates only after verifying the provider's billing unit. Non-text modalities may use different units that this snapshot does not represent.
         </div>
 
@@ -52,11 +52,11 @@ export default function PricingPage() {
           return (
             <section key={provider} className="mt-10" id={provider}>
               <h2 className="text-xl font-semibold capitalize mb-3"><a href={`/providers/${provider}`} className="hover:text-violet-400 transition">{provider}</a></h2>
-              <p className="text-xs text-zinc-500 mb-2">{providerModels.length} models</p>
+              <p className="text-xs text-zinc-400 mb-2">{providerModels.length} models</p>
               <div className="public-panel-soft overflow-x-auto rounded-lg">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-500">
+                    <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-400">
                       <th className="px-3 py-2 font-medium">Model</th>
                       <th className="px-3 py-2 font-medium text-right">Input $/1M</th>
                       <th className="px-3 py-2 font-medium text-right">Output $/1M</th>
@@ -69,7 +69,7 @@ export default function PricingPage() {
                         <td className="px-3 py-1.5 font-mono text-xs">{m.model}</td>
                         <td className="px-3 py-1.5 text-right text-zinc-300">${m.input}</td>
                         <td className="px-3 py-1.5 text-right text-zinc-300">${m.output}</td>
-                        <td className="px-3 py-1.5 text-right text-zinc-500">{m.cacheRead !== undefined ? `$${m.cacheRead}` : '-'}</td>
+                        <td className="px-3 py-1.5 text-right text-zinc-400">{m.cacheRead !== undefined ? `$${m.cacheRead}` : '-'}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -51,27 +51,29 @@ export function DeveloperQuickstart() {
           <span className="h-2 w-2 rounded-full bg-emerald-300 shadow-[0_0_10px_rgba(110,231,183,.55)]" />
           <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-zinc-400">Run the first signal locally</span>
         </div>
-        <div role="tablist" aria-label="Installation method" className="flex border-t border-white/[0.07] px-2 sm:border-l sm:border-t-0">
-          {options.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              role="tab"
-              aria-selected={activeId === option.id}
-              onClick={() => {
-                setActiveId(option.id);
-                setCopyState('idle');
-              }}
-              className={`border-b px-4 py-3 font-mono text-xs transition ${
-                activeId === option.id
-                  ? 'border-violet-400 text-zinc-100'
-                  : 'border-transparent text-zinc-600 hover:text-zinc-300'
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
+        <fieldset className="min-w-0 border-t border-white/[0.07] sm:border-l sm:border-t-0">
+          <legend className="sr-only">Installation method</legend>
+          <div className="flex px-2">
+            {options.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                aria-pressed={activeId === option.id}
+                onClick={() => {
+                  setActiveId(option.id);
+                  setCopyState('idle');
+                }}
+                className={`border-b px-4 py-3 font-mono text-xs transition ${
+                  activeId === option.id
+                    ? 'border-violet-400 text-zinc-100'
+                    : 'border-transparent text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </fieldset>
       </div>
 
       <div className="grid gap-8 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
@@ -85,7 +87,7 @@ export function DeveloperQuickstart() {
             <button
               type="button"
               onClick={copyCommand}
-              className="col-span-2 justify-self-end rounded border border-zinc-800 px-2.5 py-1 font-mono text-[11px] text-zinc-500 transition hover:border-zinc-600 hover:text-zinc-200 sm:col-span-1"
+              className="col-span-2 justify-self-end rounded border border-zinc-700 px-2.5 py-1 font-mono text-[11px] text-zinc-300 transition hover:border-zinc-500 hover:text-white sm:col-span-1"
             >
               {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Copy failed' : 'Copy'}
             </button>
@@ -93,7 +95,7 @@ export function DeveloperQuickstart() {
         </div>
 
         <div className="border-l-0 border-white/[0.07] lg:border-l lg:pl-7">
-          <p className="text-sm leading-6 text-zinc-500">{active.note}</p>
+          <p className="text-sm leading-6 text-zinc-400">{active.note}</p>
           <Link href="/docs#local-setup" className="mt-3 inline-flex font-mono text-xs text-violet-300 transition hover:text-violet-200">
             Full setup -&gt;
           </Link>

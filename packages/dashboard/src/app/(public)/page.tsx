@@ -58,7 +58,7 @@ export default function Home() {
           <div className="mb-5 flex flex-wrap items-center gap-3">
             <span className="public-kicker">LLMKit / request control</span>
             <span className="h-px w-8 bg-zinc-800" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-600">Open source / MIT</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-zinc-400">Open source / MIT</span>
           </div>
 
           <h1 className="public-display max-w-[13ch] text-white">
@@ -91,7 +91,7 @@ export default function Home() {
 
           <Link
             href={RECOVERY_STATUS_HREF}
-            className="mt-6 inline-flex max-w-xl items-start gap-2 font-mono text-[11px] leading-5 text-zinc-500 transition hover:text-zinc-300"
+            className="mt-6 inline-flex max-w-xl items-start gap-2 font-mono text-[11px] leading-5 text-zinc-400 transition hover:text-zinc-300"
           >
             <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300 shadow-[0_0_9px_rgba(252,211,77,.45)]" />
             Hosted accounts are temporarily unavailable. Local tools remain available.
@@ -111,7 +111,7 @@ export default function Home() {
             <div>
               <p className="public-kicker">The request lifecycle</p>
               <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">A small boundary with hard edges.</h2>
-              <p className="mt-4 text-sm leading-6 text-zinc-500">
+              <p className="mt-4 text-sm leading-6 text-zinc-400">
                 In gateway mode, pricing describes the request. Enforcement decides whether it is allowed to become spend.
               </p>
             </div>
@@ -120,7 +120,7 @@ export default function Home() {
                 <li key={index} className="bg-[#0b0c11] p-5">
                   <p className="font-mono text-[10px] text-violet-300">{index}</p>
                   <h3 className="mt-7 text-sm font-semibold text-zinc-100">{title}</h3>
-                  <p className="mt-2 text-xs leading-5 text-zinc-500">{body}</p>
+                  <p className="mt-2 text-xs leading-5 text-zinc-400">{body}</p>
                 </li>
               ))}
             </ol>
@@ -134,7 +134,7 @@ export default function Home() {
             <p className="public-kicker">Four ways in</p>
             <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">Meet the code where it already runs.</h2>
           </div>
-          <Link href="/docs" className="font-mono text-xs text-zinc-500 transition hover:text-violet-200">
+          <Link href="/docs" className="font-mono text-xs text-zinc-400 transition hover:text-violet-200">
             Integration docs -&gt;
           </Link>
         </div>
@@ -148,8 +148,8 @@ export default function Home() {
             >
               <span className="font-mono text-[11px] text-violet-300">{surface.label}</span>
               <span className="text-sm font-semibold text-zinc-200">{surface.title}</span>
-              <span className="text-sm leading-6 text-zinc-500">{surface.body}</span>
-              <span aria-hidden="true" className="hidden text-right text-zinc-700 sm:block">-&gt;</span>
+              <span className="text-sm leading-6 text-zinc-400">{surface.body}</span>
+              <span aria-hidden="true" className="hidden text-right text-zinc-500 sm:block">-&gt;</span>
             </Link>
           ))}
         </div>

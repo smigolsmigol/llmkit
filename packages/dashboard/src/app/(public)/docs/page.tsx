@@ -19,7 +19,7 @@ function CodeBlock({ title, children }: { title: string; children: React.ReactNo
   return (
     <div className="public-panel overflow-hidden rounded-xl">
       <div className="border-b border-white/[0.06] px-4 py-2.5">
-        <span className="text-xs text-zinc-500">{title}</span>
+        <span className="text-xs text-zinc-400">{title}</span>
       </div>
       <div className="overflow-x-auto p-5 font-mono text-sm">{children}</div>
     </div>
@@ -34,7 +34,7 @@ export default function DocsPage() {
         title="Start with one surface, not a platform migration."
         description="Run the local tools in seconds. Add application instrumentation or gateway enforcement only when the ownership boundary calls for it."
         aside={(
-          <div className="public-panel-soft rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500">
+          <div className="public-panel-soft rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-400">
             <p className="text-emerald-300">available now</p>
             <p className="mt-1">MCP / CLI / Python tracker</p>
             <p>no hosted account required</p>
@@ -68,7 +68,7 @@ export default function DocsPage() {
 }`}</pre>
             </CodeBlock>
           </div>
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-400">
             That's it. Ask your AI assistant "how much did this session cost?" and it'll use the local tools.
             <Link href="/mcp" className="ml-1 text-violet-400 hover:text-violet-300 transition">See all 11 tools {'->'}</Link>
           </p>
@@ -91,10 +91,10 @@ export default function DocsPage() {
               <div className="space-y-1 text-zinc-300">
                 <p><span className="text-violet-400">from</span> openai <span className="text-violet-400">import</span> OpenAI</p>
                 <p><span className="text-violet-400">from</span> llmkit <span className="text-violet-400">import</span> tracked</p>
-                <p className="text-zinc-600">&nbsp;</p>
+                <p className="text-zinc-400">&nbsp;</p>
                 <p><span className="text-zinc-400">client</span> = <span className="text-amber-300">OpenAI</span>(http_client=<span className="text-amber-300">tracked</span>())</p>
-                <p className="text-zinc-600">&nbsp;</p>
-                <p><span className="text-zinc-500"># use client normally. costs tracked automatically.</span></p>
+                <p className="text-zinc-400">&nbsp;</p>
+                <p><span className="text-zinc-400"># use client normally. costs tracked automatically.</span></p>
                 <p><span className="text-zinc-400">res</span> = client.chat.completions.<span className="text-amber-300">create</span>(</p>
                 <p>    model=<span className="text-emerald-400">&quot;gpt-4o&quot;</span>,</p>
                 <p>    messages=[{'{'}  <span className="text-emerald-400">&quot;role&quot;</span>: <span className="text-emerald-400">&quot;user&quot;</span>, <span className="text-emerald-400">&quot;content&quot;</span>: <span className="text-emerald-400">&quot;hello&quot;</span> {'}'}]</p>
@@ -102,7 +102,7 @@ export default function DocsPage() {
               </div>
             </CodeBlock>
           </div>
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-400">
             Use this path only with clients that accept an httpx client. Estimates use the bundled pricing snapshot and the usage fields returned by the provider.
           </p>
         </section>
@@ -123,14 +123,14 @@ export default function DocsPage() {
             <CodeBlock title="usage">
               <div className="space-y-1 text-zinc-300">
                 <p><span className="text-violet-400">import</span> {'{'} LLMKit {'}'} <span className="text-violet-400">from</span> <span className="text-emerald-400">&apos;@f3d1/llmkit-sdk&apos;</span></p>
-                <p className="text-zinc-600">&nbsp;</p>
+                <p className="text-zinc-400">&nbsp;</p>
                 <p><span className="text-violet-400">const</span> kit = <span className="text-violet-400">new</span> <span className="text-amber-300">LLMKit</span>({'{'} apiKey: process.env.LLMKIT_API_KEY! {'}'})</p>
                 <p><span className="text-violet-400">const</span> res = <span className="text-violet-400">await</span> kit.<span className="text-amber-300">chat</span>({'{'}</p>
                 <p>  provider: <span className="text-emerald-400">&apos;openai&apos;</span>,</p>
                 <p>  model: <span className="text-emerald-400">&apos;gpt-4o&apos;</span>,</p>
                 <p>  messages: [{'{'} role: <span className="text-emerald-400">&apos;user&apos;</span>, content: <span className="text-emerald-400">&apos;hello&apos;</span> {'}'}]</p>
                 <p>{'}'})</p>
-                <p className="text-zinc-600">&nbsp;</p>
+                <p className="text-zinc-400">&nbsp;</p>
                 <p>console.<span className="text-amber-300">log</span>(res.content, res.cost)</p>
               </div>
             </CodeBlock>
@@ -154,14 +154,14 @@ export default function DocsPage() {
               <div className="text-xs text-zinc-400">
                 <p className="text-violet-400 font-bold">    LLMKIT</p>
                 <p>&nbsp;</p>
-                <p>    <span className="text-white font-bold">$0.0847</span> <span className="text-zinc-600">total</span>  12 requests  <span className="text-zinc-600">34.2s</span>  <span className="text-zinc-600">~$8.96/hr</span></p>
+                <p>    <span className="text-white font-bold">$0.0847</span> <span className="text-zinc-400">total</span>  12 requests  <span className="text-zinc-400">34.2s</span>  <span className="text-zinc-400">~$8.96/hr</span></p>
                 <p>&nbsp;</p>
-                <p>    <span className="text-zinc-600">claude-sonnet-4-20250514</span>  8 reqs   $0.0623  <span className="text-violet-400">================</span><span className="text-zinc-700">----</span></p>
-                <p>    <span className="text-zinc-600">gpt-4o-mini</span>              4 reqs   $0.0224  <span className="text-cyan-400">======</span><span className="text-zinc-700">--------------</span></p>
+                <p>    <span className="text-zinc-400">claude-sonnet-4-20250514</span>  8 reqs   $0.0623  <span className="text-violet-400">================</span><span className="text-zinc-500">----</span></p>
+                <p>    <span className="text-zinc-400">gpt-4o-mini</span>              4 reqs   $0.0224  <span className="text-cyan-400">======</span><span className="text-zinc-500">--------------</span></p>
               </div>
             </CodeBlock>
           </div>
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-zinc-400">
             The command is unchanged, but coverage is protocol-specific. Calls that bypass OPENAI_BASE_URL or ANTHROPIC_BASE_URL are not observed.
           </p>
         </section>
@@ -175,13 +175,13 @@ export default function DocsPage() {
           <div className="space-y-4">
             <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
               <p className="text-sm font-medium text-zinc-200">Available now</p>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-zinc-400">
                 The MCP local tools, CLI, and Python tracked() path above remain available without an LLMKit account.
               </p>
             </div>
             <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-5">
               <p className="text-sm font-medium text-zinc-200">Hosted path</p>
-              <p className="mt-1 text-xs text-zinc-500">
+              <p className="mt-1 text-xs text-zinc-400">
                 <Link href={RECOVERY_STATUS_HREF} className="text-violet-400 hover:text-violet-300 transition">
                   Check the service status
                 </Link>{' '}
@@ -210,7 +210,7 @@ export default function DocsPage() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {r.label} <span className="text-zinc-600">{'\u2197'}</span>
+                {r.label} <span className="text-zinc-400">{'\u2197'}</span>
               </a>
             ))}
           </div>

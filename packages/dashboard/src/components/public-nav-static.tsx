@@ -21,7 +21,7 @@ export function PublicNavStatic() {
         <Link href="/" aria-label="LLMKit home" className="flex items-center gap-3">
           <AnimatedLogo className="h-[42px] w-auto" />
           <span className="hidden h-5 w-px bg-white/[0.08] md:block" />
-          <span className="hidden font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-600 md:inline">agent cost control</span>
+          <span className="hidden font-mono text-[9px] uppercase tracking-[0.18em] text-zinc-400 md:inline">agent cost control</span>
         </Link>
         <div className="flex items-center gap-3 sm:gap-5">
           <div className="hidden sm:flex items-center gap-5">
@@ -51,8 +51,10 @@ export function PublicNavStatic() {
           <button
             type="button"
             onClick={() => setMenuOpen(!menuOpen)}
-            className="sm:hidden p-1 text-zinc-400 hover:text-white"
+            className="sm:hidden rounded p-1 text-zinc-400 hover:text-white"
             aria-label="Toggle menu"
+            aria-expanded={menuOpen}
+            aria-controls="public-mobile-navigation"
           >
             <svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
               {menuOpen
@@ -65,7 +67,7 @@ export function PublicNavStatic() {
       </div>
       {/* mobile dropdown */}
       {menuOpen && (
-        <div className="sm:hidden border-t border-white/[0.06] px-6 py-3 space-y-2">
+        <div id="public-mobile-navigation" className="sm:hidden border-t border-white/[0.06] px-6 py-3 space-y-2">
           {links.map((l) => (
             <Link key={l.href} href={l.href} onClick={() => setMenuOpen(false)} className="block text-sm text-zinc-400 hover:text-white transition py-1">
               {l.label}
