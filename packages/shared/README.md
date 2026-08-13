@@ -5,7 +5,10 @@ Shared types, constants, and pricing data for [LLMKit](https://github.com/smigol
 ## What's in it
 
 - **TypeScript types**: `LLMRequest`, `LLMResponse`, `CostBreakdown`, `TokenUsage`, `ProviderName`, `Budget`, and more
-- **Pricing snapshot**: 731 model entries across 9 populated provider tables, dated 2026-03-25, including cache read/write rates where available. The snapshot does not encode model modality, so values are token rates only for models independently verified as token-billed. `ProviderName` also reserves Ollama and OpenRouter identifiers, but this bundled snapshot contains no priced entries for them.
+- **Pricing snapshot**: 731 model entries across 9 populated provider tables, dated 2026-03-25,
+  with cache read/write rates where available. The snapshot does not encode model modality. Values
+  are token rates only for models independently verified as token-billed. `ProviderName` reserves
+  Ollama and OpenRouter identifiers, but the snapshot contains no priced entries for them.
 - **Cost calculation**: `calculateCost()`, `calculateCostBreakdown()`, `getModelPricing()`
 - **Provider inference**: `inferProvider()` resolves a model name to its provider
 - **Error types**: shared error definitions across LLMKit packages
@@ -33,7 +36,7 @@ const pricing = getModelPricing('openai', 'gpt-4.1');
 
 ## Docs
 
-Full documentation: [github.com/smigolsmigol/llmkit](https://github.com/smigolsmigol/llmkit)
+See the [LLMKit repository](https://github.com/smigolsmigol/llmkit) for the gateway and package docs.
 
 ## License
 

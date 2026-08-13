@@ -17,7 +17,10 @@
   <a href="https://llmkit.sh">Website</a> | <a href="https://llmkit.sh/docs">Docs</a> | <a href="https://api.llmkit.sh/v1/pricing/compare?input=1000&output=1000">Pricing API</a> | <a href="SECURITY.md">Security</a>
 </p>
 
-LLMKit is an open-source AI gateway and SDK suite for cost attribution, budget admission, and request evidence. The gateway reserves estimated spend before provider dispatch, rejects requests that cannot fit the active budget, and settles the reservation to actual usage when the response completes.
+LLMKit is an open-source AI gateway and SDK suite for cost attribution, budget admission, and
+request evidence. The gateway reserves estimated spend before provider dispatch. It rejects
+requests that cannot fit the active budget, then settles admitted reservations to actual usage when
+the response completes.
 
 The repository also ships local tracking surfaces that do not require an LLMKit account or proxy.
 
@@ -67,7 +70,9 @@ Use `-v` for per-request output or `--json` for machine-readable results.
 
 ### Gateway mode (existing key)
 
-Gateway examples require an existing LLMKit API key. Account creation and key management are temporarily unavailable while the authenticated service is restored. Use the local tracking paths above if you do not already have a key.
+Gateway examples require an existing LLMKit API key. Account creation and key management are
+temporarily unavailable while the authenticated service is restored. If you do not already have a
+key, use one of the local tracking paths above.
 
 ```python
 from openai import OpenAI
@@ -85,24 +90,26 @@ response = client.chat.completions.create(
 
 ## The budget path
 
-```mermaid
-flowchart LR
-    A[Client request] --> B[Authenticate and identify scope]
-    B --> C[Idempotency gate]
-    C --> D[Reserve estimated cost]
-    D -->|admitted| E[Provider dispatch]
-    D -->|over budget| F[Reject before dispatch]
-    E --> G[Settle actual usage]
-    G --> H[Receipt and analytics outbox]
-```
+<p align="center">
+  <img
+    src=".github/budget-path.svg"
+    width="100%"
+    alt="LLMKit authenticates each request, reserves its estimated cost, rejects requests over budget before provider dispatch, and settles admitted requests to actual usage."
+  />
+</p>
 
 The control path is built around three boundaries:
 
-- **Atomic admission:** a Durable Object owns reservation state for a budget scope, so concurrent requests cannot each spend the same remaining amount.
-- **Dispatch-aware idempotency:** deterministic pre-dispatch failures release the key; failures after possible provider dispatch remain terminal rather than risking duplicate spend.
-- **Bounded responses:** non-streaming bodies and individual SSE frames have explicit byte limits and cancel upstream reads when exceeded.
+- **Atomic admission:** a Durable Object owns reservation state for each budget scope. Concurrent
+  requests cannot spend the same remaining balance.
+- **Dispatch-aware idempotency:** deterministic failures before dispatch release the key. After
+  provider dispatch may have occurred, failures remain terminal to avoid duplicate spend.
+- **Bounded responses:** non-streaming bodies and individual SSE frames have explicit byte limits.
+  LLMKit cancels upstream reads when a limit is exceeded.
 
-Request receipts bind the admission decision, provider attempt, settlement, and analytics handoff with stable identifiers. Database writes use an outbox so an analytics outage does not silently erase budget evidence.
+Request receipts bind the admission decision, provider attempt, settlement, and analytics handoff
+with stable identifiers. Database writes use an outbox, so an analytics outage does not silently erase
+budget evidence.
 
 ## MCP server
 
@@ -117,11 +124,16 @@ Request receipts bind the admission decision, provider attempt, settlement, and 
 }
 ```
 
-Five local tools inspect supported Claude Code sessions and Cline task data discovered in supported editor storage without an LLMKit key. Six gateway tools query spend, budgets, keys, sessions, and service health when an existing key is configured in `LLMKIT_API_KEY`. Together they expose 11 tools.
+Five local tools inspect supported Claude Code sessions and Cline task data without an LLMKit key.
+Six gateway tools query spend, budgets, keys, sessions, and service health when `LLMKIT_API_KEY`
+contains an existing key. Together they expose 11 tools.
 
 ## Pricing data
 
-The pinned catalog is a bundled reference snapshot, not a live quote. One source file, [`packages/shared/pricing.json`](packages/shared/pricing.json), records its own snapshot date and generates the TypeScript, Python, and MCP tables; CI rejects drift between the source and generated files. The public site renders only populated provider tables and displays that source date.
+The pinned catalog is a bundled reference snapshot, not a live quote. One source file,
+[`packages/shared/pricing.json`](packages/shared/pricing.json), records the snapshot date and
+generates the TypeScript, Python, and MCP tables. CI rejects drift between the source and generated
+files. The public site renders only populated provider tables and displays the source date.
 
 The public comparison endpoint requires no account:
 
@@ -163,7 +175,9 @@ Generic deploy commands are intentionally omitted. Staging and production use se
 
 ## Security
 
-Provider credentials are encrypted with AES-256-GCM using a random IV and owner/provider-bound additional authenticated data. LLMKit API keys are hashed before storage. CI includes secret scanning, static analysis, dependency review, CodeQL, and package provenance checks.
+Provider credentials are encrypted with AES-256-GCM using a random IV and owner/provider-bound
+additional authenticated data. LLMKit API keys are hashed before storage. CI includes secret
+scanning, static analysis, dependency review, CodeQL, and package provenance checks.
 
 Read the [security policy and architecture](SECURITY.md). Please report vulnerabilities privately to `security@llmkit.sh`.
 

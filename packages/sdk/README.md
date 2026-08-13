@@ -1,6 +1,9 @@
 # @f3d1/llmkit-sdk
 
-TypeScript client and local cost tracker for [LLMKit](https://github.com/smigolsmigol/llmkit). `CostTracker` runs locally with no account or proxy. The hosted client adds provider routing, request receipts, and budget enforcement for existing LLMKit API keys.
+TypeScript client and local cost tracker for
+[LLMKit](https://github.com/smigolsmigol/llmkit). `CostTracker` runs locally with no account or
+proxy. The hosted client adds provider routing, request receipts, and budget enforcement for
+existing LLMKit API keys.
 
 ## Install
 
@@ -12,7 +15,9 @@ pnpm add @f3d1/llmkit-sdk
 
 ## Hosted client
 
-Hosted calls require an existing LLMKit API key. Check [llmkit.sh](https://llmkit.sh) for current account and service availability. For local cost estimation with no account, skip to [CostTracker](#costtracker-local-no-proxy).
+Hosted calls require an existing LLMKit API key. Check [llmkit.sh](https://llmkit.sh) for current
+account and service availability. For local cost estimation with no account, skip to
+[CostTracker](#costtracker-local-no-proxy).
 
 ```ts
 import { LLMKit } from '@f3d1/llmkit-sdk';
@@ -28,11 +33,13 @@ console.log(res.content);
 console.log(`$${res.cost.totalCost}`); // $0.0183
 ```
 
-Every response includes token counts, cost breakdown, latency, and provider info. No extra calls needed.
+Each response includes token counts, cost breakdown, latency, and provider details.
 
 ## Chat completions
 
-The `chat()` method sends a request through the LLMKit proxy and returns a typed `LLMResponse`. The proxy handles auth, logging, budget checks, and cost calculation before forwarding to the provider.
+The `chat()` method sends a request through the LLMKit proxy and returns a typed `LLMResponse`.
+The proxy handles authentication, logging, budget checks, and cost calculation before forwarding
+the request to the provider.
 
 ```ts
 const res = await llm.chat({
@@ -96,7 +103,8 @@ The `ChatStream` class implements `AsyncIterable<string>`, so it works anywhere 
 
 ## Sessions
 
-Sessions group related requests under a single ID for cost tracking and analytics. Useful for agent loops, multi-turn conversations, or anything where you want per-task cost visibility.
+Sessions group related requests under one ID for cost tracking and analytics. Use them when an agent
+loop, multi-turn conversation, or other workflow needs per-task cost visibility.
 
 ```ts
 const agent = llm.session(); // auto-generates a UUID
@@ -261,7 +269,8 @@ try {
 }
 ```
 
-Budget enforcement happens before the request reaches the provider. If a request would push spend over the limit, it's rejected with a 402 and the budget is not charged.
+Budget enforcement happens before the request reaches the provider. A request that would exceed the
+limit is rejected with a 402, and the budget is not charged.
 
 For streaming, errors on connection throw immediately. If the stream breaks mid-response, the async iterator throws on the next `read()`.
 
