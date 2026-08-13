@@ -1,4 +1,10 @@
-import { createExecutionContext, runInDurableObject, waitOnExecutionContext } from 'cloudflare:test';
+import {
+  createExecutionContext,
+  evictAllDurableObjects,
+  reset,
+  runInDurableObject,
+  waitOnExecutionContext,
+} from 'cloudflare:test';
 import { env, exports } from 'cloudflare:workers';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encrypt } from '../../src/crypto';
@@ -282,9 +288,16 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
-  activeProvider = undefined;
-  vi.restoreAllMocks();
+afterEach(async () => {
+  try {
+    // Keep the outbound fetch capture installed until Durable Object waitUntil()
+    // work has drained, then remove alarms and storage before the next shard.
+    await evictAllDurableObjects();
+    await reset();
+  } finally {
+    activeProvider = undefined;
+    vi.restoreAllMocks();
+  }
 });
 
 function hardStub(budgetId: string): DurableObjectStub<BudgetDO> {
