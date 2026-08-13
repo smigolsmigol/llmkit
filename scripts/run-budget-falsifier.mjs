@@ -202,7 +202,11 @@ receipt.computedVerdict = {
   localCoordinationLatency: localCoordinationLatency?.passed === true,
 };
 receipt.shards = shardEvidence;
-if (!Object.values(receipt.computedVerdict).every(Boolean)) exitCode = 1;
+const failedShards = shardEvidence.filter((shard) => shard.exitCode !== 0 || !shard.receipt);
+const failedVerdicts = Object.entries(receipt.computedVerdict)
+  .filter(([, passed]) => !passed)
+  .map(([name]) => name);
+if (failedShards.length > 0 || failedVerdicts.length > 0) exitCode = 1;
 const packageJson = JSON.parse(await readFile(resolve(packageRoot, 'package.json'), 'utf8'));
 receipt.generatedAtUtc = new Date().toISOString();
 receipt.sourceCommit = required('git', ['rev-parse', 'HEAD'], { cwd: repoRoot });
@@ -221,4 +225,8 @@ await mkdir(dirname(output), { recursive: true });
 await writeFile(output, `${JSON.stringify(receipt, null, 2)}\n`, 'utf8');
 const receiptSha256 = createHash('sha256').update(await readFile(output)).digest('hex');
 process.stdout.write(`\nBUDGET_FALSIFIER_RECEIPT ${output}\nBUDGET_FALSIFIER_SHA256 ${receiptSha256}\n`);
+if (exitCode !== 0) {
+  process.stderr.write(`BUDGET_FALSIFIER_FAILED_SHARDS ${JSON.stringify(failedShards)}\n`);
+  process.stderr.write(`BUDGET_FALSIFIER_FAILED_VERDICTS ${JSON.stringify(failedVerdicts)}\n`);
+}
 process.exit(exitCode);
