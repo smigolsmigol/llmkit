@@ -56,8 +56,8 @@ export default function McpPage() {
         description="Eleven cost tools in one MCP server. Five inspect supported local Claude Code and Cline data without an account, a proxy, or an API key."
         aside={(
           <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-white/[0.07] bg-white/[0.07] text-center">
-            <div className="bg-[#0c0d12] p-4"><p className="text-2xl font-semibold text-cyan-300">5</p><p className="mt-1 font-mono text-[9px] text-zinc-600">local tools</p></div>
-            <div className="bg-[#0c0d12] p-4"><p className="text-2xl font-semibold text-violet-300">6</p><p className="mt-1 font-mono text-[9px] text-zinc-600">proxy tools</p></div>
+            <div className="bg-[#0c0d12] p-4"><p className="text-2xl font-semibold text-cyan-300">5</p><p className="mt-1 font-mono text-[9px] text-zinc-400">local tools</p></div>
+            <div className="bg-[#0c0d12] p-4"><p className="text-2xl font-semibold text-violet-300">6</p><p className="mt-1 font-mono text-[9px] text-zinc-400">proxy tools</p></div>
           </div>
         )}
       />
@@ -71,7 +71,7 @@ export default function McpPage() {
               <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
               <div className="h-2.5 w-2.5 rounded-full bg-zinc-700" />
             </div>
-            <span className="ml-2 text-xs text-zinc-500">install</span>
+            <span className="ml-2 text-xs text-zinc-400">install</span>
           </div>
           <div className="p-5 font-mono text-sm">
             <p><span className="text-emerald-400">$</span> <span className="text-zinc-300">npx @f3d1/llmkit-mcp-server</span></p>
@@ -81,10 +81,10 @@ export default function McpPage() {
 
       {/* config snippet */}
       <div className="mx-auto max-w-2xl px-6 pb-12">
-        <p className="mb-3 text-center text-xs text-zinc-500">Add to your MCP client config</p>
+        <p className="mb-3 text-center text-xs text-zinc-400">Add to your MCP client config</p>
         <div className="public-panel overflow-hidden rounded-xl">
           <div className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5">
-            <span className="text-xs text-zinc-500">.mcp.json (Claude Code) or .cursor/mcp.json (Cursor)</span>
+            <span className="text-xs text-zinc-400">.mcp.json (Claude Code) or .cursor/mcp.json (Cursor)</span>
           </div>
           <pre className="p-5 font-mono text-xs text-zinc-300 overflow-x-auto">{`{
   "mcpServers": {
@@ -95,7 +95,7 @@ export default function McpPage() {
   }
 }`}</pre>
         </div>
-        <p className="mt-3 text-center text-xs text-zinc-600">
+        <p className="mt-3 text-center text-xs text-zinc-400">
           No API key is needed for local tools. Proxy tools require an existing key in LLMKIT_API_KEY while new account creation is closed.
         </p>
       </div>
@@ -104,7 +104,7 @@ export default function McpPage() {
       <div className="mx-auto max-w-3xl px-6 pb-10">
         <div className="mb-4">
           <h2 className="text-base font-semibold">Local tools <span className="ml-2 text-xs font-normal text-cyan-400">no account needed</span></h2>
-          <p className="mt-1 text-xs text-zinc-500">Reads supported Claude Code sessions and Cline task data from detected editor storage.</p>
+          <p className="mt-1 text-xs text-zinc-400">Reads supported Claude Code sessions and Cline task data from detected editor storage.</p>
         </div>
         <div className="space-y-2">
           {localTools.map((t) => <ToolRow key={t.name} {...t} />)}
@@ -115,7 +115,7 @@ export default function McpPage() {
       <div className="mx-auto max-w-3xl px-6 pb-10">
         <div className="mb-4">
           <h2 className="text-base font-semibold">Proxy tools <span className="ml-2 text-xs font-normal text-violet-400">requires API key</span></h2>
-          <p className="mt-1 text-xs text-zinc-500">Queries your LLMKit proxy for spend, budgets, and sessions.</p>
+          <p className="mt-1 text-xs text-zinc-400">Queries your LLMKit proxy for spend, budgets, and sessions.</p>
         </div>
         <div className="space-y-2">
           {proxyTools.map((t) => <ToolRow key={t.name} {...t} />)}
@@ -129,7 +129,7 @@ export default function McpPage() {
           {supportedSources.map((t) => (
             <div key={t.name} className="public-row-link rounded-lg border border-white/[0.06] bg-white/[0.02] px-4 py-3">
               <p className="text-sm font-medium text-zinc-200">{t.name}</p>
-              <p className="mt-1 text-xs text-zinc-500">{t.desc}</p>
+              <p className="mt-1 text-xs text-zinc-400">{t.desc}</p>
             </div>
           ))}
         </div>

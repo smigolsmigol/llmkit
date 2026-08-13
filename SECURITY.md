@@ -1,5 +1,47 @@
 # Security Policy
 
+## Security Requirements and Limits
+
+LLMKit is designed to provide request identity, bounded provider forwarding, cost evidence, and
+pre-dispatch budget admission for supported gateway requests. The complete component and trust
+boundary map is in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+Users can expect:
+
+- hosted API calls to require a database-backed LLMKit bearer key unless an operator explicitly
+  starts a local development instance with `DEV_MODE=true` and no Supabase configuration;
+- raw LLMKit API keys to be shown once and stored only as SHA-256 digests;
+- stored provider credentials to be encrypted with AES-256-GCM and owner/provider-bound additional
+  authenticated data;
+- a supported hard-budget request to be rejected before provider dispatch when its conservative
+  reservation would exceed the linked budget;
+- unknown pricing, missing output limits, unsupported cost-affecting fields, and unbounded media or
+  provider-managed tools to fail closed for hard-budget requests;
+- provider requests, error details, buffered responses, and idempotency replay bodies to have
+  explicit time or byte limits;
+- staging and production to use distinct Worker and database identities; and
+- local Python, TypeScript, CLI, and MCP inspection paths not to send LLMKit telemetry merely to
+  calculate or display local cost evidence.
+
+Users must not expect:
+
+- local tracking to reject provider spend or produce a hosted durable receipt;
+- the bundled pricing catalog to be a live quote, a provider invoice, or an automatic model
+  recommendation;
+- hard budgets to cover request shapes that cannot be conservatively priced before dispatch;
+- idempotent byte-for-byte replay for streaming requests;
+- a network failure after provider dispatch to prove that the provider did no billable work;
+- the service role, encryption, Cloudflare isolation, or row-level security to make an unsafe
+  application path harmless;
+- account creation, dashboard access, or key management while the hosted surface remains in public
+  recovery mode; or
+- an independent security audit, paid bug bounty, uptime commitment, or compliance certification.
+
+The current catalog is a 731-entry snapshot dated 2026-03-25. It does not encode a reliable modality
+taxonomy, so LLMKit prices only explicit model keys and does not invent cross-modality rankings.
+Provider billing rules, negotiated discounts, later pricing changes, and missing usage metadata stay
+outside the accuracy guarantee.
+
 ## Supported Versions
 
 Security fixes are applied to the latest release. Older releases are not supported unless a

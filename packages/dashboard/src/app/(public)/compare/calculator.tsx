@@ -69,7 +69,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
       {/* Token inputs */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label htmlFor="calculator-input-tokens" className="block text-xs text-zinc-500 mb-1">Input tokens per request</label>
+          <label htmlFor="calculator-input-tokens" className="block text-xs text-zinc-400 mb-1">Input tokens per request</label>
           <input
             id="calculator-input-tokens"
             type="number"
@@ -79,7 +79,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
           />
         </div>
         <div>
-          <label htmlFor="calculator-output-tokens" className="block text-xs text-zinc-500 mb-1">Output tokens per request</label>
+          <label htmlFor="calculator-output-tokens" className="block text-xs text-zinc-400 mb-1">Output tokens per request</label>
           <input
             id="calculator-output-tokens"
             type="number"
@@ -89,7 +89,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
           />
         </div>
         <div>
-          <label htmlFor="calculator-monthly-requests" className="block text-xs text-zinc-500 mb-1">Requests per month</label>
+          <label htmlFor="calculator-monthly-requests" className="block text-xs text-zinc-400 mb-1">Requests per month</label>
           <input
             id="calculator-monthly-requests"
             type="number"
@@ -131,7 +131,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
               className={`rounded-md px-2 py-1 text-xs transition capitalize ${
                 selectedProviders.has(p)
                   ? 'bg-violet-600/20 text-violet-300 border border-violet-500/30'
-                  : 'bg-white/[0.02] text-zinc-600 border border-white/[0.04]'
+                  : 'bg-white/[0.02] text-zinc-400 border border-white/[0.04]'
               }`}
             >
               {p}
@@ -148,7 +148,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
       <div className="overflow-x-auto rounded-lg border border-white/[0.07] bg-black/25">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-500">
+            <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-400">
               <th className="px-3 py-2 font-medium">Provider</th>
               <th className="px-3 py-2 font-medium">Model</th>
               <th className="px-3 py-2 font-medium text-right cursor-pointer hover:text-white" onClick={() => setSortBy('input')}>
@@ -166,7 +166,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
           <tbody>
             {results.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-xs text-zinc-600">
+                <td colSpan={6} className="px-3 py-8 text-center text-xs text-zinc-400">
                   {search.trim()
                     ? 'No model entries match the current provider and model filters.'
                     : 'Search for a specific model you have verified as token-billed to calculate an estimate.'}
@@ -175,7 +175,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
             )}
             {results.map((r) => (
               <tr key={`${r.provider}-${r.model}`} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                <td className="px-3 py-1.5 text-xs text-zinc-500 capitalize">{r.provider}</td>
+                <td className="px-3 py-1.5 text-xs text-zinc-400 capitalize">{r.provider}</td>
                 <td className="px-3 py-1.5 font-mono text-xs">{r.model}</td>
                 <td className="px-3 py-1.5 text-right text-zinc-400">{fmt(r.inputCost)}</td>
                 <td className="px-3 py-1.5 text-right text-zinc-400">{fmt(r.outputCost)}</td>
@@ -187,7 +187,7 @@ export function Calculator({ models, providers, pricingSnapshotDate }: Props) {
         </table>
       </div>
 
-      <p className="text-xs text-zinc-600 text-center">
+      <p className="text-xs text-zinc-400 text-center">
         Search-gated estimates cover up to 50 matching rows from {models.length} model entries across {providers.length} populated provider tables.
         {' '}Bundled snapshot: {pricingSnapshotDate}. For verified token-billed models, estimates exclude cache tiers, tools, media, batch discounts, taxes, and negotiated rates.
         {' '}<a href="/pricing" className="text-violet-400 hover:text-violet-300">Full table</a>

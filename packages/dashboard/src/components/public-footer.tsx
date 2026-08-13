@@ -10,7 +10,7 @@ const links = [
 
 export function PublicFooter() {
   return (
-    <footer className="relative mx-auto grid max-w-6xl gap-8 border-t border-white/[0.06] px-6 pb-12 pt-8 text-xs text-zinc-500 sm:grid-cols-[1fr_auto] sm:items-end">
+    <footer className="relative mx-auto grid max-w-6xl gap-8 border-t border-white/[0.06] px-6 pb-12 pt-8 text-xs text-zinc-400 sm:grid-cols-[1fr_auto] sm:items-end">
       <div>
         <AnimatedLogo className="h-9 w-auto opacity-70" />
         <p className="mt-3 max-w-lg leading-5">

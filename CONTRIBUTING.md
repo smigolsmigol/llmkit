@@ -38,6 +38,20 @@ Always branch from `main`. Keep branches short-lived.
 2. Keep PRs focused: one feature or fix per PR
 3. Write a clear description: what changed, why, how to test
 4. Link the GitHub Issue if there is one
+5. Sign every commit to certify that you have the right to submit it
+
+## Developer Certificate of Origin
+
+LLMKit uses the [Developer Certificate of Origin 1.1](https://developercertificate.org/). Every
+commit must include a `Signed-off-by` trailer matching the contributor's Git author identity:
+
+```bash
+git commit -s -m "describe the change"
+```
+
+The sign-off certifies contribution rights under the DCO. It is not a cryptographic signature and
+does not assign copyright to LLMKit. If a commit is missing the trailer, amend it yourself; another
+person must not add your certification for you.
 
 ## Quality gate
 
@@ -90,6 +104,10 @@ packages/
   mcp-server/       MCP tools for Claude Code, Cline, Cursor (published to npm)
   dashboard/        Next.js 15 admin UI (private, deployed)
 ```
+
+Project decisions, maintainer responsibilities, and dispute handling are documented in
+[`GOVERNANCE.md`](GOVERNANCE.md). The current product boundaries are documented in
+[`ARCHITECTURE.md`](ARCHITECTURE.md) and [`SECURITY.md`](SECURITY.md).
 
 ## Need help?
 

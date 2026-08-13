@@ -177,6 +177,30 @@
     var(--public-bg);
 }
 
+.public-skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 0.75rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  border: 2px solid #c4b5fd;
+  border-radius: 0.375rem;
+  background: #08090c;
+  padding: 0.6rem 0.85rem;
+  color: #f5f3ff;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.public-skip-link:focus {
+  transform: translateY(0);
+}
+
+.public-shell :is(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid #c4b5fd;
+  outline-offset: 3px;
+}
+
 .public-grid {
   position: fixed;
   inset: 0;
@@ -317,6 +341,10 @@
   }
 
   .public-row-link {
+    transition: none;
+  }
+
+  .public-skip-link {
     transition: none;
   }
 }

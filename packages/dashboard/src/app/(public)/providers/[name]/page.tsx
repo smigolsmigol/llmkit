@@ -91,7 +91,7 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
         title={`${display} API pricing`}
         description={<>{models.length} model entries. {desc}. Source rate fields are shown as encoded in the snapshot dated {PRICING_SNAPSHOT_DATE}; model modality is not encoded.</>}
         aside={(
-          <Link href="/pricing" className="public-panel-soft block rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-500 transition hover:border-violet-300/25 hover:text-zinc-300">
+          <Link href="/pricing" className="public-panel-soft block rounded-xl p-4 font-mono text-[10px] leading-5 text-zinc-400 transition hover:border-violet-300/25 hover:text-zinc-300">
             pricing index<br /><span className="text-violet-300">all providers -&gt;</span>
           </Link>
         )}
@@ -102,30 +102,30 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
         {models.length > 1 && cheapest && mostExpensive && (
           <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="public-panel-soft rounded-lg p-4">
-              <p className="text-xs text-zinc-500">Lowest encoded input rate</p>
-              <p className="mt-1 text-lg font-semibold">${cheapest.input}<span className="text-sm text-zinc-500">/1M</span></p>
+              <p className="text-xs text-zinc-400">Lowest encoded input rate</p>
+              <p className="mt-1 text-lg font-semibold">${cheapest.input}<span className="text-sm text-zinc-400">/1M</span></p>
               <p className="text-xs text-zinc-400 font-mono truncate">{cheapest.model}</p>
             </div>
             <div className="public-panel-soft rounded-lg p-4">
-              <p className="text-xs text-zinc-500">Highest encoded input rate</p>
-              <p className="mt-1 text-lg font-semibold">${mostExpensive.input}<span className="text-sm text-zinc-500">/1M</span></p>
+              <p className="text-xs text-zinc-400">Highest encoded input rate</p>
+              <p className="mt-1 text-lg font-semibold">${mostExpensive.input}<span className="text-sm text-zinc-400">/1M</span></p>
               <p className="text-xs text-zinc-400 font-mono truncate">{mostExpensive.model}</p>
             </div>
             <div className="public-panel-soft rounded-lg p-4">
-              <p className="text-xs text-zinc-500">Models with cache pricing</p>
-              <p className="mt-1 text-lg font-semibold">{models.filter(m => m.cacheRead !== undefined).length}<span className="text-sm text-zinc-500"> of {models.length}</span></p>
+              <p className="text-xs text-zinc-400">Models with cache pricing</p>
+              <p className="mt-1 text-lg font-semibold">{models.filter(m => m.cacheRead !== undefined).length}<span className="text-sm text-zinc-400"> of {models.length}</span></p>
             </div>
           </div>
         )}
 
         <section className="mt-10">
-          <p className="mb-3 text-xs leading-5 text-zinc-500">
+          <p className="mb-3 text-xs leading-5 text-zinc-400">
             Interpret the /1M columns as token rates only for models independently verified as token-billed. Non-text billing units are not represented in this snapshot schema.
           </p>
           <div className="public-panel-soft overflow-x-auto rounded-lg">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-500">
+                <tr className="border-b border-white/[0.06] text-left text-xs text-zinc-400">
                   <th className="px-3 py-2 font-medium">Model</th>
                   <th className="px-3 py-2 font-medium text-right">Input $/1M</th>
                   <th className="px-3 py-2 font-medium text-right">Output $/1M</th>
@@ -138,7 +138,7 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
                     <td className="px-3 py-1.5 font-mono text-xs">{m.model}</td>
                     <td className="px-3 py-1.5 text-right text-zinc-300">${m.input}</td>
                     <td className="px-3 py-1.5 text-right text-zinc-300">${m.output}</td>
-                    <td className="px-3 py-1.5 text-right text-zinc-500">{m.cacheRead !== undefined ? `$${m.cacheRead}` : '-'}</td>
+                    <td className="px-3 py-1.5 text-right text-zinc-400">{m.cacheRead !== undefined ? `$${m.cacheRead}` : '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -150,11 +150,11 @@ export default async function ProviderPage({ params }: { params: Promise<{ name:
           <Link href="/pricing" className="text-violet-400 hover:text-violet-300 transition">
             View all providers
           </Link>
-          <span className="text-zinc-600">|</span>
+          <span className="text-zinc-400">|</span>
           <Link href="/compare" className="text-violet-400 hover:text-violet-300 transition">
             Cost calculator
           </Link>
-          <span className="text-zinc-600">|</span>
+          <span className="text-zinc-400">|</span>
           <a
             href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=500&cacheRead=0&cacheWrite=0"
             className="text-violet-400 hover:text-violet-300 transition"

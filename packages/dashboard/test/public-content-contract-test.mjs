@@ -1,11 +1,37 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const packageRoot = fileURLToPath(new URL('..', import.meta.url));
 const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const readDashboard = (relativePath) => readFileSync(`${packageRoot}/${relativePath}`, 'utf8');
 const readRepo = (relativePath) => readFileSync(`${repoRoot}/${relativePath}`, 'utf8');
+
+const evidenceFiles = [
+  'GOVERNANCE.md',
+  'ROADMAP.md',
+  'ARCHITECTURE.md',
+  'SECURITY.md',
+  'ACCESSIBILITY.md',
+  'CONTRIBUTING.md',
+];
+
+for (const relativePath of evidenceFiles) {
+  assert.ok(existsSync(`${repoRoot}/${relativePath}`), `${relativePath} must exist`);
+  const markdown = readRepo(relativePath);
+  for (const match of markdown.matchAll(/(?<!!)\[[^\]]+\]\(([^)]+)\)/g)) {
+    const rawTarget = match[1].replace(/^<|>$/g, '');
+    if (/^(?:https?:|mailto:|#)/.test(rawTarget)) continue;
+    const fileTarget = rawTarget.split('#', 1)[0];
+    if (!fileTarget) continue;
+    const absoluteTarget = resolve(repoRoot, dirname(relativePath), fileTarget);
+    assert.ok(
+      existsSync(absoluteTarget),
+      `${relativePath} links to missing repository path ${rawTarget}`,
+    );
+  }
+}
 
 const securityTxt = readDashboard('public/.well-known/security.txt');
 const securityTxtFields = new Map();
@@ -57,6 +83,39 @@ assert.match(readme, /bestpractices\.dev\/projects\/12288/);
 assert.doesNotMatch(readme, /bestpractices\.dev\/projects\/11849/);
 assert.match(readme, /\[Security Insights snapshot\]\(security-insights\.yml\)/);
 assert.match(readme, /security\/advisories\/new/);
+for (const evidenceFile of evidenceFiles) {
+  assert.match(readme, new RegExp(`\\(${evidenceFile.replace('.', '\\.')}\\)`));
+}
+
+const governance = readRepo('GOVERNANCE.md');
+assert.match(governance, /single-maintainer governance model/);
+assert.match(governance, /Federico Benini/);
+assert.match(governance, /does not yet meet its target for access continuity/);
+
+const roadmap = readRepo('ROADMAP.md');
+assert.match(roadmap, /August 2026 through August 2027/);
+assert.match(roadmap, /Not planned in this window/);
+assert.match(roadmap, /does not invent cross-modality rankings|automatic "cheapest model" ranking/);
+
+const architecture = readRepo('ARCHITECTURE.md');
+assert.match(architecture, /Local tracking path/);
+assert.match(architecture, /Hosted request path/);
+assert.match(architecture, /public-recovery/);
+assert.match(architecture, /service role is not a\s+tenant boundary by itself/);
+
+const securityPolicy = readRepo('SECURITY.md');
+assert.match(securityPolicy, /Security Requirements and Limits/);
+assert.match(securityPolicy, /731-entry snapshot dated 2026-03-25/);
+assert.match(securityPolicy, /does not invent cross-modality rankings/);
+
+const accessibility = readRepo('ACCESSIBILITY.md');
+assert.match(accessibility, /target, not a[\s\S]*certification/);
+assert.match(accessibility, /No manual NVDA, VoiceOver, Narrator/);
+assert.match(accessibility, /English-only/);
+
+const contributing = readRepo('CONTRIBUTING.md');
+assert.match(contributing, /Developer Certificate of Origin 1\.1/);
+assert.match(contributing, /git commit -s/);
 
 const pricing = JSON.parse(readFileSync(`${repoRoot}/packages/shared/pricing.json`, 'utf8'));
 const populatedProviders = Object.entries(pricing.providers)
@@ -104,6 +163,31 @@ const publicDocs = [
 ].map(readRepo);
 const authenticatedSurface = readDashboard('src/app/(auth)/dashboard/settings/page.tsx');
 const publicSource = [...publicFiles, ...publicDocs, authenticatedSurface].join('\n');
+
+const publicShell = readDashboard('src/components/public/public-shell.tsx');
+assert.match(publicShell, /href="#main-content"/);
+assert.match(publicShell, /id="main-content"/);
+
+const globalStyles = readDashboard('src/app/globals.css');
+assert.match(globalStyles, /\.public-shell :is\(a, button, input, select, textarea\):focus-visible/);
+assert.match(globalStyles, /@media \(prefers-reduced-motion: reduce\)/);
+
+const animatedLogo = readDashboard('src/components/animated-logo.tsx');
+assert.match(animatedLogo, /@media \(prefers-reduced-motion: reduce\)/);
+
+const publicNavigation = readDashboard('src/components/public-nav-static.tsx');
+assert.match(publicNavigation, /aria-expanded=\{menuOpen\}/);
+assert.match(publicNavigation, /aria-controls="public-mobile-navigation"/);
+
+const developerQuickstart = readDashboard('src/components/public/developer-quickstart.tsx');
+assert.match(developerQuickstart, /aria-pressed=\{activeId === option\.id\}/);
+assert.match(developerQuickstart, /<fieldset/);
+assert.match(developerQuickstart, /<legend className="sr-only">Installation method<\/legend>/);
+assert.doesNotMatch(developerQuickstart, /role="tab"/);
+
+const budgetPathDiagram = readRepo('.github/budget-path.svg');
+assert.match(budgetPathDiagram, /role="img"/);
+assert.match(budgetPathDiagram, /aria-labelledby="title description"/);
 
 for (const staleClaim of [
   /730\+/i,
