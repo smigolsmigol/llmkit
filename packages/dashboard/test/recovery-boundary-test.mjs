@@ -29,7 +29,7 @@ for (const [pathname, expected] of violationFixtures) {
   assert.equal(classifyRecoveryPath(pathname), expected, pathname);
 }
 
-for (const pathname of ['/', '/docs', '/pricing', '/compare', '/mcp']) {
+for (const pathname of ['/', '/docs', '/pricing', '/compare', '/mcp', '/.well-known/security.txt']) {
   assert.equal(classifyRecoveryPath(pathname), 'public', pathname);
 }
 

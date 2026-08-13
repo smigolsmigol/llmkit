@@ -1,0 +1,6 @@
+Contact: https://github.com/smigolsmigol/llmkit/security/advisories/new
+Contact: mailto:security@llmkit.sh
+Expires: 2027-02-01T00:00:00Z
+Preferred-Languages: en
+Canonical: https://llmkit.sh/.well-known/security.txt
+Policy: https://github.com/smigolsmigol/llmkit/security/policy

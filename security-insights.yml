@@ -1,0 +1,89 @@
+header:
+  schema-version: 2.2.0
+  last-updated: '2026-08-13'
+  last-reviewed: '2026-08-13'
+  url: https://raw.githubusercontent.com/smigolsmigol/llmkit/main/security-insights.yml
+  comment: |
+    This file describes the security posture of the LLMKit project and this repository.
+
+project:
+  name: LLMKit
+  homepage: https://llmkit.sh
+  funding: https://github.com/sponsors/smigolsmigol
+  administrators:
+    - name: f3d1
+      affiliation: Independent
+      email: security@llmkit.sh
+      social: https://github.com/smigolsmigol
+      primary: true
+  documentation:
+    quickstart-guide: https://github.com/smigolsmigol/llmkit/blob/main/QUICKSTART.md
+    detailed-guide: https://llmkit.sh/docs
+    code-of-conduct: https://github.com/smigolsmigol/llmkit/blob/main/CODE_OF_CONDUCT.md
+    support-policy: https://github.com/smigolsmigol/llmkit/security/policy#supported-versions
+  repositories:
+    - name: llmkit
+      url: https://github.com/smigolsmigol/llmkit
+      comment: |
+        Monorepo for the LLMKit gateway, SDKs, CLI, MCP server, and public website.
+  vulnerability-reporting:
+    reports-accepted: true
+    bug-bounty-available: false
+    contact:
+      name: LLMKit security contact
+      affiliation: LLMKit
+      email: security@llmkit.sh
+      social: https://github.com/smigolsmigol
+      primary: true
+    policy: https://github.com/smigolsmigol/llmkit/security/policy
+    in-scope:
+      - Authorization or tenant-isolation failures
+      - Provider credential or LLMKit API key exposure
+      - Budget-enforcement or request-accounting bypasses with security impact
+      - Supply-chain compromise affecting published LLMKit artifacts
+    out-of-scope:
+      - Third-party provider outages or vulnerabilities outside LLMKit control
+      - Social engineering and denial-of-service testing
+      - Purely theoretical findings without a practical security impact
+    comment: |
+      Use GitHub private vulnerability reporting when possible. LLMKit does not currently
+      operate a paid bug bounty.
+
+repository:
+  url: https://github.com/smigolsmigol/llmkit
+  status: active
+  bug-fixes-only: false
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  no-third-party-packages: false
+  core-team:
+    - name: f3d1
+      affiliation: Independent
+      email: security@llmkit.sh
+      social: https://github.com/smigolsmigol
+      primary: true
+  documentation:
+    contributing-guide: https://github.com/smigolsmigol/llmkit/blob/main/CONTRIBUTING.md
+    security-policy: https://github.com/smigolsmigol/llmkit/security/policy
+  license:
+    url: https://github.com/smigolsmigol/llmkit/blob/main/LICENSE
+    expression: MIT
+  release:
+    automated-pipeline: true
+    changelog: https://github.com/smigolsmigol/llmkit/releases/tag/{version}
+    distribution-points:
+      - uri: https://github.com/smigolsmigol/llmkit/releases
+        comment: GitHub releases
+      - uri: https://www.npmjs.com/org/f3d1
+        comment: Published JavaScript packages
+      - uri: https://pypi.org/project/llmkit-sdk/
+        comment: Published Python SDK
+  security:
+    assessments:
+      self:
+        name: OpenSSF Best Practices self-assessment
+        evidence: https://www.bestpractices.dev/projects/12288
+        date: '2026-08-13'
+        comment: |
+          LLMKit has a passing OpenSSF Best Practices badge. This is a maintainer
+          self-assessment, not an independent security audit.
