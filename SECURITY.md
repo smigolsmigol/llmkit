@@ -1,12 +1,37 @@
 # Security Policy
 
-## Reporting a Vulnerability
+## Supported Versions
 
-Do not open a public issue. Email security@llmkit.sh or DM @smigolsmigol on X.
+Security fixes are applied to the latest release. Older releases are not supported unless a
+security advisory says otherwise.
 
-Include: what you found, steps to reproduce, and your assessment of impact.
+## Report a Vulnerability
 
-We acknowledge within 48 hours and fix critical issues within 7 days.
+Use [GitHub private vulnerability reporting](https://github.com/smigolsmigol/llmkit/security/advisories/new)
+when possible. If GitHub is unavailable, email `security@llmkit.sh`.
+
+Do not open a public issue, discussion, or social-media message for a suspected vulnerability.
+Include the affected component and version, impact, reproduction steps, and any proof of concept
+that is safe to share.
+
+We aim to acknowledge reports within 48 hours. After reproduction, we will confirm the scope,
+severity, and coordinated disclosure plan. Resolution time depends on impact and complexity;
+critical issues are prioritized immediately. We will keep the reporter informed while the issue is
+being investigated and fixed.
+
+LLMKit does not currently operate a paid bug bounty. We can credit reporters in the advisory when
+requested and appropriate.
+
+## Scope and Safe Testing
+
+The source in this repository, published LLMKit packages, and reachable LLMKit-hosted services are
+in scope. Reports about authorization failures, credential exposure, budget-enforcement bypasses,
+request or tenant data exposure, and supply-chain compromise are especially useful.
+
+Please test only with accounts and data you own or have permission to use. Do not degrade service
+availability, access or retain data beyond what is needed to demonstrate the issue, use social
+engineering, or publish details before a coordinated fix. Third-party provider outages and purely
+theoretical findings without a practical security impact are out of scope.
 
 ## Security Architecture
 
@@ -28,7 +53,7 @@ All CI actions pinned to commit SHAs (not mutable version tags). Every workflow 
 
 Pull requests and main-branch changes run a layered quality and security pipeline. Deployment workflows have separate environment and target gates.
 
-1. **Secret scanning**: gitleaks (full git history) + semgrep secrets ruleset + private pattern matching
+1. **Secret scanning**: gitleaks + semgrep secrets ruleset + private pattern matching
 2. **Static analysis**: semgrep security-audit rules across the entire codebase
 3. **Dependency audit**: `pnpm audit` (TS) + `pip-audit` (Python) + `bandit` (Python security linter)
 4. **Project scanner**: [KeyGuard](https://github.com/smigolsmigol/keyguard) scans for leaked secrets, credential files, vulnerable configs
@@ -50,9 +75,3 @@ Pre-commit hooks install automatically via `pnpm install` (sets `core.hooksPath`
 ### Dependency Surface
 
 The proxy has two runtime dependencies: Hono and @f3d1/llmkit-shared. Minimal attack surface by design.
-
-## Supported Versions
-
-| Version | Supported |
-| ------- | --------- |
-| latest  | Yes       |

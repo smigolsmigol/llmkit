@@ -7,6 +7,57 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const readDashboard = (relativePath) => readFileSync(`${packageRoot}/${relativePath}`, 'utf8');
 const readRepo = (relativePath) => readFileSync(`${repoRoot}/${relativePath}`, 'utf8');
 
+const securityTxt = readDashboard('public/.well-known/security.txt');
+const securityTxtFields = new Map();
+for (const line of securityTxt.trim().split(/\r?\n/)) {
+  const separator = line.indexOf(':');
+  assert.ok(separator > 0, `invalid security.txt line: ${line}`);
+  const name = line.slice(0, separator);
+  const value = line.slice(separator + 1).trim();
+  const values = securityTxtFields.get(name) ?? [];
+  values.push(value);
+  securityTxtFields.set(name, values);
+}
+
+assert.deepEqual(securityTxtFields.get('Contact'), [
+  'https://github.com/smigolsmigol/llmkit/security/advisories/new',
+  'mailto:security@llmkit.sh',
+]);
+assert.deepEqual(securityTxtFields.get('Canonical'), [
+  'https://llmkit.sh/.well-known/security.txt',
+]);
+assert.deepEqual(securityTxtFields.get('Policy'), [
+  'https://github.com/smigolsmigol/llmkit/security/policy',
+]);
+assert.deepEqual(securityTxtFields.get('Preferred-Languages'), ['en']);
+
+const [securityTxtExpiry] = securityTxtFields.get('Expires') ?? [];
+const expiryTime = Date.parse(securityTxtExpiry);
+const remainingLifetime = expiryTime - Date.now();
+assert.ok(Number.isFinite(expiryTime), 'security.txt Expires must be an RFC 3339 timestamp');
+assert.ok(remainingLifetime > 0, 'security.txt must not be expired');
+assert.ok(
+  remainingLifetime < 366 * 24 * 60 * 60 * 1000,
+  'security.txt Expires must remain less than one year away',
+);
+
+const securityInsights = readRepo('security-insights.yml');
+assert.match(securityInsights, /schema-version: 2\.2\.0/);
+assert.match(securityInsights, /last-reviewed: '2026-08-13'/);
+assert.match(
+  securityInsights,
+  /https:\/\/raw\.githubusercontent\.com\/smigolsmigol\/llmkit\/main\/security-insights\.yml/,
+);
+assert.match(securityInsights, /bug-bounty-available: false/);
+assert.match(securityInsights, /https:\/\/www\.bestpractices\.dev\/projects\/12288/);
+assert.doesNotMatch(securityInsights, /example\.com|11849/);
+
+const readme = readRepo('README.md');
+assert.match(readme, /bestpractices\.dev\/projects\/12288/);
+assert.doesNotMatch(readme, /bestpractices\.dev\/projects\/11849/);
+assert.match(readme, /\[Security Insights snapshot\]\(security-insights\.yml\)/);
+assert.match(readme, /security\/advisories\/new/);
+
 const pricing = JSON.parse(readFileSync(`${repoRoot}/packages/shared/pricing.json`, 'utf8'));
 const populatedProviders = Object.entries(pricing.providers)
   .filter(([, models]) => Object.keys(models).length > 0)

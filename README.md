@@ -9,7 +9,7 @@
   <a href="https://pypi.org/project/llmkit-sdk/"><img src="https://img.shields.io/pypi/v/llmkit-sdk?label=python" alt="PyPI" /></a>
   <a href="https://www.npmjs.com/package/@f3d1/llmkit-mcp-server"><img src="https://img.shields.io/npm/v/@f3d1/llmkit-mcp-server?label=mcp" alt="npm" /></a>
   <a href="https://scorecard.dev/viewer/?uri=github.com/smigolsmigol/llmkit"><img src="https://api.scorecard.dev/projects/github.com/smigolsmigol/llmkit/badge" alt="OpenSSF Scorecard" /></a>
-  <a href="https://www.bestpractices.dev/projects/11849"><img src="https://www.bestpractices.dev/projects/11849/badge" alt="OpenSSF Best Practices" /></a>
+  <a href="https://www.bestpractices.dev/projects/12288"><img src="https://www.bestpractices.dev/projects/12288/badge" alt="OpenSSF Best Practices" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license" /></a>
 </p>
 
@@ -179,7 +179,10 @@ Provider credentials are encrypted with AES-256-GCM using a random IV and owner/
 additional authenticated data. LLMKit API keys are hashed before storage. CI includes secret
 scanning, static analysis, dependency review, CodeQL, and package provenance checks.
 
-Read the [security policy and architecture](SECURITY.md). Please report vulnerabilities privately to `security@llmkit.sh`.
+Read the [security policy and architecture](SECURITY.md) and the machine-readable
+[Security Insights snapshot](security-insights.yml). Please report vulnerabilities through
+[GitHub private vulnerability reporting](https://github.com/smigolsmigol/llmkit/security/advisories/new)
+or email `security@llmkit.sh`.
 
 ## License
 
