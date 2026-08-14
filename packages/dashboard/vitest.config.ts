@@ -9,6 +9,9 @@ export default defineConfig({
       importSource: 'react',
     },
   },
+  optimizeDeps: {
+    include: ['react/jsx-dev-runtime'],
+  },
   resolve: {
     alias: {
       '@': resolve(import.meta.dirname, 'src'),
