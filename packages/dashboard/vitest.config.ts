@@ -1,4 +1,5 @@
 import { resolve } from 'node:path';
+import { playwright } from '@vitest/browser-playwright';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -14,8 +15,36 @@ export default defineConfig({
     },
   },
   test: {
-    include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
-    environment: 'node',
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'node',
+          include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
+          exclude: ['test/client-interactions.test.tsx'],
+          environment: 'node',
+          sequence: { groupOrder: 0 },
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'browser',
+          include: ['test/client-interactions.test.tsx'],
+          sequence: { groupOrder: 1 },
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright({
+              launchOptions: {
+                channel: process.platform === 'win32' ? 'msedge' : 'chrome',
+              },
+            }),
+            instances: [{ browser: 'chromium' }],
+          },
+        },
+      },
+    ],
     coverage: {
       provider: 'istanbul',
       reporter: ['text', 'json', 'json-summary'],

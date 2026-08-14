@@ -1,7 +1,7 @@
-// @vitest-environment jsdom
-
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { page } from 'vitest/browser';
 
 const actions = vi.hoisted(() => ({
   addProviderKey: vi.fn(),
@@ -42,10 +42,12 @@ vi.mock('@/app/(auth)/dashboard/settings/actions', () => ({
 vi.mock('@/app/(auth)/dashboard/support-action', () => ({
   sendSupportMessage: actions.sendSupportMessage,
 }));
-vi.mock('echarts-for-react/lib/core', () => ({
-  default: () => <div data-testid="chart" />,
+vi.mock('@/components/charts/package-downloads', () => ({
+  PackageDownloadsChart: () => <div data-testid="package-downloads-chart" />,
 }));
-vi.mock('@/lib/echarts', () => ({ default: {} }));
+vi.mock('@/components/charts/sparkline', () => ({
+  Sparkline: () => <div data-testid="sparkline" />,
+}));
 
 import { AlertsPanel } from '@/app/(auth)/dashboard/admin/alerts-panel';
 import { CreateKeyForm } from '@/app/(auth)/dashboard/keys/create-key-form';
@@ -61,22 +63,48 @@ import { RevokeKeyButton } from '@/components/revoke-key-button';
 import { SupportWidget } from '@/components/support-widget';
 import { TimeRangeSelector } from '@/components/time-range-selector';
 
+type MountedRoot = {
+  container: HTMLDivElement;
+  root: Root;
+};
+
+const mounted = new Set<MountedRoot>();
+const clipboardWrite = vi.fn();
+
+function render(element: ReactElement): MountedRoot {
+  const container = document.createElement('div');
+  document.body.append(container);
+  const root = createRoot(container);
+  const result = { container, root };
+  mounted.add(result);
+  root.render(element);
+  return result;
+}
+
+function unmount(mount: MountedRoot): void {
+  mount.root.unmount();
+  mount.container.remove();
+  mounted.delete(mount);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  clipboardWrite.mockResolvedValue(undefined);
   Object.defineProperty(navigator, 'clipboard', {
     configurable: true,
-    value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    value: { writeText: clipboardWrite },
   });
 });
 
 afterEach(() => {
-  cleanup();
+  for (const mount of [...mounted]) unmount(mount);
+  vi.clearAllTimers();
   vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
 describe('calculator and navigation controls', () => {
-  it('requires an explicit model search and recalculates verified matching rows', () => {
+  it('requires an explicit model search and recalculates verified matching rows', async () => {
     render(<Calculator
       models={[
         { provider: 'openai', model: 'gpt-test', input: 5, output: 15 },
@@ -86,40 +114,41 @@ describe('calculator and navigation controls', () => {
       pricingSnapshotDate="2026-03-25"
     />);
 
-    expect(screen.getByText(/Search for a specific model/)).toBeTruthy();
-    fireEvent.change(screen.getByPlaceholderText(/Search a verified/), { target: { value: 'test' } });
-    expect(screen.getByText('gpt-test')).toBeTruthy();
-    expect(screen.getByText('claude-test')).toBeTruthy();
+    await expect.element(page.getByText(/Search for a specific model/)).toBeInTheDocument();
+    await page.getByPlaceholder(/Search a verified/).fill('test');
+    await expect.element(page.getByText('gpt-test', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('claude-test', { exact: true })).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'openai' }));
-    expect(screen.queryByText('gpt-test')).toBeNull();
-    fireEvent.click(screen.getByText('Code review'));
-    expect((screen.getByLabelText('Input tokens per request') as HTMLInputElement).value).toBe('4000');
-    fireEvent.change(screen.getByLabelText('Requests per month'), { target: { value: '-5' } });
-    expect((screen.getByLabelText('Requests per month') as HTMLInputElement).value).toBe('0');
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Output' }));
-    expect(screen.getByText('Output ^')).toBeTruthy();
+    await page.getByRole('button', { name: 'openai', exact: true }).click();
+    await expect.element(page.getByText('gpt-test', { exact: true })).not.toBeInTheDocument();
+    await page.getByRole('button', { name: 'Code review', exact: true }).click();
+    await expect.element(page.getByLabelText('Input tokens per request')).toHaveValue(4000);
+    await page.getByLabelText('Requests per month').fill('-5');
+    await expect.element(page.getByLabelText('Requests per month')).toHaveValue(0);
+    const outputHeader = page.getByRole('columnheader', { name: 'Output', exact: true });
+    await outputHeader.click();
+    await expect.element(page.getByText('Output ^', { exact: true })).toBeInTheDocument();
   });
 
-  it('updates time range, request filters, and pagination without preserving stale pages', () => {
-    const { unmount } = render(<TimeRangeSelector />);
-    fireEvent.click(screen.getByRole('button', { name: '30d' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+  it('updates time range, request filters, and pagination without preserving stale pages', async () => {
+    const timeRange = render(<TimeRangeSelector />);
+    await page.getByRole('button', { name: '30d', exact: true }).click();
+    await page.getByRole('button', { name: 'Today', exact: true }).click();
     expect(router.push).toHaveBeenCalledWith('/dashboard/requests?provider=openai&model=gpt-4o&status=ok&session_id=session-1');
     expect(router.push).toHaveBeenCalledWith(expect.stringContaining('days=1'));
-    unmount();
+    unmount(timeRange);
 
-    render(<RequestFilters providers={['openai', 'anthropic']} models={['gpt-4o']} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Clear session filter' }));
-    fireEvent.change(screen.getByLabelText('Filter by provider'), { target: { value: 'anthropic' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+    const filters = render(<RequestFilters providers={['openai', 'anthropic']} models={['gpt-4o']} />);
+    await page.getByRole('button', { name: 'Clear session filter', exact: true }).click();
+    await page.getByLabelText('Filter by provider').selectOptions('anthropic');
+    await page.getByRole('button', { name: 'Clear filters', exact: true }).click();
     expect(router.push).toHaveBeenCalledWith(expect.stringContaining('provider=anthropic'));
     expect(router.push).toHaveBeenCalledWith('/dashboard/requests');
-    cleanup();
+    unmount(filters);
 
     render(<Pagination page={2} totalPages={4} total={88} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Prev' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    await page.getByRole('button', { name: 'Prev', exact: true }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
     expect(router.push).toHaveBeenCalledWith(expect.stringContaining('page=1'));
     expect(router.push).toHaveBeenCalledWith(expect.stringContaining('page=3'));
   });
@@ -132,46 +161,48 @@ describe('credential and budget controls', () => {
       { id: 'budget-1', name: 'Production', limit_cents: 5000, period: 'monthly' },
     ]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create Key' }));
-    fireEvent.change(screen.getByLabelText('Key Name'), { target: { value: 'Production key' } });
-    fireEvent.change(screen.getByLabelText('Budget (optional)'), { target: { value: 'budget-1' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await page.getByRole('button', { name: 'Create Key', exact: true }).click();
+    await page.getByLabelText('Key Name').fill('Production key');
+    await page.getByLabelText('Budget (optional)').selectOptions('budget-1');
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
 
-    await waitFor(() => expect(actions.createApiKey).toHaveBeenCalledWith('Production key', 'budget-1'));
-    expect(screen.getByText('Key Created')).toBeTruthy();
-    expect(screen.getAllByText(/llmk_one_time_secret/).length).toBeGreaterThan(0);
-    expect(screen.getByText('Local only (no proxy, no dashboard)')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Copy Key' }));
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('llmk_one_time_secret');
-    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
-    expect(screen.getByRole('button', { name: 'Create Key' })).toBeTruthy();
+    await vi.waitFor(() => expect(actions.createApiKey).toHaveBeenCalledWith('Production key', 'budget-1'));
+    await expect.element(page.getByText('Key Created', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText(/llmk_one_time_secret/).first()).toBeInTheDocument();
+    await expect.element(page.getByText('Local only (no proxy, no dashboard)', { exact: true }))
+      .toBeInTheDocument();
+    await page.getByRole('button', { name: 'Copy Key', exact: true }).click();
+    expect(clipboardWrite).toHaveBeenCalledWith('llmk_one_time_secret');
+    await page.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect.element(page.getByRole('button', { name: 'Create Key', exact: true }))
+      .toBeInTheDocument();
   });
 
   it('surfaces create-key errors and key assignment/revocation failures', async () => {
     actions.createApiKey.mockRejectedValue(new Error('quota reached'));
-    const { unmount } = render(<CreateKeyForm />);
-    fireEvent.click(screen.getByRole('button', { name: 'Create Key' }));
-    fireEvent.change(screen.getByLabelText('Key Name'), { target: { value: 'Failure' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
-    await screen.findByText('quota reached');
-    unmount();
+    const createKey = render(<CreateKeyForm />);
+    await page.getByRole('button', { name: 'Create Key', exact: true }).click();
+    await page.getByLabelText('Key Name').fill('Failure');
+    await page.getByRole('button', { name: 'Create', exact: true }).click();
+    await expect.element(page.getByText('quota reached', { exact: true })).toBeInTheDocument();
+    unmount(createKey);
 
     actions.updateKeyBudget.mockRejectedValue(new Error('failed'));
-    render(<KeyBudgetSelector
+    const budgetSelector = render(<KeyBudgetSelector
       keyId="key-1"
       currentBudgetId={null}
       budgets={[{ id: 'budget-1', name: 'Production', limit_cents: 5000, period: 'monthly' }]}
     />);
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'budget-1' } });
-    await screen.findByText('Failed');
-    cleanup();
+    await page.getByRole('combobox').selectOptions('budget-1');
+    await expect.element(page.getByText('Failed', { exact: true })).toBeInTheDocument();
+    unmount(budgetSelector);
 
     actions.revokeApiKey.mockRejectedValue(new Error('failed'));
     render(<RevokeKeyButton keyId="key-1" keyName="Production" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Revoke' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Yes' }));
-    await screen.findByText('Failed.');
-    fireEvent.click(screen.getByRole('button', { name: 'No' }));
+    await page.getByRole('button', { name: 'Revoke', exact: true }).click();
+    await page.getByRole('button', { name: 'Yes', exact: true }).click();
+    await expect.element(page.getByText('Failed.', { exact: true })).toBeInTheDocument();
+    await page.getByRole('button', { name: 'No', exact: true }).click();
   });
 
   it('creates scoped budgets and preserves audit history on delete', async () => {
@@ -183,23 +214,20 @@ describe('credential and budget controls', () => {
       reset_at: null, created_at: '2026-08-01T00:00:00Z',
     }]} />);
 
-    fireEvent.click(screen.getByRole('button', { name: '+ Add Budget' }));
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Production' } });
-    fireEvent.change(screen.getByLabelText('Limit ($)'), { target: { value: '100.50' } });
-    fireEvent.change(screen.getByLabelText('Period'), { target: { value: 'weekly' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Per Session' }));
-    fireEvent.change(screen.getByLabelText('Alert webhook (optional)'), {
-      target: { value: 'https://hooks.example/budget' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(actions.createBudget).toHaveBeenCalledWith(
+    await page.getByRole('button', { name: '+ Add Budget', exact: true }).click();
+    await page.getByLabelText('Name').fill('Production');
+    await page.getByLabelText('Limit ($)').fill('100.50');
+    await page.getByLabelText('Period').selectOptions('weekly');
+    await page.getByRole('button', { name: 'Per Session', exact: true }).click();
+    await page.getByLabelText('Alert webhook (optional)').fill('https://hooks.example/budget');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await vi.waitFor(() => expect(actions.createBudget).toHaveBeenCalledWith(
       'Production', 10050, 'weekly', 'session', 'https://hooks.example/budget',
     ));
 
-    await screen.findByRole('button', { name: '+ Add Budget' });
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
-    await waitFor(() => expect(actions.deleteBudget).toHaveBeenCalledWith('budget-1'));
-    await screen.findByText(/durable request receipts/);
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await vi.waitFor(() => expect(actions.deleteBudget).toHaveBeenCalledWith('budget-1'));
+    await expect.element(page.getByText(/durable request receipts/)).toBeInTheDocument();
   });
 
   it('adds and revokes encrypted-provider references through the grid', async () => {
@@ -218,21 +246,21 @@ describe('credential and budget controls', () => {
       }]}
     />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'remove' }));
-    await waitFor(() => expect(actions.revokeProviderKey).toHaveBeenCalledWith('provider-key-1'));
+    await page.getByRole('button', { name: 'remove', exact: true }).click();
+    await vi.waitFor(() => expect(actions.revokeProviderKey).toHaveBeenCalledWith('provider-key-1'));
     expect(router.refresh).toHaveBeenCalled();
 
-    fireEvent.click(screen.getAllByRole('button', { name: '+ Add key' })[0]);
-    fireEvent.change(screen.getByPlaceholderText('Paste API key'), { target: { value: 'sk-test-secret' } });
-    fireEvent.change(screen.getByPlaceholderText('Label (optional)'), { target: { value: 'backup' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(actions.addProviderKey).toHaveBeenCalledWith('openai', 'sk-test-secret', 'backup'));
+    await page.getByRole('button', { name: '+ Add key', exact: true }).first().click();
+    await page.getByPlaceholder('Paste API key').fill('sk-test-secret');
+    await page.getByPlaceholder('Label (optional)').fill('backup');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await vi.waitFor(() => expect(actions.addProviderKey).toHaveBeenCalledWith('openai', 'sk-test-secret', 'backup'));
   });
 });
 
 describe('live status and support controls', () => {
   it('renders analytics status, ecosystem data, and grouped alerts from the API', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-08-13T12:00:00Z'));
     const payload = {
       freshness: { lastCollection: '2026-08-13T09:00:00Z', version: '2.0' },
@@ -254,31 +282,29 @@ describe('live status and support controls', () => {
     };
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })));
 
-    const { unmount } = render(<AnalyticsStatus />);
-    expect(await screen.findByText(/STALE/)).toBeTruthy();
-    expect(screen.getByText('Proxy degraded')).toBeTruthy();
-    unmount();
+    const analytics = render(<AnalyticsStatus />);
+    await expect.element(page.getByText(/STALE/)).toBeInTheDocument();
+    await expect.element(page.getByText('Proxy degraded', { exact: true })).toBeInTheDocument();
+    unmount(analytics);
 
-    render(<EcosystemPanel accountCount={4} activeUserCount={2} />);
-    expect(await screen.findByText('GitHub')).toBeTruthy();
-    expect(screen.getByText('llmkit-mcp-server')).toBeTruthy();
-    expect(screen.getByText('dashboard')).toBeTruthy();
-    cleanup();
+    const ecosystem = render(<EcosystemPanel accountCount={4} activeUserCount={2} />);
+    await expect.element(page.getByText('GitHub', { exact: true }).first()).toBeInTheDocument();
+    await expect.element(page.getByText('llmkit-mcp-server', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('dashboard', { exact: true }).first()).toBeInTheDocument();
+    unmount(ecosystem);
 
     render(<AlertsPanel />);
-    expect(await screen.findByText('Proxy degraded')).toBeTruthy();
-    expect(screen.getByText('Aug 13')).toBeTruthy();
+    await expect.element(page.getByText('Proxy degraded', { exact: true })).toBeInTheDocument();
+    await expect.element(page.getByText('Aug 13', { exact: true })).toBeInTheDocument();
   });
 
   it('opens support, validates content, sends, and closes', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
     actions.sendSupportMessage.mockResolvedValue(undefined);
     render(<SupportWidget />);
-    fireEvent.click(screen.getByRole('button', { name: 'Open support' }));
-    const textarea = screen.getByPlaceholderText('Describe your issue or question...');
-    fireEvent.change(textarea, { target: { value: '  Need help  ' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Send message' }));
-    await waitFor(() => expect(actions.sendSupportMessage).toHaveBeenCalledWith('Need help'));
-    expect(await screen.findByText('Message sent')).toBeTruthy();
+    await page.getByRole('button', { name: 'Open support', exact: true }).click();
+    await page.getByPlaceholder('Describe your issue or question...').fill('  Need help  ');
+    await page.getByRole('button', { name: 'Send message', exact: true }).click();
+    await vi.waitFor(() => expect(actions.sendSupportMessage).toHaveBeenCalledWith('Need help'));
+    await expect.element(page.getByText('Message sent', { exact: true })).toBeInTheDocument();
   });
 });
