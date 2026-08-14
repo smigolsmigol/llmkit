@@ -178,17 +178,23 @@ export class GeminiAdapter implements ProviderAdapter {
 
 function parseDataUri(url: string): { mimeType: string; data: string } | null {
   const match = url.match(/^data:([^;]+);base64,(.+)$/);
-  if (!match) return null;
-  return { mimeType: match[1]!, data: match[2]! };
+  const mimeType = match?.[1];
+  const data = match?.[2];
+  if (!mimeType || !data) return null;
+  return { mimeType, data };
 }
 
 function toGeminiParts(content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>): GeminiPart[] {
   if (typeof content === 'string') return [{ text: content }];
 
   return content.map((block) => {
-    if (block.type === 'text') return { text: block.text! };
+    if (block.type === 'text') {
+      if (typeof block.text !== 'string') throw new Error('gemini text blocks require text');
+      return { text: block.text };
+    }
 
-    const url = block.image_url!.url;
+    const url = block.image_url?.url;
+    if (!url) throw new Error('gemini image blocks require image_url.url');
     const parsed = parseDataUri(url);
     if (!parsed) throw new Error('gemini requires base64 data URIs for images, not URLs');
     return { inlineData: { mimeType: parsed.mimeType, data: parsed.data } };

@@ -21,6 +21,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Changed
 - Canonicalized hosted package and API examples on `https://api.llmkit.sh` while preserving explicit self-hosted overrides
 - Prepared patch releases for the active npm packages and Python SDK so registry versions match their packed bytes and declared Python 3.11 floor
+- Made WSL session discovery opt-in and removed unpriced Cline cache-dollar estimates
+
+### Removed
+- Removed the obsolete repository-local `llmkit-budget` Action and unused MCP iframe resource
 
 ### Security
 - Restricted manual package publication to `main`, refused existing registry versions, and added source, artifact, and Python-floor checks before publication

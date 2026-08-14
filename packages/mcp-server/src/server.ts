@@ -1,7 +1,11 @@
+import { createRequire } from 'node:module';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { GetPromptRequestSchema, ListPromptsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { registerTools } from './tools.js';
+
+const require = createRequire(import.meta.url);
+export const SERVER_VERSION: string = (require('../package.json') as { version: string }).version;
 
 const PROMPTS = [
   {
@@ -35,7 +39,7 @@ const PROMPT_MESSAGES: Record<string, (args: Record<string, string>) => { role: 
 
 export async function startServer(): Promise<void> {
   const server = new Server(
-    { name: 'llmkit', version: '0.4.6' },
+    { name: 'llmkit', version: SERVER_VERSION },
     { capabilities: { tools: {}, resources: {}, prompts: {} } },
   );
 

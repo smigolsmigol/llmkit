@@ -44,24 +44,24 @@ pricingRouter.get('/pricing/compare', async (c) => {
   const values = new Map<string, string>();
   for (const name of REQUIRED_QUERY_FIELDS) {
     const matches = params.getAll(name);
-    if (matches.length !== 1 || matches[0]!.trim() === '') {
+    if (matches.length !== 1 || matches[0]?.trim() === '') {
       const reason = matches.length > 1 ? 'must appear exactly once' : 'is required and cannot be empty';
       return invalidQuery(c, `${name} ${reason}`, name);
     }
-    values.set(name, matches[0]!);
+    values.set(name, matches[0] ?? '');
   }
 
   if (values.get('mode') !== 'text-token') {
     return invalidQuery(c, 'mode must be text-token', 'mode');
   }
 
-  const parsedInput = parseTokenCount(values.get('input')!, 'input');
+  const parsedInput = parseTokenCount(values.get('input') ?? '', 'input');
   if (typeof parsedInput === 'string') return invalidTokenCount(c, parsedInput);
-  const parsedOutput = parseTokenCount(values.get('output')!, 'output');
+  const parsedOutput = parseTokenCount(values.get('output') ?? '', 'output');
   if (typeof parsedOutput === 'string') return invalidTokenCount(c, parsedOutput);
-  const parsedCacheRead = parseTokenCount(values.get('cacheRead')!, 'cacheRead');
+  const parsedCacheRead = parseTokenCount(values.get('cacheRead') ?? '', 'cacheRead');
   if (typeof parsedCacheRead === 'string') return invalidTokenCount(c, parsedCacheRead);
-  const parsedCacheWrite = parseTokenCount(values.get('cacheWrite')!, 'cacheWrite');
+  const parsedCacheWrite = parseTokenCount(values.get('cacheWrite') ?? '', 'cacheWrite');
   if (typeof parsedCacheWrite === 'string') return invalidTokenCount(c, parsedCacheWrite);
   const input = parsedInput;
   const output = parsedOutput;
@@ -71,7 +71,7 @@ pricingRouter.get('/pricing/compare', async (c) => {
     return invalidQuery(c, 'at least one token count must be greater than zero', 'usage');
   }
 
-  const modelKeys = values.get('models')!.split(',');
+  const modelKeys = (values.get('models') ?? '').split(',');
   if (modelKeys.some((key) => key.trim() !== key || key === '')) {
     return invalidQuery(c, 'models must be a comma-separated list of exact provider/model keys', 'models');
   }

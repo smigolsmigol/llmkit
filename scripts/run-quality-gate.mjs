@@ -173,9 +173,13 @@ if (mode === 'static') {
 }
 
 pnpm(['test']);
+run(process.execPath, ['scripts/run-package-coverage.mjs']);
+pnpm(['--filter', '@f3d1/llmkit-dashboard', 'test:coverage']);
 pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier']);
 pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier:coverage']);
+run(process.execPath, ['scripts/run-project-coverage.mjs']);
 runPythonProof();
+run(process.execPath, ['scripts/run-artifact-reproducibility.mjs']);
 pnpmWithVersion(auditPnpmVersion, ['--pm-on-fail=ignore', 'audit']);
 pnpm(['db:verify']);
 run(process.execPath, ['packages/proxy/test/database-compatibility-runtime-proof.mjs']);

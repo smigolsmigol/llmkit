@@ -157,7 +157,7 @@ export class AnthropicAdapter implements ProviderAdapter {
         if (event.type === 'content_block_stop') {
           const idx = event.index ?? 0;
           const entry = toolAccum.get(idx);
-          if (entry && entry.name) {
+          if (entry?.name) {
             yield { type: 'tool' as const, toolCallId: entry.id, toolName: entry.name, toolArguments: entry.args, toolIndex: idx };
           }
         }
@@ -239,7 +239,8 @@ function injectCacheBreakpoints(messages: AnthropicMessage[]): AnthropicMessage[
 
   const result = [...messages];
   for (let i = result.length - 1; i >= 0; i--) {
-    const msg = result[i]!;
+    const msg = result[i];
+    if (!msg) continue;
     if (msg.role !== 'user') continue;
 
     const content = msg.content;
@@ -265,8 +266,10 @@ function injectCacheBreakpoints(messages: AnthropicMessage[]): AnthropicMessage[
 
 function parseDataUri(url: string): { mimeType: string; data: string } | null {
   const match = url.match(/^data:([^;]+);base64,(.+)$/);
-  if (!match) return null;
-  return { mimeType: match[1]!, data: match[2]! };
+  const mimeType = match?.[1];
+  const data = match?.[2];
+  if (!mimeType || !data) return null;
+  return { mimeType, data };
 }
 
 function toAnthropicContent(
@@ -275,7 +278,10 @@ function toAnthropicContent(
   if (typeof content === 'string') return content;
 
   return content.map((block): AnthropicContentBlock => {
-    if (block.type === 'text') return { type: 'text', text: block.text! };
+    if (block.type === 'text') {
+      if (typeof block.text !== 'string') throw new Error('anthropic text blocks require text');
+      return { type: 'text', text: block.text };
+    }
 
     if (block.type === 'document' && block.document) {
       const parsed = parseDataUri(block.document.url);
@@ -283,7 +289,8 @@ function toAnthropicContent(
       return { type: 'document', source: { type: 'url', url: block.document.url } };
     }
 
-    const url = block.image_url!.url;
+    const url = block.image_url?.url;
+    if (!url) throw new Error('anthropic image blocks require image_url.url');
     const parsed = parseDataUri(url);
     if (parsed) return { type: 'image', source: { type: 'base64', media_type: parsed.mimeType, data: parsed.data } };
     return { type: 'image', source: { type: 'url', url } };

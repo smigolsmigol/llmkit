@@ -5,7 +5,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import type { LocalAdapter, LocalCacheSavings, LocalProjectSummary, LocalSession } from './types.js';
+import type { LocalAdapter, LocalProjectSummary, LocalSession } from './types.js';
 
 // Cline's ClineApiReqInfo shape (from ExtensionMessage.ts)
 interface ClineApiReq {
@@ -45,7 +45,7 @@ function findClineDataDirs(): { variant: string; path: string }[] {
   const bases = [getBasePath()];
 
   // on Windows, also check WSL distros for VS Code Server installations
-  if (process.platform === 'win32') {
+  if (process.platform === 'win32' && process.env.LLMKIT_SCAN_WSL === '1') {
     try {
       const wslRoot = resolve('//wsl.localhost');
       const distros = readdirSync(wslRoot);
@@ -75,7 +75,7 @@ function findClineDataDirs(): { variant: string; path: string }[] {
   }
 
   // remote server installations (WSL/SSH): ~/{server}/data/User/globalStorage/{ext}
-  if (process.platform === 'win32') {
+  if (process.platform === 'win32' && process.env.LLMKIT_SCAN_WSL === '1') {
     try {
       const wslRoot = resolve('//wsl.localhost');
       const distros = readdirSync(wslRoot);
@@ -130,10 +130,15 @@ interface ParsedTask {
   timestamp: string;
 }
 
-async function parseTask(taskDir: string, taskId: string, variant: string): Promise<ParsedTask | null> {
+async function parseTask(
+  taskDir: string,
+  taskId: string,
+  variant: string,
+  signal?: AbortSignal,
+): Promise<ParsedTask | null> {
   const uiPath = join(taskDir, 'ui_messages.json');
   let raw: string;
-  try { raw = await readFile(uiPath, 'utf-8'); } catch { return null; }
+  try { raw = await readFile(uiPath, { encoding: 'utf-8', signal }); } catch { return null; }
 
   let msgs: ClineMessage[];
   try { msgs = JSON.parse(raw); } catch { return null; }
@@ -183,7 +188,7 @@ async function parseTask(taskDir: string, taskId: string, variant: string): Prom
     cacheReads: totalCacheRead,
     cacheWrites: totalCacheWrite,
     model,
-    timestamp: s ? new Date(s.mtimeMs).toISOString().slice(0, 10) : 'unknown',
+    timestamp: s ? new Date(s.mtimeMs).toISOString() : 'unknown',
   };
 }
 
@@ -197,10 +202,12 @@ async function getAllTasks(): Promise<ParsedTask[]> {
     try { taskIds = await readdir(tasksDir); } catch { continue; }
 
     const parsed = await Promise.allSettled(
-      taskIds.map(id => Promise.race([
-        parseTask(join(tasksDir, id), id, variant),
-        new Promise<null>(r => { setTimeout(() => r(null), 10000); }),
-      ])),
+      taskIds.map(id => parseTask(
+        join(tasksDir, id),
+        id,
+        variant,
+        AbortSignal.timeout(10_000),
+      )),
     );
 
     for (const r of parsed) {
@@ -296,28 +303,8 @@ export const clineAdapter: LocalAdapter = {
   },
 
   async getCacheSavings() {
-    const tasks = await getAllTasks();
-    if (tasks.length === 0) return null;
-
-    let totalRead = 0;
-    let totalWrite = 0;
-    for (const t of tasks) {
-      totalRead += t.cacheReads;
-      totalWrite += t.cacheWrites;
-    }
-
-    if (totalWrite === 0) return null;
-
-    // approximate savings: cache reads cost 0.1x input price, vs 1x if not cached
-    const savedFactor = 0.9; // 90% savings per cached token
-    const avgInputPrice = 5 / 1_000_000; // rough average, $5 per 1M
-    const saved = totalRead * avgInputPrice * savedFactor;
-
-    return {
-      source: 'Cline',
-      totalSaved: saved,
-      readToWriteRatio: totalWrite > 0 ? totalRead / totalWrite : 0,
-      models: [], // Cline doesn't break down cache by model in the task data
-    } satisfies LocalCacheSavings;
+    // Cline task files do not bind cache tokens to a canonical provider price.
+    // Returning no estimate is better than inventing a dollar value from an average rate.
+    return null;
   },
 };

@@ -68,8 +68,9 @@ responsesRouter.post('/responses', async (c) => {
 
   let providerKey = c.req.header('x-llmkit-provider-key') || '';
 
-  if (!providerKey && c.get('userId') && c.env.ENCRYPTION_KEY && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
-    const stored = await findProviderKey(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, c.get('userId')!, provider);
+  const userId = c.get('userId');
+  if (!providerKey && userId && c.env.ENCRYPTION_KEY && c.env.SUPABASE_URL && c.env.SUPABASE_KEY) {
+    const stored = await findProviderKey(c.env.SUPABASE_URL, c.env.SUPABASE_KEY, userId, provider);
     if (stored) {
       try {
         providerKey = await decrypt(stored.encrypted_key, stored.iv, c.env.ENCRYPTION_KEY, `${stored.user_id}:${stored.provider}`);

@@ -103,7 +103,7 @@ export class IdempotencyDO extends DurableObject {
 
     return this.ctx.storage.transaction(async (storage) => {
       const state = await storage.get<IdempotencyState>(STATE_KEY);
-      if (!state || state.status !== 'pending' || state.ownerToken !== input.ownerToken) return 'owner_lost';
+      if (state?.status !== 'pending' || state.ownerToken !== input.ownerToken) return 'owner_lost';
 
       const bodyChunks = Math.ceil(input.response.body.byteLength / RESPONSE_CHUNK_BYTES);
       for (let index = 0; index < bodyChunks; index += 1) {
@@ -134,7 +134,7 @@ export class IdempotencyDO extends DurableObject {
   async release(input: { ownerToken: string }): Promise<IdempotencyReleaseResult> {
     return this.ctx.storage.transaction(async (storage) => {
       const state = await storage.get<IdempotencyState>(STATE_KEY);
-      if (!state || state.status !== 'pending' || state.ownerToken !== input.ownerToken) return 'owner_lost';
+      if (state?.status !== 'pending' || state.ownerToken !== input.ownerToken) return 'owner_lost';
       await storage.delete(STATE_KEY);
       await storage.deleteAlarm();
       return 'released';
@@ -144,7 +144,7 @@ export class IdempotencyDO extends DurableObject {
   async markIndeterminate(input: { ownerToken: string; reason: string }): Promise<boolean> {
     return this.ctx.storage.transaction(async (storage) => {
       const state = await storage.get<IdempotencyState>(STATE_KEY);
-      if (!state || state.status !== 'pending' || state.ownerToken !== input.ownerToken) return false;
+      if (state?.status !== 'pending' || state.ownerToken !== input.ownerToken) return false;
 
       const now = Date.now();
       state.status = 'indeterminate';

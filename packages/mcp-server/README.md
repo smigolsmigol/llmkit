@@ -45,7 +45,7 @@ The local tools detect supported installations and aggregate their session data.
 |------|-------------|
 | `llmkit_local_session` | Current Claude Code session or latest detected Cline task cost |
 | `llmkit_local_projects` | Cumulative cost across all projects and sessions |
-| `llmkit_local_cache` | Prompt caching savings analysis |
+| `llmkit_local_cache` | Claude Code prompt caching savings using model-bound prices |
 | `llmkit_local_forecast` | 30-day API-rate projection from detected local history |
 | `llmkit_local_agents` | Subagent cost attribution (Claude Code) |
 
@@ -73,13 +73,14 @@ Auto-log session costs when Claude Code exits:
 | `LLMKIT_API_KEY` | No | API key for proxy tools. Local tools work without it. |
 | `LLMKIT_PROXY_URL` | No | Proxy URL (defaults to hosted service) |
 | `LLMKIT_CLINE_DIR` | No | Override Cline data directory path |
+| `LLMKIT_SCAN_WSL` | No | Set to `1` to scan WSL homes for Claude Code and Cline data |
 
 ## Supported tools
 
 The local tools read data from:
 - Claude Code (`~/.claude/projects/`)
 - Cline extension storage in VS Code, Insiders, VSCodium, Cursor, and Windsurf
-- WSL installations (scans all distros via UNC paths on Windows)
+- WSL installations when `LLMKIT_SCAN_WSL=1` (scans distro homes via UNC paths on Windows)
 - VS Code, Cursor, and Windsurf server directories for supported remote extension storage
 
 ## License

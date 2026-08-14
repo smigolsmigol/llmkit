@@ -530,11 +530,6 @@ async function runIdempotencyScenario(fixture) {
 
 async function cleanupFixture(fixture) {
   const cleanupErrors = [];
-  let ledger;
-  let remaining;
-  let keys;
-  let budgets;
-  let rateLimit;
   const attempt = async (label, operation) => {
     try {
       return await operation();
@@ -548,15 +543,15 @@ async function cleanupFixture(fixture) {
   await attempt('request row purge', () => postgrest(`requests?user_id=eq.${encodeURIComponent(fixture.userId)}`, { method: 'DELETE' }));
   await attempt('API key purge', () => postgrest(`api_keys?user_id=eq.${encodeURIComponent(fixture.userId)}`, { method: 'DELETE' }));
   await attempt('budget row purge', () => postgrest(`budgets?user_id=eq.${encodeURIComponent(fixture.userId)}`, { method: 'DELETE' }));
-  remaining = await attempt('request cleanup readback', () => requestRows(fixture));
-  keys = await attempt('API key cleanup readback', async () => (
+  const remaining = await attempt('request cleanup readback', () => requestRows(fixture));
+  const keys = await attempt('API key cleanup readback', async () => (
     await (await postgrest(`api_keys?user_id=eq.${encodeURIComponent(fixture.userId)}&select=id`)).json()
   ));
-  budgets = await attempt('budget cleanup readback', async () => (
+  const budgets = await attempt('budget cleanup readback', async () => (
     await (await postgrest(`budgets?user_id=eq.${encodeURIComponent(fixture.userId)}&select=id`)).json()
   ));
-  ledger = await attempt('budget Durable Object readback', () => budgetSnapshot(fixture));
-  rateLimit = await attempt('rate-limit Durable Object readback', () => rateLimitSnapshot(fixture));
+  const ledger = await attempt('budget Durable Object readback', () => budgetSnapshot(fixture));
+  const rateLimit = await attempt('rate-limit Durable Object readback', () => rateLimitSnapshot(fixture));
   if (cleanupErrors.length > 0) fail(`${fixture.label} cleanup errors: ${cleanupErrors.join('; ')}`);
   assert(remaining.length === 0 && keys.length === 0 && budgets.length === 0, `${fixture.label} database cleanup is incomplete.`);
   assert(

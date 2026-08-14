@@ -19,23 +19,6 @@ const typecheckPackages = [
   '@f3d1/llmkit-proxy',
   '@f3d1/llmkit-dashboard',
 ];
-const sourceDirectories = [
-  'packages/proxy/src',
-  'packages/proxy/test',
-  'packages/sdk/src',
-  'packages/sdk/test',
-  'packages/cli/src',
-  'packages/cli/test',
-  'packages/shared/src',
-  'packages/shared/test',
-  'packages/ai-sdk-provider/src',
-  'packages/ai-sdk-provider/test',
-  'packages/mcp-server/src',
-  'packages/mcp-server/test',
-  'packages/dashboard/src',
-  'scripts',
-  'test',
-];
 const dormantLintDirectories = ['packages/plugin-eliza/src'];
 const publishableDirectories = [
   'packages/shared',
@@ -146,14 +129,7 @@ for (const packageName of typecheckPackages) {
 assertDormantPackageBoundary();
 
 console.log('\nBIOME all first-party TypeScript source');
-pnpm([
-  'exec',
-  'biome',
-  'check',
-  ...sourceDirectories,
-  '--diagnostic-level=error',
-  '--max-diagnostics=200',
-]);
+run(process.execPath, ['scripts/run-biome-policy.mjs']);
 
 console.log('\nBIOME lint-only dormant source');
 pnpm([

@@ -253,7 +253,7 @@ test('endUserId: backtick command injection', () => {
 });
 
 test('endUserId: curly braces (template injection)', () => {
-  assertThrows(() => validateEndUserId('user${7*7}'), 'invalid end user ID');
+  assertThrows(() => validateEndUserId('user$' + '{7*7}'), 'invalid end user ID');
 });
 
 // ============================

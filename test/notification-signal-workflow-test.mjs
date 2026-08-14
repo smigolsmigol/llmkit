@@ -21,7 +21,7 @@ const bootstrap = pricing.indexOf('corepack pnpm@9.15.4 quality:bootstrap');
 const fetch = pricing.indexOf('node scripts/fetch-pricing.mjs');
 assert(install >= 0 && install < bootstrap && bootstrap < fetch, 'pricing needs pinned tools before generation');
 assert(
-  pricing.includes('LLMKIT_QUALITY_PYTHON: ${{ github.workspace }}/.venv/bin/python'),
+  pricing.includes('LLMKIT_QUALITY_PYTHON: $' + '{{ github.workspace }}/.venv/bin/python'),
   'pricing generation must use the formatter environment created by quality:bootstrap',
 );
 assert(

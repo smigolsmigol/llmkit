@@ -144,7 +144,7 @@ async function findCurrentSessionFile(projectDir: string): Promise<string | null
   }
 }
 
-async function parseSessionJsonl(filePath: string): Promise<SessionCost> {
+async function parseSessionJsonl(filePath: string, signal?: AbortSignal): Promise<SessionCost> {
   const sessionId = filePath.split(/[/\\]/).pop()?.replace('.jsonl', '') ?? 'unknown';
   const result: SessionCost = {
     sessionId,
@@ -157,7 +157,7 @@ async function parseSessionJsonl(filePath: string): Promise<SessionCost> {
     totalCacheWrite: 0,
   };
 
-  const stream = createReadStream(filePath, { encoding: 'utf-8' });
+  const stream = createReadStream(filePath, { encoding: 'utf-8', signal });
   const rl = createInterface({ input: stream, crlfDelay: Infinity });
   const seen = new Set<string>();
 
@@ -319,49 +319,6 @@ export async function getCacheSavings(): Promise<CacheSavingsResult | null> {
 
   return { totalSaved, overallReadToWrite: totalWrite > 0 ? totalRead / totalWrite : 0, models };
 }
-
-
-
-// legacy usage data from old Claude Code versions (~/.claude/usage/YYYY/MM/DD/HH.json)
-export async function getLegacyUsage(): Promise<{ totalCost: number; months: { month: string; cost: number }[] }> {
-  const usageDir = join(claudeDir(), 'usage');
-  const months: { month: string; cost: number }[] = [];
-  let totalCost = 0;
-
-  let years: string[];
-  try { years = await readdir(usageDir); } catch { return { totalCost: 0, months: [] }; }
-
-  for (const year of years) {
-    let monthDirs: string[];
-    try { monthDirs = await readdir(join(usageDir, year)); } catch { continue; }
-    for (const month of monthDirs) {
-      let days: string[];
-      try { days = await readdir(join(usageDir, year, month)); } catch { continue; }
-      let monthCost = 0;
-      for (const day of days) {
-        let hours: string[];
-        try { hours = await readdir(join(usageDir, year, month, day)); } catch { continue; }
-        for (const hour of hours) {
-          if (!hour.endsWith('.json')) continue;
-          try {
-            const raw = await readFile(join(usageDir, year, month, day, hour), 'utf-8');
-            const data = JSON.parse(raw);
-            for (const m of Object.values(data.models ?? {})) {
-              monthCost += (m as { cost?: number }).cost ?? 0;
-            }
-          } catch { /* skip malformed */ }
-        }
-      }
-      if (monthCost > 0) {
-        months.push({ month: `${year}-${month}`, cost: monthCost });
-        totalCost += monthCost;
-      }
-    }
-  }
-
-  return { totalCost, months };
-}
-
 export interface ProjectCostResult {
   project: string;
   sessionCount: number;
@@ -391,7 +348,7 @@ function findAllProjectDirs(): string[] {
   if (existsSync(primary)) dirs.push(primary);
 
   // on Windows, also check WSL distros via UNC paths
-  if (process.platform === 'win32') {
+  if (process.platform === 'win32' && process.env.LLMKIT_SCAN_WSL === '1') {
     // path.resolve preserves UNC prefix, path.join does not
     const wslRoot = resolve('//wsl.localhost');
     try {
@@ -429,12 +386,9 @@ export async function getProjectCosts(): Promise<ProjectCostResult[]> {
     const jsonls = files.filter(f => f.endsWith('.jsonl'));
     if (jsonls.length === 0) return null;
 
-    // parse all sessions with a per-file timeout
+    // Abort slow or inaccessible transcripts instead of leaving timeout races alive.
     const parsed = await Promise.allSettled(
-      jsonls.map(f => Promise.race([
-        parseSessionJsonl(join(projectDir, f)),
-        new Promise<null>(r => { setTimeout(() => r(null), 60000); }),
-      ])),
+      jsonls.map(f => parseSessionJsonl(join(projectDir, f), AbortSignal.timeout(60_000))),
     );
 
     const sessions = parsed

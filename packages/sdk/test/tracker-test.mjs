@@ -148,7 +148,7 @@ test('trackResponse: Anthropic format (input_tokens)', () => {
 test('on() listener fires on track', () => {
   const t = new CostTracker();
   let fired = false;
-  t.on((entry) => { fired = true; });
+  t.on(() => { fired = true; });
   t.track('openai', 'gpt-4o', { inputTokens: 10, outputTokens: 5 });
   assert(fired, 'listener should have fired');
 });

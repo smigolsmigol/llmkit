@@ -1,0 +1,558 @@
+{
+  "schemaVersion": 1,
+  "criterion": "OpenSSF Best Practices Silver regression_tests_added50",
+  "criterionUrl": "https://www.bestpractices.dev/en/criteria/1#1.regression_tests_added50",
+  "window": {
+    "startInclusive": "2026-02-13",
+    "endInclusive": "2026-08-13"
+  },
+  "source": {
+    "repository": "smigolsmigol/llmkit",
+    "auditBaseCommit": "b8ffd9b8a3a6b6ae58e2c50e60efe6571cccc1cd",
+    "mergedPullRequestsReviewed": 68,
+    "reviewedThroughPullRequest": 165,
+    "query": "is:pr is:merged repo:smigolsmigol/llmkit merged:2026-02-13..2026-08-13"
+  },
+  "methodology": {
+    "unit": "One distinct root failure described by a merged pull request title, body, or commit message. Repeated instances with the same root failure are counted once. Explicitly enumerated independent findings are counted separately.",
+    "covered": "A regression is covered only when a repository test checks the corrected behavior and that test is registered in an automated quality suite.",
+    "excluded": "Dependency-only advisory updates are evaluated by dependency monitoring, not counted as LLMKit implementation bugs. Feature additions and prose-only improvements without a stated defect are also excluded."
+  },
+  "defects": [
+    {
+      "id": "pr59-non-git-prepare",
+      "pullRequest": 59,
+      "fixedAt": "2026-04-03",
+      "summary": "The prepare script failed outside a Git checkout.",
+      "regression": { "status": "gap", "reason": "No automated non-Git installation fixture is registered." }
+    },
+    {
+      "id": "pr60-dashboard-query-errors",
+      "pullRequest": 60,
+      "fixedAt": "2026-04-03",
+      "summary": "Dashboard server pages did not handle database query failures.",
+      "regression": { "status": "gap", "reason": "No rendered database-failure fixture covers the affected pages." }
+    },
+    {
+      "id": "pr60-dashboard-mutation-errors",
+      "pullRequest": 60,
+      "fixedAt": "2026-04-03",
+      "summary": "Dashboard client mutations did not expose failures to users.",
+      "regression": { "status": "gap", "reason": "No component-level mutation failure fixture is registered." }
+    },
+    {
+      "id": "pr60-dashboard-route-metadata",
+      "pullRequest": 60,
+      "fixedAt": "2026-04-03",
+      "summary": "Dashboard routes lacked distinct browser metadata.",
+      "regression": { "status": "gap", "reason": "No route-by-route metadata regression is registered." }
+    },
+    {
+      "id": "pr71-stale-canonical-domain",
+      "pullRequest": 71,
+      "fixedAt": "2026-04-03",
+      "summary": "Public documentation referenced disabled Vercel hosts instead of llmkit.sh.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/dashboard/test/public-content-contract-test.mjs",
+          "marker": "canonical public documents must not reference disabled Vercel hosts",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "packages/dashboard/test/public-content-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr74-ci-health-url",
+      "pullRequest": 74,
+      "fixedAt": "2026-04-03",
+      "summary": "The CI production health check targeted a disabled host.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/quality-gate-contract-test.mjs",
+          "marker": "CI production health must target api.llmkit.sh",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/quality-gate-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr75-staging-workers-dev-route",
+      "pullRequest": 75,
+      "fixedAt": "2026-04-04",
+      "summary": "The staging Worker route was disabled after custom-domain configuration.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/dashboard/test/recovery-boundary-test.mjs",
+          "marker": "assert.equal(wrangler.env.staging.workers_dev, true)",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "packages/dashboard/test/recovery-boundary-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr75-health-cron-url",
+      "pullRequest": 75,
+      "fixedAt": "2026-04-04",
+      "summary": "The scheduled API health probe used a stale URL.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/health-check-workflow-test.mjs",
+          "marker": "health workflow proxy probe must target api.llmkit.sh",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/health-check-workflow-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr79-sbom-action-revisions",
+      "pullRequest": 79,
+      "fixedAt": "2026-04-04",
+      "summary": "The SBOM workflow referenced incorrect action revisions.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/release-workflow-contract-test.mjs",
+          "marker": "SBOM actions must remain pinned to full commit SHAs",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/release-workflow-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr80-sbom-permission-scope",
+      "pullRequest": 80,
+      "fixedAt": "2026-04-04",
+      "summary": "SBOM release write permission was granted at workflow scope instead of job scope.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/release-workflow-contract-test.mjs",
+          "marker": "SBOM write permission must stay scoped to its job",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/release-workflow-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr82-nonfinite-revenue",
+      "pullRequest": 82,
+      "fixedAt": "2026-04-05",
+      "summary": "Non-finite revenue produced invalid margin output.",
+      "regression": { "status": "gap", "reason": "The finite-number guard has no direct route or pure-function regression." }
+    },
+    {
+      "id": "pr82-reflected-identity-headers",
+      "pullRequest": 82,
+      "fixedAt": "2026-04-05",
+      "summary": "Unvalidated session and user identifiers could be reflected in response headers.",
+      "regression": { "status": "gap", "reason": "The current validation program mirrors the regex instead of exercising the production response path." }
+    },
+    {
+      "id": "pr82-message-count-bound",
+      "pullRequest": 82,
+      "fixedAt": "2026-04-05",
+      "summary": "Requests with more than 512 messages were accepted.",
+      "regression": { "status": "gap", "reason": "No production validator test exercises the 512/513 boundary." }
+    },
+    {
+      "id": "pr82-transcript-symlink-bypass",
+      "pullRequest": 82,
+      "fixedAt": "2026-04-05",
+      "summary": "A transcript symlink could bypass the Claude Code hook path boundary.",
+      "regression": { "status": "gap", "reason": "No filesystem-level hook regression exercises a symlink escape." }
+    },
+    {
+      "id": "pr82-pricing-rate-limit",
+      "pullRequest": 82,
+      "fixedAt": "2026-04-05",
+      "summary": "The public pricing endpoint had no request rate limit.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/proxy/test/budget-falsifier/staging-proof.test.ts",
+          "marker": "expect(blocked.headers.get('x-ratelimit-limit')).toBe('30')",
+          "suiteFile": "scripts/run-quality-gate.mjs",
+          "suiteMarker": "test:budget-falsifier:coverage"
+        }]
+      }
+    },
+    {
+      "id": "pr82-rate-limit-cleanup",
+      "pullRequest": 82,
+      "fixedAt": "2026-04-05",
+      "summary": "Expired rate-limit state was not cleaned up.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/proxy/test/budget-falsifier/staging-proof.test.ts",
+          "marker": "expect(await runDurableObjectAlarm(expiredStub)).toBe(true)",
+          "suiteFile": "scripts/run-quality-gate.mjs",
+          "suiteMarker": "test:budget-falsifier:coverage"
+        }]
+      }
+    },
+    {
+      "id": "pr85-social-preview-metadata",
+      "pullRequest": 85,
+      "fixedAt": "2026-04-06",
+      "summary": "Explicit metadata suppressed the file-based Open Graph and Twitter images.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/dashboard/test/public-content-contract-test.mjs",
+          "marker": "root metadata must retain explicit Open Graph and Twitter images",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "packages/dashboard/test/public-content-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr125-scalar-json-crash",
+      "pullRequest": 125,
+      "fixedAt": "2026-07-17",
+      "summary": "Valid scalar JSON responses crashed Python transport extraction.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/python-sdk/tests/test_transport.py",
+          "marker": "assert _extract_cost_from_json(b\"1\") is None",
+          "suiteFile": "scripts/run-quality-gate.mjs",
+          "suiteMarker": "pytest', 'tests"
+        }]
+      }
+    },
+    {
+      "id": "pr125-sse-payload-crash",
+      "pullRequest": 125,
+      "fixedAt": "2026-07-17",
+      "summary": "Rejected and split SSE payloads could crash the Python transport scanner.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/python-sdk/tests/test_transport.py",
+          "marker": "SSE line split across two byte chunks",
+          "suiteFile": "scripts/run-quality-gate.mjs",
+          "suiteMarker": "pytest', 'tests"
+        }]
+      }
+    },
+    {
+      "id": "pr127-public-http-redirect",
+      "pullRequest": 127,
+      "fixedAt": "2026-07-17",
+      "summary": "Plain HTTP public hosts were not redirected to their exact HTTPS equivalents.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/dashboard/test/https-redirect-runtime-test.mjs",
+          "marker": "workerd 308 plus exact-host non-capture",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "packages/dashboard/test/https-redirect-runtime-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr141-health-schedule-noise",
+      "pullRequest": 141,
+      "fixedAt": "2026-08-10",
+      "summary": "Parked runtime checks ran hourly and produced repeated unactionable failures.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/health-check-workflow-test.mjs",
+          "marker": "the hourly schedule must stay retired",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/health-check-workflow-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr141-health-failure-aggregation",
+      "pullRequest": 141,
+      "fixedAt": "2026-08-10",
+      "summary": "The health workflow aborted on the first failed probe instead of reporting all failures.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/health-check-workflow-test.mjs",
+          "marker": "transport failures must be collected instead of aborting before the summary",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/health-check-workflow-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr150-smoke-shell-interpolation",
+      "pullRequest": 150,
+      "fixedAt": "2026-08-10",
+      "summary": "CLI and MCP smoke tests constructed shell commands from package paths.",
+      "regression": { "status": "gap", "reason": "The smoke tests run shell-free today, but no contract fails if shell interpolation is reintroduced." }
+    },
+    {
+      "id": "pr150-pricing-codegen-escaping",
+      "pullRequest": 150,
+      "fixedAt": "2026-08-10",
+      "summary": "Generated pricing string literals were not JSON escaped.",
+      "regression": { "status": "gap", "reason": "No adversarial provider/model string fixture is registered for the generator." }
+    },
+    {
+      "id": "pr151-fresh-proxy-build",
+      "pullRequest": 151,
+      "fixedAt": "2026-08-10",
+      "summary": "A fresh proxy build failed when the shared workspace package had no dist output.",
+      "regression": { "status": "gap", "reason": "Build order is configured but no clean-root proxy-build regression is registered yet." }
+    },
+    {
+      "id": "pr152-stale-hosted-signup",
+      "pullRequest": 152,
+      "fixedAt": "2026-08-10",
+      "summary": "Public recovery pages linked to unavailable hosted sign-in and sign-up routes.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/dashboard/test/recovery-boundary-test.mjs",
+          "marker": "sign-(?:in|up)",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "packages/dashboard/test/recovery-boundary-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr152-worker-version-receipt",
+      "pullRequest": 152,
+      "fixedAt": "2026-08-10",
+      "summary": "Worker responses did not expose an opaque deployment version identifier.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/dashboard/test/recovery-boundary-test.mjs",
+          "marker": "X-LLMKit-Worker-Version",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "packages/dashboard/test/recovery-boundary-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr152-mobile-horizontal-overflow",
+      "pullRequest": 152,
+      "fixedAt": "2026-08-10",
+      "summary": "The public homepage overflowed horizontally on narrow mobile viewports.",
+      "regression": { "status": "gap", "reason": "No exact narrow-viewport overflow assertion is automated." }
+    },
+    {
+      "id": "pr153-canonical-package-endpoints",
+      "pullRequest": 153,
+      "fixedAt": "2026-08-11",
+      "summary": "Published package defaults did not consistently use the canonical API host.",
+      "regression": {
+        "status": "covered",
+        "evidence": [
+          {
+            "testFile": "packages/sdk/test/client-test.mjs",
+            "marker": "https://api.llmkit.sh/v1/chat/completions",
+            "suiteFile": "scripts/run-js-tests.mjs",
+            "suiteMarker": "packages/sdk/test/client-test.mjs"
+          },
+          {
+            "testFile": "packages/mcp-server/test/unit-test.mjs",
+            "marker": "https://api.llmkit.sh",
+            "suiteFile": "scripts/run-js-tests.mjs",
+            "suiteMarker": "packages/mcp-server/test/unit-test.mjs"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pr153-release-artifact-identity",
+      "pullRequest": 153,
+      "fixedAt": "2026-08-11",
+      "summary": "Manual publication did not prove that the tested, attested, and published package was the same artifact.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/release-workflow-contract-test.mjs",
+          "marker": "the verified artifact must be attested",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/release-workflow-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr154-reviewed-main-sha",
+      "pullRequest": 154,
+      "fixedAt": "2026-08-11",
+      "summary": "Manual release workflows could run without binding publication to the reviewed main SHA.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/release-workflow-contract-test.mjs",
+          "marker": "expected_sha:",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/release-workflow-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr154-shared-first-release-order",
+      "pullRequest": 154,
+      "fixedAt": "2026-08-11",
+      "summary": "SDK and CLI publication did not fail closed when their shared package version was unavailable.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/release-workflow-contract-test.mjs",
+          "marker": "assertPublishedVersion('npm', '@f3d1/llmkit-shared'",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/release-workflow-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr154-package-version-and-metadata",
+      "pullRequest": 154,
+      "fixedAt": "2026-08-11",
+      "summary": "Release workflows did not reject already-published versions and inconsistent packed dependency metadata.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/release-workflow-contract-test.mjs",
+          "marker": "assertUnpublishedVersion('npm'",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/release-workflow-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr154-hosted-recovery-marker",
+      "pullRequest": 154,
+      "fixedAt": "2026-08-11",
+      "summary": "Manual runtime checks did not verify that hosted recovery disclosures were served.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/health-check-workflow-test.mjs",
+          "marker": "manual runtime truth contract",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/health-check-workflow-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr155-python-release-source-layout",
+      "pullRequest": 155,
+      "fixedAt": "2026-08-11",
+      "summary": "The Python 3.11 release floor test could not import the source-layout package.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "test/release-workflow-contract-test.mjs",
+          "marker": "PYTHONPATH: src",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "test/release-workflow-contract-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr157-supabase-branch-preflight",
+      "pullRequest": 157,
+      "fixedAt": "2026-08-12",
+      "summary": "The staging preflight did not match current Supabase branch migration-history behavior.",
+      "regression": { "status": "gap", "reason": "The procedure is documented and version-pinned, but no disposable-branch regression runs on each check-in." }
+    },
+    {
+      "id": "pr157-obsolete-wrangler-yes",
+      "pullRequest": 157,
+      "fixedAt": "2026-08-12",
+      "summary": "The staging deployment wrapper passed Wrangler's removed --yes flag.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/proxy/test/worker-deploy-guard-test.mjs",
+          "marker": "Deploy guard passes the removed --yes option",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "packages/proxy/test/worker-deploy-guard-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr158-ai-sdk-peer-range",
+      "pullRequest": 158,
+      "fixedAt": "2026-08-12",
+      "summary": "The AI SDK v6 provider package allowed the incompatible AI SDK v7 protocol.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/ai-sdk-provider/test/smoke-test.mjs",
+          "marker": "package peer boundary matches its AI SDK v6 provider protocol",
+          "suiteFile": "scripts/run-js-tests.mjs",
+          "suiteMarker": "packages/ai-sdk-provider/test/smoke-test.mjs"
+        }]
+      }
+    },
+    {
+      "id": "pr163-budget-proof-background-drain",
+      "pullRequest": 163,
+      "fixedAt": "2026-08-13",
+      "summary": "Durable Object background work escaped the budget test fetch boundary after assertions completed.",
+      "regression": {
+        "status": "covered",
+        "evidence": [{
+          "testFile": "packages/proxy/test/budget-falsifier/gate0.test.ts",
+          "marker": "work has drained, then remove alarms and storage",
+          "suiteFile": "scripts/run-quality-gate.mjs",
+          "suiteMarker": "test:budget-falsifier:coverage"
+        }]
+      }
+    },
+    {
+      "id": "pr164-invalid-global-pricing-comparison",
+      "pullRequest": 164,
+      "fixedAt": "2026-08-13",
+      "summary": "Pricing comparison accepted implicit global rankings and invalid token inputs across models with unknown modality.",
+      "regression": {
+        "status": "covered",
+        "evidence": [
+          {
+            "testFile": "packages/proxy/test/pricing-route.test.ts",
+            "marker": "rejects duplicate and unknown exact model keys",
+            "suiteFile": "scripts/run-js-tests.mjs",
+            "suiteMarker": "test/pricing-route.test.ts"
+          },
+          {
+            "testFile": "packages/proxy/test/pricing-route.test.ts",
+            "marker": "input=Infinity",
+            "suiteFile": "scripts/run-js-tests.mjs",
+            "suiteMarker": "test/pricing-route.test.ts"
+          }
+        ]
+      }
+    },
+    {
+      "id": "pr164-pricing-limit-persistence",
+      "pullRequest": 164,
+      "fixedAt": "2026-08-13",
+      "summary": "The public pricing rate limit did not survive isolate eviction or expire durable state correctly.",
+      "regression": {
+        "status": "covered",
+        "evidence": [
+          {
+            "testFile": "packages/proxy/test/budget-falsifier/staging-proof.test.ts",
+            "marker": "expect(await runDurableObjectAlarm(currentStub)).toBe(true)",
+            "suiteFile": "scripts/run-quality-gate.mjs",
+            "suiteMarker": "test:budget-falsifier:coverage"
+          },
+          {
+            "testFile": "packages/proxy/test/budget-falsifier/staging-proof.test.ts",
+            "marker": "expect(afterExpiry.headers.get('x-ratelimit-remaining')).toBe('29')",
+            "suiteFile": "scripts/run-quality-gate.mjs",
+            "suiteMarker": "test:budget-falsifier:coverage"
+          }
+        ]
+      }
+    }
+  ]
+}

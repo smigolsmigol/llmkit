@@ -1,12 +1,17 @@
+# syntax=docker/dockerfile:1.7
+
 FROM node:24-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS build
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG LLMKIT_BUILD_ID
+ARG SOURCE_DATE_EPOCH
 
 WORKDIR /workspace
 
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches patches
 COPY packages/ai-sdk-provider/package.json packages/ai-sdk-provider/package.json
 COPY packages/cli/package.json packages/cli/package.json
 COPY packages/dashboard/package.json packages/dashboard/package.json
@@ -22,7 +27,11 @@ COPY . .
 
 WORKDIR /workspace/packages/dashboard
 
-RUN corepack pnpm@9.15.4 cloudflare:build --env staging
+RUN --mount=type=secret,id=next_server_actions_encryption_key,required=true \
+  export NEXT_SERVER_ACTIONS_ENCRYPTION_KEY="$(cat /run/secrets/next_server_actions_encryption_key)" \
+  && export LLMKIT_BUILD_ID="$LLMKIT_BUILD_ID" SOURCE_DATE_EPOCH="$SOURCE_DATE_EPOCH" \
+  && node -e "const value = process.env.NEXT_SERVER_ACTIONS_ENCRYPTION_KEY; const bytes = Buffer.from(value, 'base64'); if (![16, 24, 32].includes(bytes.length) || bytes.toString('base64') !== value) throw new Error('NEXT_SERVER_ACTIONS_ENCRYPTION_KEY must be canonical base64 for a 16, 24, or 32 byte AES key')" \
+  && corepack pnpm@9.15.4 cloudflare:build --env staging
 
 FROM build AS artifact-files
 

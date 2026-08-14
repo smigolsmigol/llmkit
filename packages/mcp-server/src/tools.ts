@@ -1,11 +1,8 @@
 import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import {
   CallToolRequestSchema,
-  ListResourcesRequestSchema,
   ListToolsRequestSchema,
-  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import { DASHBOARD_HTML, DASHBOARD_URL, RESOURCE_MIME, RESOURCE_URI } from './app.js';
 import { handleLocalAgents, handleLocalCache, handleLocalForecast, handleLocalProjects, handleLocalSession } from './local-handlers.js';
 import { fail, handleBudgetStatus, handleCostQuery, handleHealth, handleListKeys, handleSessionSummary, handleUsageStats, type ok } from './proxy-handlers.js';
 
@@ -144,7 +141,6 @@ export const LOCAL_TOOLS = [
       required: ['totalCostUsd', 'sourceCount'],
     },
     annotations: { title: 'Session Cost', ...HINTS },
-    _meta: { ui: { resourceUri: RESOURCE_URI } },
   },
   {
     name: 'llmkit_local_projects',
@@ -241,18 +237,6 @@ export function registerTools(server: Server): void {
       ...(isDesktop ? [] : LOCAL_TOOLS),
     ];
     return { tools };
-  });
-
-  server.setRequestHandler(ListResourcesRequestSchema, async () => ({
-    resources: [{ uri: RESOURCE_URI, name: 'Session Cost Dashboard', mimeType: RESOURCE_MIME }],
-  }));
-
-  server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-    if (request.params.uri === RESOURCE_URI) {
-      const html = DASHBOARD_HTML.replace('__DASHBOARD_URL__', () => DASHBOARD_URL);
-      return { contents: [{ uri: RESOURCE_URI, mimeType: RESOURCE_MIME, text: html }] };
-    }
-    throw new Error(`Unknown resource: ${request.params.uri}`);
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
