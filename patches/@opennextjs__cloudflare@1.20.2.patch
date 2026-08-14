@@ -1,0 +1,28 @@
+diff --git a/dist/cli/build/patches/plugins/load-manifest.js b/dist/cli/build/patches/plugins/load-manifest.js
+index b0616a9a1a2729c3bc1cf03dd88edde8afa09d08..9e1b6a34fbd7c64049700fe1983e3a533181849a 100644
+--- a/dist/cli/build/patches/plugins/load-manifest.js
++++ b/dist/cli/build/patches/plugins/load-manifest.js
+@@ -31,9 +31,9 @@ async function getLoadManifestRule(buildOpts) {
+     const { outputDir } = buildOpts;
+     const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
+     const dotNextDir = join(baseDir, ".next");
+-    const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"), {
++    const manifests = (await glob(join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"), {
+         windowsPathsNoEscape: true,
+-    });
++    })).sort();
+     const returnManifests = (await Promise.all(manifests.map(async (manifest) => `
+ if ($PATH.endsWith("${normalizePath("/" + relative(dotNextDir, manifest))}")) {
+   return ${await readFile(manifest, "utf-8")};
+@@ -77,9 +77,9 @@ async function getEvalManifestRule(buildOpts) {
+     const { outputDir } = buildOpts;
+     const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts), ".next");
+     const appDir = join(baseDir, "server/app");
+-    const manifestPaths = await glob(join(baseDir, "**/*_client-reference-manifest.js"), {
++    const manifestPaths = (await glob(join(baseDir, "**/*_client-reference-manifest.js"), {
+         windowsPathsNoEscape: true,
+-    });
++    })).sort();
+     // Map of factored large objects (variable name -> {...})
+     const factoredObjects = new Map();
+     // Map of manifest path -> factored manifest content

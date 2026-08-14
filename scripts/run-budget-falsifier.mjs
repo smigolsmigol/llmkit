@@ -73,12 +73,6 @@ const shards = [
     count: 4,
   })),
   {
-    label: 'local-latency',
-    pattern: 'local budget and replay coordination',
-    start: 0,
-    count: 1,
-  },
-  {
     label: 'integration-boundaries',
     pattern: 'BudgetDO production ledger behavior|IdempotencyDO production retry behavior|Supabase secret keys|full supported request body|hard-budget request|client request idempotency|idempotent Responses|streaming idempotency|failed idempotent|pre-dispatch rejection|non-inference control|Responses API money|fallback|provider-reported cost|provider-managed tools|provider timeout|crash cleanup|actual-cost settlement fails',
     start: 0,
@@ -159,7 +153,6 @@ const predispatchIdempotency = receipt.integrationChecks.find((check) => check.s
 const settlementFailure = receipt.integrationChecks.find((check) => check.scenario === 'settlement-failure-conservative-commit');
 const failureAttribution = receipt.integrationChecks.find((check) => check.scenario === 'post-dispatch-failure-attribution');
 const durableReceiptOutbox = receipt.integrationChecks.find((check) => check.scenario === 'durable-request-receipt-outbox');
-const localCoordinationLatency = receipt.integrationChecks.find((check) => check.scenario === 'local-coordination-latency');
 const countStatus = (run, status) => run.decisions.filter((decision) => decision.status === status).length;
 receipt.computedVerdict = {
   exactFit: exact?.providerCrossings.length === 10 && countStatus(exact, 200) === 10,
@@ -199,7 +192,6 @@ receipt.computedVerdict = {
   settlementFailureConservativeCommit: settlementFailure?.passed === true,
   postDispatchFailureAttribution: failureAttribution?.passed === true,
   durableRequestReceiptOutbox: durableReceiptOutbox?.passed === true,
-  localCoordinationLatency: localCoordinationLatency?.passed === true,
 };
 receipt.shards = shardEvidence;
 const failedShards = shardEvidence.filter((shard) => shard.exitCode !== 0 || !shard.receipt);

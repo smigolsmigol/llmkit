@@ -34,7 +34,7 @@ function calculateMargin(c: Context<Env>, costUsd: number): MarginInfo | undefin
   const revenueStr = c.req.header('x-llmkit-revenue');
   if (!revenueStr) return undefined;
   const revenueUsd = parseFloat(revenueStr);
-  if (isNaN(revenueUsd) || revenueUsd < 0 || !isFinite(revenueUsd)) return undefined;
+  if (!Number.isFinite(revenueUsd) || revenueUsd < 0) return undefined;
   const profitUsd = revenueUsd - costUsd;
   const marginPct = revenueUsd > 0 ? Math.round((profitUsd / revenueUsd) * 1000) / 10 : 0;
   const revenueToken = c.req.header('x-llmkit-revenue-token') || undefined;

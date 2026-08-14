@@ -4,7 +4,7 @@
 import { claudeCodeAdapter } from './adapters/claude-code.js';
 import { clineAdapter } from './adapters/cline.js';
 import type { LocalAdapter, LocalProjectSummary } from './adapters/types.js';
-import { getAgentCosts, getLegacyUsage } from './claude-code.js';
+import { getAgentCosts } from './claude-code.js';
 import { fail, ok } from './proxy-handlers.js';
 
 const ADAPTERS: LocalAdapter[] = [claudeCodeAdapter, clineAdapter];
@@ -135,9 +135,6 @@ export async function handleLocalForecast() {
   const monthlyProjection = dailyAvg * 30;
   const maxSavings = monthlyProjection - 200; // vs $200/mo Max subscription
 
-  // legacy usage from old Claude Code versions
-  const legacy = await getLegacyUsage();
-
   const lines = [
     'Cost Forecast (all tools)',
     '\u2500'.repeat(25),
@@ -148,21 +145,11 @@ export async function handleLocalForecast() {
     `Max ($200/mo) ${maxSavings > 0 ? `saves: $${maxSavings.toFixed(2)}/mo` : 'costs more than API rates'}`,
   ];
 
-  if (legacy.totalCost > 0) {
-    lines.push('', 'Historical usage (old Claude Code, no per-project breakdown):');
-    for (const m of legacy.months) lines.push(`  ${m.month}: $${m.cost.toFixed(2)}`);
-    lines.push(`  Total: $${legacy.totalCost.toFixed(2)}`);
-  }
-
-  const allTimeCost = totalCost + legacy.totalCost;
-
   return ok(lines.join('\n'), {
     projectedMonthlyUsd: monthlyProjection,
     dailyAverageUsd: dailyAvg,
     totalTrackedUsd: totalCost,
     totalSessions,
-    legacyUsageUsd: legacy.totalCost,
-    allTimeCostUsd: allTimeCost,
     maxSubscriptionSavingsUsd: maxSavings > 0 ? maxSavings : 0,
   });
 }

@@ -35,7 +35,7 @@ test('no auth header -> 401', async () => {
 });
 
 test('empty bearer -> 401', async () => {
-  const { status, json } = await req('/v1/chat/completions', {
+  const { status } = await req('/v1/chat/completions', {
     headers: { Authorization: 'Bearer ' },
     body: { model: 'gpt-4o', messages: [{ role: 'user', content: 'hi' }] },
   });
@@ -63,7 +63,7 @@ test('missing model -> 400', async () => {
 });
 
 test('empty messages -> 400', async () => {
-  const { status, json } = await req('/v1/chat/completions', {
+  const { status } = await req('/v1/chat/completions', {
     headers: { Authorization: AUTH },
     body: { model: 'gpt-4o', messages: [] },
   });

@@ -2,6 +2,11 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const scripts = [
+  'scripts/run-biome-policy.mjs',
+  'scripts/run-artifact-reproducibility.mjs',
+  'scripts/run-dashboard-reproducibility.mjs',
+  'scripts/run-package-coverage.mjs',
+  'scripts/run-project-coverage.mjs',
   'scripts/run-ts-quality.mjs',
   'scripts/run-quality-gate.mjs',
   'scripts/check-budget-falsifier-coverage.mjs',
@@ -31,7 +36,10 @@ const requiredWorkflowFragments = [
   '--fail-on-vuln=true',
   'python -m pip install --require-hashes --only-binary=:all:',
   'python -m build --no-isolation',
-  'needs: [quality, python-floor, scorecard-supply-chain, osv]',
+  'name: dashboard-reproducibility',
+  'run: node scripts/run-dashboard-reproducibility.mjs',
+  'needs: [quality, dashboard-reproducibility, python-floor, scorecard-supply-chain, osv]',
+  'needs: [quality, dashboard-reproducibility, python-floor, scorecard-supply-chain, osv, deploy, post-deploy-verify]',
   'name: start local database proof stack',
   'run: corepack pnpm@9.15.4 db:start',
   'name: stop local database proof stack',
@@ -62,12 +70,23 @@ function assertWorkflowContract(workflow) {
 
 const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
 assertWorkflowContract(workflow);
+if (!workflow.includes('--max-time 30 "https://api.llmkit.sh/health"')) {
+  throw new Error('CI production health must target api.llmkit.sh');
+}
 
 const qualityGate = readFileSync('scripts/run-quality-gate.mjs', 'utf8');
 const moneyPathGateFragments = [
   "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier']);",
   "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier:coverage']);",
 ];
+const dashboardCoverageGateFragment =
+  "pnpm(['--filter', '@f3d1/llmkit-dashboard', 'test:coverage']);";
+const packageCoverageGateFragment =
+  "run(process.execPath, ['scripts/run-package-coverage.mjs']);";
+const projectCoverageGateFragment =
+  "run(process.execPath, ['scripts/run-project-coverage.mjs']);";
+const artifactReproducibilityGateFragment =
+  "run(process.execPath, ['scripts/run-artifact-reproducibility.mjs']);";
 
 function assertMoneyPathGate(contents) {
   for (const fragment of moneyPathGateFragments) {
@@ -78,6 +97,16 @@ function assertMoneyPathGate(contents) {
 }
 
 assertMoneyPathGate(qualityGate);
+for (const fragment of [
+  packageCoverageGateFragment,
+  dashboardCoverageGateFragment,
+  projectCoverageGateFragment,
+  artifactReproducibilityGateFragment,
+]) {
+  if (!qualityGate.includes(fragment)) {
+    throw new Error(`Pre-PR quality contract is missing coverage gate: ${fragment}`);
+  }
+}
 for (const fragment of moneyPathGateFragments) {
   let moneyPathViolationBlocked = false;
   try {
@@ -87,6 +116,26 @@ for (const fragment of moneyPathGateFragments) {
   }
   if (!moneyPathViolationBlocked) {
     throw new Error(`Money-path quality-gate violation fixture was accepted: ${fragment}`);
+  }
+}
+
+for (const fragment of [
+  packageCoverageGateFragment,
+  dashboardCoverageGateFragment,
+  projectCoverageGateFragment,
+  artifactReproducibilityGateFragment,
+]) {
+  let coverageViolationBlocked = false;
+  try {
+    const violatedGate = qualityGate.replace(fragment, '');
+    if (!violatedGate.includes(fragment)) {
+      throw new Error('coverage gate missing');
+    }
+  } catch {
+    coverageViolationBlocked = true;
+  }
+  if (!coverageViolationBlocked) {
+    throw new Error(`Coverage quality-gate violation fixture was accepted: ${fragment}`);
   }
 }
 
@@ -129,6 +178,21 @@ if (!blocked) {
 
 const reproducibilityContracts = new Map([
   [
+    'package.json',
+    [
+      '"patchedDependencies"',
+      '"@opennextjs/cloudflare@1.20.2": "patches/@opennextjs__cloudflare@1.20.2.patch"',
+      '"quality:dashboard-reproducibility": "node scripts/run-dashboard-reproducibility.mjs"',
+    ],
+  ],
+  [
+    'patches/@opennextjs__cloudflare@1.20.2.patch',
+    [
+      'const manifests = (await glob',
+      'const manifestPaths = (await glob',
+    ],
+  ],
+  [
     'scripts/bootstrap-quality.mjs',
     ["'--require-hashes'", "'--no-build-isolation'", "'--no-deps'"],
   ],
@@ -154,6 +218,13 @@ function assertReproducibilityContracts(contentsByPath) {
         throw new Error(`${path} is missing reproducibility contract: ${fragment}`);
       }
     }
+  }
+
+  const openNextPatch = contentsByPath.get(
+    'patches/@opennextjs__cloudflare@1.20.2.patch',
+  );
+  if ((openNextPatch?.match(/\)\)\.sort\(\);/g) ?? []).length !== 2) {
+    throw new Error('OpenNext manifest generation must sort both glob result sets.');
   }
 }
 

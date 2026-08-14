@@ -1,4 +1,4 @@
-import http from 'node:http';
+import http, { type IncomingMessage, type ServerResponse } from 'node:http';
 import https from 'node:https';
 import { calculateCost, type ProviderName } from '@f3d1/llmkit-shared';
 import {
@@ -11,16 +11,17 @@ import {
 import { printVerbose, type RequestRecord } from './summary.js';
 
 interface ProxyTarget {
-  host: string;
+  protocol: 'http:' | 'https:';
+  hostname: string;
+  port?: number;
   provider: ProviderName;
   basePath: string;
+  clientBasePath: string;
   tracked: boolean;
 }
 
-function resolveOpenAIHost(): string {
-  const env = process.env.OPENAI_BASE_URL || process.env.OPENAI_API_BASE || '';
-  try { return new URL(env).hostname; } catch { return 'api.openai.com'; }
-}
+const DEFAULT_MAX_BODY_BYTES = 16 * 1024 * 1024;
+const DEFAULT_UPSTREAM_TIMEOUT_MS = 30_000;
 
 function inferProvider(host: string): ProviderName {
   if (host.includes('x.ai')) return 'xai';
@@ -34,24 +35,63 @@ function inferProvider(host: string): ProviderName {
   return 'openai';
 }
 
+function targetFromUrl(
+  value: string | undefined,
+  fallback: string,
+  clientBasePath: string,
+  tracked: boolean,
+  provider?: ProviderName,
+): ProxyTarget {
+  let parsed: URL;
+  try {
+    parsed = new URL(value || fallback);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') throw new Error('unsupported protocol');
+  } catch {
+    parsed = new URL(fallback);
+  }
+  return {
+    protocol: parsed.protocol as 'http:' | 'https:',
+    hostname: parsed.hostname,
+    port: parsed.port ? Number(parsed.port) : undefined,
+    provider: provider ?? inferProvider(parsed.hostname),
+    basePath: parsed.pathname.replace(/\/$/, ''),
+    clientBasePath,
+    tracked,
+  };
+}
+
 function resolveTarget(url: string, authHeader: string): ProxyTarget | null {
-  const openaiHost = resolveOpenAIHost();
-  const OPENAI_TARGET: ProxyTarget = { host: openaiHost, provider: inferProvider(openaiHost), basePath: '', tracked: true };
-  const ANTHROPIC_TARGET: ProxyTarget = { host: 'api.anthropic.com', provider: 'anthropic', basePath: '', tracked: true };
+  const openaiUrl = process.env.OPENAI_BASE_URL || process.env.OPENAI_API_BASE;
+  const openaiTarget = (tracked: boolean) => targetFromUrl(openaiUrl, 'https://api.openai.com/v1', '/v1', tracked);
+  const anthropicTarget = (tracked: boolean) => targetFromUrl(
+    process.env.ANTHROPIC_BASE_URL,
+    'https://api.anthropic.com',
+    '',
+    tracked,
+    'anthropic',
+  );
 
   // tracked routes: cost tracking enabled
-  if (url.startsWith('/v1/chat/completions')) return OPENAI_TARGET;
-  if (url.startsWith('/v1/responses')) return OPENAI_TARGET;
-  if (url.startsWith('/v1/messages')) return ANTHROPIC_TARGET;
+  if (url.startsWith('/v1/chat/completions')) return openaiTarget(true);
+  if (url.startsWith('/v1/responses')) return openaiTarget(true);
+  if (url.startsWith('/v1/messages')) return anthropicTarget(true);
 
   // untracked pass-through
   if (authHeader.includes('sk-ant-')) {
-    return { host: 'api.anthropic.com', provider: 'anthropic', basePath: '', tracked: false };
+    return anthropicTarget(false);
   }
   if (url.startsWith('/v1/')) {
-    return { host: openaiHost, provider: inferProvider(openaiHost), basePath: '', tracked: false };
+    return openaiTarget(false);
   }
   return null;
+}
+
+function upstreamPath(target: ProxyTarget, requestPath: string): string {
+  const suffix = target.clientBasePath && requestPath.startsWith(target.clientBasePath)
+    ? requestPath.slice(target.clientBasePath.length)
+    : requestPath;
+  const path = `${target.basePath}${suffix}`;
+  return path.startsWith('/') ? path : `/${path}`;
 }
 
 export interface ProxyHandle {
@@ -60,8 +100,156 @@ export interface ProxyHandle {
   stop: () => Promise<void>;
 }
 
-export function startProxy(opts: { port: number; verbose: boolean }): Promise<ProxyHandle> {
+interface ProxyOptions {
+  port: number;
+  verbose: boolean;
+  maxBodyBytes?: number;
+  upstreamTimeoutMs?: number;
+}
+
+interface ForwardOptions {
+  maxBodyBytes: number;
+  upstreamTimeoutMs: number;
+  verbose: boolean;
+}
+
+function requestIsStreaming(body: Buffer): boolean {
+  try {
+    return JSON.parse(body.toString()).stream === true;
+  } catch {
+    return false;
+  }
+}
+
+function upstreamHeaders(clientReq: IncomingMessage, target: ProxyTarget): Record<string, string | string[]> {
+  const headers: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(clientReq.headers)) {
+    if (!value) continue;
+    const normalized = key.toLowerCase();
+    if (normalized === 'host' || normalized === 'accept-encoding' || normalized === 'connection') continue;
+    headers[normalized] = value;
+  }
+  const defaultPort = target.protocol === 'https:' ? 443 : 80;
+  headers.host = target.port && target.port !== defaultPort
+    ? `${target.hostname}:${target.port}`
+    : target.hostname;
+  headers['accept-encoding'] = 'identity';
+  return headers;
+}
+
+function responseParser(target: ProxyTarget, isStream: boolean): (body: string) => ParsedUsage | null {
+  if (target.provider === 'anthropic') return isStream ? parseAnthropicStream : parseAnthropicResponse;
+  return isStream
+    ? (body) => parseOpenAIStream(body, target.provider)
+    : (body) => parseOpenAIResponse(body, target.provider);
+}
+
+function forwardTrackedResponse(
+  proxyRes: IncomingMessage,
+  clientRes: ServerResponse,
+  parse: (body: string) => ParsedUsage | null,
+  maxBodyBytes: number,
+  onUsage: (usage: ParsedUsage) => void,
+): void {
+  const chunks: Buffer[] = [];
+  let trackedBytes = 0;
+  let trackable = true;
+
+  proxyRes.on('data', (chunk: Buffer) => {
+    clientRes.write(chunk);
+    if (!trackable) return;
+    trackedBytes += chunk.length;
+    if (trackedBytes <= maxBodyBytes) chunks.push(chunk);
+    else {
+      trackable = false;
+      chunks.length = 0;
+    }
+  });
+  proxyRes.on('end', () => {
+    clientRes.end();
+    if (!trackable) return;
+    const usage = parse(Buffer.concat(chunks).toString());
+    if (usage) onUsage(usage);
+  });
+}
+
+function handleUpstreamResponse(
+  proxyRes: IncomingMessage,
+  clientRes: ServerResponse,
+  target: ProxyTarget,
+  isStream: boolean,
+  startedAt: number,
+  records: RequestRecord[],
+  options: ForwardOptions,
+): void {
+  const status = proxyRes.statusCode ?? 502;
+  clientRes.writeHead(status, proxyRes.headers);
+  const successful = status >= 200 && status < 300;
+
+  if (!target.tracked || !successful) {
+    proxyRes.pipe(clientRes);
+    return;
+  }
+
+  forwardTrackedResponse(
+    proxyRes,
+    clientRes,
+    responseParser(target, isStream),
+    options.maxBodyBytes,
+    (usage) => trackUsage(records, usage, Date.now() - startedAt, options.verbose),
+  );
+}
+
+function forwardRequest(
+  clientReq: IncomingMessage,
+  clientRes: ServerResponse,
+  target: ProxyTarget,
+  body: Buffer,
+  records: RequestRecord[],
+  options: ForwardOptions,
+): void {
+  const transport = target.protocol === 'https:' ? https : http;
+  const startedAt = Date.now();
+  const proxyReq = transport.request(
+    {
+      hostname: target.hostname,
+      port: target.port,
+      path: upstreamPath(target, clientReq.url ?? '/'),
+      method: clientReq.method,
+      headers: upstreamHeaders(clientReq, target),
+    },
+    (proxyRes) => handleUpstreamResponse(
+      proxyRes,
+      clientRes,
+      target,
+      requestIsStreaming(body),
+      startedAt,
+      records,
+      options,
+    ),
+  );
+
+  proxyReq.on('error', (error) => {
+    if (!clientRes.headersSent) {
+      clientRes.writeHead(502, { 'content-type': 'text/plain' });
+      clientRes.end(`proxy error: ${error.message}`);
+    } else {
+      clientRes.destroy(error);
+    }
+  });
+  proxyReq.setTimeout(options.upstreamTimeoutMs, () => {
+    proxyReq.destroy(new Error('upstream request timed out'));
+  });
+  proxyReq.end(body);
+}
+
+export function startProxy(opts: ProxyOptions): Promise<ProxyHandle> {
   const records: RequestRecord[] = [];
+  const options: ForwardOptions = {
+    maxBodyBytes: opts.maxBodyBytes ?? DEFAULT_MAX_BODY_BYTES,
+    upstreamTimeoutMs: opts.upstreamTimeoutMs ?? DEFAULT_UPSTREAM_TIMEOUT_MS,
+    verbose: opts.verbose,
+  };
 
   const server = http.createServer((clientReq, clientRes) => {
     const authHeader = (clientReq.headers.authorization ?? clientReq.headers['x-api-key'] ?? '') as string;
@@ -72,97 +260,32 @@ export function startProxy(opts: { port: number; verbose: boolean }): Promise<Pr
       return;
     }
 
+    const declaredLength = Number(clientReq.headers['content-length'] ?? 0);
+    if (Number.isFinite(declaredLength) && declaredLength > options.maxBodyBytes) {
+      clientRes.writeHead(413, { 'content-type': 'application/json' });
+      clientRes.end(JSON.stringify({ error: 'request body too large' }));
+      clientReq.resume();
+      return;
+    }
+
     const bodyChunks: Buffer[] = [];
-    clientReq.on('data', (chunk: Buffer) => bodyChunks.push(chunk));
+    let bodyBytes = 0;
+    let bodyRejected = false;
+    clientReq.on('data', (chunk: Buffer) => {
+      if (bodyRejected) return;
+      bodyBytes += chunk.length;
+      if (bodyBytes > options.maxBodyBytes) {
+        bodyRejected = true;
+        bodyChunks.length = 0;
+        clientRes.writeHead(413, { 'content-type': 'application/json' });
+        clientRes.end(JSON.stringify({ error: 'request body too large' }));
+        return;
+      }
+      bodyChunks.push(chunk);
+    });
     clientReq.on('end', () => {
-      const body = Buffer.concat(bodyChunks);
-      let isStream = false;
-      try {
-        const parsed = JSON.parse(body.toString());
-        isStream = parsed.stream === true;
-      } catch {
-        // not JSON or parse error - forward anyway
-      }
-
-      const headers: Record<string, string | string[]> = {};
-      for (const [key, val] of Object.entries(clientReq.headers)) {
-        if (!val) continue;
-        const k = key.toLowerCase();
-        if (k === 'host' || k === 'accept-encoding' || k === 'connection') continue;
-        headers[k] = val;
-      }
-      headers.host = target.host;
-      headers['accept-encoding'] = 'identity';
-
-      const start = Date.now();
-
-      const proxyReq = https.request(
-        {
-          hostname: target.host,
-          port: 443,
-          path: clientReq.url,
-          method: clientReq.method,
-          headers,
-        },
-        (proxyRes) => {
-          const resHeaders = { ...proxyRes.headers };
-          // remove transfer-encoding if we're buffering non-stream responses
-          // (we write the full body at once, so chunked encoding would be wrong)
-          if (!isStream) delete resHeaders['transfer-encoding'];
-
-          clientRes.writeHead(proxyRes.statusCode ?? 502, resHeaders);
-
-          // only track 2xx responses
-          const ok = (proxyRes.statusCode ?? 0) >= 200 && (proxyRes.statusCode ?? 0) < 300;
-
-          if (!target.tracked) {
-            // pass-through: forward without cost tracking
-            proxyRes.pipe(clientRes);
-          } else if (isStream) {
-            const sseChunks: string[] = [];
-            proxyRes.on('data', (chunk: Buffer) => {
-              clientRes.write(chunk);
-              if (ok) sseChunks.push(chunk.toString());
-            });
-            proxyRes.on('end', () => {
-              clientRes.end();
-              if (!ok) return;
-              const buffer = sseChunks.join('');
-              const parsed = target.provider === 'anthropic'
-                ? parseAnthropicStream(buffer)
-                : parseOpenAIStream(buffer, target.provider);
-              if (parsed) {
-                trackUsage(records, parsed, Date.now() - start, opts.verbose);
-              }
-            });
-          } else {
-            const resChunks: Buffer[] = [];
-            proxyRes.on('data', (chunk: Buffer) => resChunks.push(chunk));
-            proxyRes.on('end', () => {
-              const resBody = Buffer.concat(resChunks);
-              clientRes.end(resBody);
-              if (!ok) return;
-              const text = resBody.toString();
-              const parsed = target.provider === 'anthropic'
-                ? parseAnthropicResponse(text)
-                : parseOpenAIResponse(text, target.provider);
-              if (parsed) {
-                trackUsage(records, parsed, Date.now() - start, opts.verbose);
-              }
-            });
-          }
-        },
-      );
-
-      proxyReq.on('error', (err) => {
-        if (!clientRes.headersSent) {
-          clientRes.writeHead(502, { 'content-type': 'text/plain' });
-        }
-        clientRes.end(`proxy error: ${err.message}`);
-      });
-
-      proxyReq.write(body);
-      proxyReq.end();
+      if (bodyRejected) return;
+      forwardRequest(clientReq, clientRes, target, Buffer.concat(bodyChunks), records, options);
     });
   });
 

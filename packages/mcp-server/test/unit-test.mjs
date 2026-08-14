@@ -9,6 +9,14 @@ function test(name, fn) { tests.push({ name, fn }); }
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
 const { PROXY_TOOLS, LOCAL_TOOLS, HANDLER_MAP } = await import('../dist/tools.js');
+const { SERVER_VERSION } = await import('../dist/server.js');
+const packageVersion = JSON.parse(
+  await (await import('node:fs/promises')).readFile('packages/mcp-server/package.json', 'utf8'),
+).version;
+
+test('server version matches the published package version', () => {
+  assert(SERVER_VERSION === packageVersion, `${SERVER_VERSION} != ${packageVersion}`);
+});
 
 test('proxy client uses the canonical hosted API origin', async () => {
   const previousKey = process.env.LLMKIT_API_KEY;

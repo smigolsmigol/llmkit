@@ -1,5 +1,13 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "ComSpec",
+    "GATE0_COVERAGE_BASE",
+    "LLMKIT_DEPLOY_APPROVED",
+    "LLMKIT_HOSTED_PROOF_APPROVED",
+    "LLMKIT_QUALITY_PYTHON",
+    "ProgramFiles"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

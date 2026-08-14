@@ -351,6 +351,27 @@ async function* parseSSEStream(
   let buffer = '';
   let currentEvent = '';
 
+  const parseLine = (line: string) => {
+    if (line.startsWith('event: ')) {
+      currentEvent = line.slice(7).trim();
+      return null;
+    }
+
+    if (!line.startsWith('data: ')) {
+      if (line === '') currentEvent = '';
+      return null;
+    }
+
+    const payload = line.slice(6).trim();
+    if (!payload || payload === '[DONE]') return null;
+
+    try {
+      return { type: currentEvent, data: JSON.parse(payload) as Record<string, unknown> };
+    } catch {
+      return null;
+    }
+  };
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -361,28 +382,15 @@ async function* parseSSEStream(
       buffer = lines.pop() ?? '';
 
       for (const line of lines) {
-        if (line.startsWith('event: ')) {
-          currentEvent = line.slice(7).trim();
-          continue;
-        }
-
-        if (!line.startsWith('data: ')) {
-          if (line === '') currentEvent = '';
-          continue;
-        }
-
-        const payload = line.slice(6).trim();
-        if (!payload || payload === '[DONE]') continue;
-
-        let data: Record<string, unknown>;
-        try {
-          data = JSON.parse(payload);
-        } catch {
-          continue;
-        }
-
-        yield { type: currentEvent, data };
+        const event = parseLine(line);
+        if (event) yield event;
       }
+    }
+
+    buffer += decoder.decode();
+    for (const line of buffer.split('\n')) {
+      const event = parseLine(line);
+      if (event) yield event;
     }
   } finally {
     reader.releaseLock();

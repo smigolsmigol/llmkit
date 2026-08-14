@@ -146,7 +146,7 @@ const publicFiles = [
   'src/app/layout.tsx',
   'src/app/opengraph-image.tsx',
 ].map(readDashboard);
-const publicDocs = [
+const publicDocumentPaths = [
   'README.md',
   'QUICKSTART.md',
   'API.md',
@@ -160,7 +160,28 @@ const publicDocs = [
   'packages/python-sdk/README.md',
   'packages/python-sdk/src/llmkit/_transport.py',
   'packages/ai-sdk-provider/README.md',
-].map(readRepo);
+];
+const publicDocs = publicDocumentPaths.map(readRepo);
+for (const relativePath of [
+  'README.md',
+  'QUICKSTART.md',
+  'API.md',
+  'SECURITY.md',
+  'packages/mcp-server/README.md',
+]) {
+  assert.doesNotMatch(
+    readRepo(relativePath),
+    /https?:\/\/[^\s)"']+\.vercel\.app/i,
+    `${relativePath}: canonical public documents must not reference disabled Vercel hosts`,
+  );
+}
+const rootLayout = readDashboard('src/app/layout.tsx');
+assert.match(rootLayout, /openGraph:[\s\S]*images:\s*\[[\s\S]*url: '\/opengraph-image'/);
+assert.match(
+  rootLayout,
+  /twitter:[\s\S]*images:\s*\['\/opengraph-image'\]/,
+  'root metadata must retain explicit Open Graph and Twitter images',
+);
 const authenticatedSurface = readDashboard('src/app/(auth)/dashboard/settings/page.tsx');
 const publicSource = [...publicFiles, ...publicDocs, authenticatedSurface].join('\n');
 

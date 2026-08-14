@@ -4,6 +4,22 @@ const DEFAULT_BASE_URL = 'https://api.llmkit.sh';
 
 type ChatRequest = Omit<LLMRequest, 'provider'> & { provider?: string };
 
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end--;
+  return value.slice(0, end);
+}
+
+async function responseErrorMessage(response: Response): Promise<string> {
+  const text = await response.text();
+  try {
+    const body = JSON.parse(text);
+    return body?.error?.message || body?.message || text || response.statusText;
+  } catch {
+    return text || response.statusText || `HTTP ${response.status}`;
+  }
+}
+
 export class LLMKit {
   private config: Required<Pick<LLMKitConfig, 'apiKey' | 'baseUrl'>>;
   private sessionId?: string;
@@ -11,7 +27,7 @@ export class LLMKit {
   constructor(config: LLMKitConfig) {
     this.config = {
       apiKey: config.apiKey,
-      baseUrl: config.baseUrl || DEFAULT_BASE_URL,
+      baseUrl: withoutTrailingSlashes(config.baseUrl || DEFAULT_BASE_URL),
     };
     this.sessionId = config.sessionId;
   }
@@ -28,9 +44,7 @@ export class LLMKit {
     const res = await this.fetch(req);
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      const msg = body?.error?.message || body?.message || res.statusText;
-      throw new Error(msg);
+      throw new Error(await responseErrorMessage(res));
     }
 
     return res.json() as Promise<LLMResponse>;
@@ -40,9 +54,7 @@ export class LLMKit {
     const res = await this.fetch({ ...req, stream: true });
 
     if (!res.ok) {
-      const body = await res.json().catch(() => null);
-      const msg = body?.error?.message || body?.message || res.statusText;
-      throw new Error(msg);
+      throw new Error(await responseErrorMessage(res));
     }
 
     return new ChatStream(res);
@@ -94,6 +106,38 @@ export class ChatStream {
     let buffer = '';
     let currentEvent = '';
 
+    const parseLine = (line: string): string | undefined => {
+      if (line.startsWith('event: ')) {
+        currentEvent = line.slice(7).trim();
+        return undefined;
+      }
+
+      if (!line.startsWith('data: ')) {
+        if (line === '') currentEvent = '';
+        return undefined;
+      }
+
+      const raw = line.slice(6).trim();
+      if (!raw || raw === '[DONE]') return undefined;
+
+      try {
+        const data = JSON.parse(raw);
+        if (currentEvent === 'done') {
+          this._usage = data.usage;
+          this._cost = data.cost;
+          this._model = data.model;
+          this._provider = data.provider;
+          this._id = data.id;
+        }
+        if (currentEvent === 'delta' && data.text !== undefined) {
+          return data.text as string;
+        }
+      } catch {
+        return undefined;
+      }
+      return undefined;
+    };
+
     try {
       while (true) {
         const { done, value } = await reader.read();
@@ -104,37 +148,15 @@ export class ChatStream {
         buffer = lines.pop() ?? '';
 
         for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            currentEvent = line.slice(7).trim();
-            continue;
-          }
-
-          if (!line.startsWith('data: ')) {
-            if (line === '') currentEvent = '';
-            continue;
-          }
-
-          const raw = line.slice(6).trim();
-          if (!raw) continue;
-
-          try {
-            const data = JSON.parse(raw);
-
-            if (currentEvent === 'delta' && data.text !== undefined) {
-              yield data.text as string;
-            }
-
-            if (currentEvent === 'done') {
-              this._usage = data.usage;
-              this._cost = data.cost;
-              this._model = data.model;
-              this._provider = data.provider;
-              this._id = data.id;
-            }
-          } catch {
-            // partial JSON, will be completed in next chunk
-          }
+          const text = parseLine(line);
+          if (text !== undefined) yield text;
         }
+      }
+
+      buffer += decoder.decode();
+      for (const line of buffer.split('\n')) {
+        const text = parseLine(line);
+        if (text !== undefined) yield text;
       }
     } finally {
       reader.releaseLock();

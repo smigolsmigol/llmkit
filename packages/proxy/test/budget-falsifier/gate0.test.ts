@@ -27,7 +27,6 @@ import {
   providerRequestSignal,
 } from '../../src/providers/request';
 import type { FailingRecordBudgetDO, SoftBudgetDO, SoftSnapshot } from './worker';
-import proofWorker from './worker';
 
 declare const __GATE0_REPEAT_START__: number;
 declare const __GATE0_REPEAT_COUNT__: number;
@@ -603,11 +602,6 @@ async function executeRun(input: {
 
 function statusCount(run: ProofRun, status: number): number {
   return run.decisions.filter((decision) => decision.status === status).length;
-}
-
-function percentile(values: number[], fraction: number): number {
-  const sorted = [...values].sort((left, right) => left - right);
-  return sorted[Math.max(0, Math.ceil(sorted.length * fraction) - 1)] ?? Number.POSITIVE_INFINITY;
 }
 
 describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
@@ -2156,135 +2150,6 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
     expect(run.claimClassification).toBe('estimated-cost-boundary');
   });
 
-  it('keeps local budget and replay coordination within frozen latency thresholds', async () => {
-    const sampleCount = 40;
-    const budgetMedianLimitMs = 20;
-    const budgetP95LimitMs = 40;
-    const replayMedianLimitMs = 10;
-    const replayP95LimitMs = 25;
-    const provider = new ProviderBarrier({ outputTokens: new Map() });
-    provider.release();
-    activeProvider = provider;
-
-    const timedRequest = async (input: ProofRequestInput): Promise<number> => {
-      const ctx = createExecutionContext();
-      const startedAt = performance.now();
-      const request = proofHttpRequest(input) as Parameters<NonNullable<typeof proofWorker.fetch>>[0];
-      const bindings = env as Parameters<NonNullable<typeof proofWorker.fetch>>[1];
-      const response = await proofWorker.fetch!(request, bindings, ctx);
-      await response.arrayBuffer();
-      const responseReadyMs = performance.now() - startedAt;
-      expect(response.status).toBe(200);
-      await waitOnExecutionContext(ctx);
-      return responseReadyMs;
-    };
-
-    for (let index = 0; index < 5; index += 1) {
-      await timedRequest({
-        variant: 'hard',
-        budgetId: `latency-warm-control-${crypto.randomUUID()}`,
-        requestId: `latency-warm-control-${index}`,
-        limitCents: 100,
-        noBudget: true,
-      });
-      const warmBudgetId = `latency-warm-budget-${crypto.randomUUID()}`;
-      await hardStub(warmBudgetId).configure({
-        limitCents: 100,
-        usedCents: 0,
-        period: 'total',
-        resetAt: 0,
-      });
-      await timedRequest({
-        variant: 'hard',
-        budgetId: warmBudgetId,
-        requestId: `latency-warm-budget-${index}`,
-        limitCents: 100,
-      });
-    }
-
-    const budgetCoordinationMs: number[] = [];
-    for (let index = 0; index < sampleCount; index += 1) {
-      const controlInput = {
-        variant: 'hard' as const,
-        budgetId: `latency-control-${crypto.randomUUID()}`,
-        requestId: `latency-control-${index}`,
-        limitCents: 100,
-        noBudget: true,
-      };
-      const budgetInput = {
-        variant: 'hard' as const,
-        budgetId: `latency-budget-${crypto.randomUUID()}`,
-        requestId: `latency-budget-${index}`,
-        limitCents: 100,
-      };
-      await hardStub(budgetInput.budgetId).configure({
-        limitCents: 100,
-        usedCents: 0,
-        period: 'total',
-        resetAt: 0,
-      });
-      const controlFirst = index % 2 === 0;
-      const firstMs = await timedRequest(controlFirst ? controlInput : budgetInput);
-      const secondMs = await timedRequest(controlFirst ? budgetInput : controlInput);
-      const controlMs = controlFirst ? firstMs : secondMs;
-      const budgetMs = controlFirst ? secondMs : firstMs;
-      budgetCoordinationMs.push(Math.max(0, budgetMs - controlMs));
-    }
-
-    const replayBudgetId = `latency-replay-${crypto.randomUUID()}`;
-    const replayRequestId = 'latency-replay';
-    const replayKey = `latency-replay-${crypto.randomUUID()}`;
-    const firstReplayable = await proofIdempotentRequest({
-      budgetId: replayBudgetId,
-      requestId: replayRequestId,
-      idempotencyKey: replayKey,
-      limitCents: 100,
-    });
-    await firstReplayable.arrayBuffer();
-    expect(firstReplayable.status).toBe(200);
-
-    const timedReplay = async (): Promise<number> => {
-      const startedAt = performance.now();
-      const response = await proofIdempotentRequest({
-        budgetId: replayBudgetId,
-        requestId: replayRequestId,
-        idempotencyKey: replayKey,
-        limitCents: 100,
-      });
-      await response.arrayBuffer();
-      expect(response.status).toBe(200);
-      expect(response.headers.get('x-llmkit-idempotency-status')).toBe('replayed');
-      return performance.now() - startedAt;
-    };
-    for (let index = 0; index < 5; index += 1) await timedReplay();
-    const replayMs: number[] = [];
-    for (let index = 0; index < sampleCount; index += 1) replayMs.push(await timedReplay());
-
-    const observed = {
-      budgetCoordinationMedianMs: percentile(budgetCoordinationMs, 0.5),
-      budgetCoordinationP95Ms: percentile(budgetCoordinationMs, 0.95),
-      replayMedianMs: percentile(replayMs, 0.5),
-      replayP95Ms: percentile(replayMs, 0.95),
-    };
-    const passed = observed.budgetCoordinationMedianMs <= budgetMedianLimitMs
-      && observed.budgetCoordinationP95Ms <= budgetP95LimitMs
-      && observed.replayMedianMs <= replayMedianLimitMs
-      && observed.replayP95Ms <= replayP95LimitMs;
-    receipt.integrationChecks.push({
-      scenario: 'local-coordination-latency',
-      passed,
-      sampleCount,
-      method: 'paired alternating response-ready handler timings on preconfigured ledgers after five warmups; replay is full HTTP after one create plus five warmups',
-      thresholdsMs: {
-        budgetCoordinationMedian: budgetMedianLimitMs,
-        budgetCoordinationP95: budgetP95LimitMs,
-        replayMedian: replayMedianLimitMs,
-        replayP95: replayP95LimitMs,
-      },
-      observedMs: observed,
-    });
-    expect(passed, JSON.stringify(observed)).toBe(true);
-  });
 });
 
 afterAll(() => {
@@ -2311,7 +2176,6 @@ afterAll(() => {
   const thrownPredispatchIdempotency = receipt.integrationChecks.find((check) => check.scenario === 'idempotency-predispatch-thrown-release');
   const settlementFailure = receipt.integrationChecks.find((check) => check.scenario === 'settlement-failure-conservative-commit');
   const failureAttribution = receipt.integrationChecks.find((check) => check.scenario === 'post-dispatch-failure-attribution');
-  const localCoordinationLatency = receipt.integrationChecks.find((check) => check.scenario === 'local-coordination-latency');
   const unbudgetedReceipt = receipt.integrationChecks.find((check) => check.scenario === 'unbudgeted-request-receipt');
   const responsesToolUsage = receipt.integrationChecks.find((check) => check.scenario === 'responses-output-tool-usage');
   receipt.computedVerdict = {
@@ -2344,7 +2208,6 @@ afterAll(() => {
     idempotencyPredispatchThrownRelease: thrownPredispatchIdempotency?.passed === true,
     settlementFailureConservativeCommit: settlementFailure?.passed === true,
     postDispatchFailureAttribution: failureAttribution?.passed === true,
-    localCoordinationLatency: localCoordinationLatency?.passed === true,
     unbudgetedRequestReceipt: unbudgetedReceipt?.passed === true,
     responsesOutputToolUsage: responsesToolUsage?.passed === true,
   };

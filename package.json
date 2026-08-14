@@ -25,6 +25,7 @@
     "quality:fast": "node scripts/run-quality-gate.mjs fast",
     "quality:static": "node scripts/run-quality-gate.mjs static",
     "quality:pr": "node scripts/run-quality-gate.mjs pr",
+    "quality:dashboard-reproducibility": "node scripts/run-dashboard-reproducibility.mjs",
     "security:semgrep:test": "node scripts/run-semgrep.mjs test",
     "security:semgrep": "node scripts/run-semgrep.mjs scan",
     "check-all": "node scripts/run-ts-quality.mjs"
@@ -49,10 +50,14 @@
       "qs": "6.15.3",
       "sharp": "0.35.2",
       "ws": "8.21.0"
+    },
+    "patchedDependencies": {
+      "@opennextjs/cloudflare@1.20.2": "patches/@opennextjs__cloudflare@1.20.2.patch"
     }
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.7",
+    "c8": "12.0.0",
     "kguard": "^0.1.0",
     "knip": "^5.85.0",
     "publint": "^0.3.23",

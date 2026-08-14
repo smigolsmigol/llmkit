@@ -1,11 +1,18 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import {
+  canonicalizeClientReferenceManifest,
+  canonicalizeManifest,
+  derivePreviewKeys,
+  normalizeOpenNextInit,
+  resolveSourceDateEpoch,
+} from '../scripts/build-cloudflare.mjs';
 import { bucketByHour } from '../src/components/charts/types.ts';
 import {
   classifyRecoveryPath,
-  getWorkerVersionHeaders,
   getHttpsRedirectUrl,
+  getWorkerVersionHeaders,
   RECOVERY_BLOCKED_API_PREFIXES,
   RECOVERY_BLOCKED_UI_PREFIXES,
   RECOVERY_PUBLIC_CTA,
@@ -146,6 +153,87 @@ assert.doesNotMatch(analyticsQueries, /\.limit\(50000\)/);
 
 const deploymentContract = readFileSync(`${packageRoot}/wrangler.jsonc`, 'utf8');
 assert.doesNotMatch(deploymentContract, /SUPABASE_SERVICE_KEY|CLERK_SECRET_KEY|ANALYTICS_API_KEY/);
+
+const nextConfig = readFileSync(`${packageRoot}/next.config.ts`, 'utf8');
+assert.match(nextConfig, /outputFileTracingRoot: resolve\(import\.meta\.dirname, '\.\.\/\.\.'\)/);
+assert.match(nextConfig, /process\.env\.LLMKIT_BUILD_ID \|\| process\.env\.GITHUB_SHA/);
+assert.match(nextConfig, /generateBuildId: async \(\) => sourceRevision\(\)/);
+assert.match(nextConfig, /chunkIds: 'named'/);
+assert.match(nextConfig, /moduleIds: 'named'/);
+
+const buildSecret = Buffer.alloc(32, 7).toString('base64');
+const firstPreviewKeys = derivePreviewKeys(buildSecret);
+const secondPreviewKeys = derivePreviewKeys(buildSecret);
+assert.deepEqual(firstPreviewKeys, secondPreviewKeys);
+assert.equal(firstPreviewKeys.previewModeId.length, 32);
+assert.equal(firstPreviewKeys.previewModeSigningKey.length, 64);
+assert.equal(firstPreviewKeys.previewModeEncryptionKey.length, 64);
+assert.notEqual(firstPreviewKeys.previewModeSigningKey, firstPreviewKeys.previewModeEncryptionKey);
+assert.throws(() => derivePreviewKeys('not-canonical-base64'));
+
+const canonicalPrerender = canonicalizeManifest(
+  'prerender-manifest.json',
+  {
+    version: 4,
+    routes: { '/pricing': { z: 1, a: 2 }, '/': { z: 3, a: 4 } },
+    dynamicRoutes: { '/providers/[name]': { z: 5, a: 6 } },
+    preview: { previewModeId: 'random-build-value' },
+    notFoundRoutes: [],
+  },
+  firstPreviewKeys,
+);
+assert.deepEqual(Object.keys(canonicalPrerender.routes), ['/', '/pricing']);
+assert.deepEqual(Object.keys(canonicalPrerender.routes['/']), ['a', 'z']);
+assert.deepEqual(canonicalPrerender.preview, firstPreviewKeys);
+
+const canonicalPages = canonicalizeManifest(
+  'server/pages-manifest.json',
+  {
+    '/_error': 'pages/_error.js',
+    '/_app': 'pages/_app.js',
+    '/_document': 'pages/_document.js',
+  },
+  firstPreviewKeys,
+);
+assert.deepEqual(Object.keys(canonicalPages), ['/_app', '/_document', '/_error']);
+
+const clientManifestPrefix =
+  'globalThis.__RSC_MANIFEST=(globalThis.__RSC_MANIFEST||{});globalThis.__RSC_MANIFEST["/page"]=';
+assert.equal(
+  canonicalizeClientReferenceManifest(`${clientManifestPrefix}{"z":1,"a":{"z":2,"a":3}}`),
+  `${clientManifestPrefix}{"a":{"a":3,"z":2},"z":1}`,
+);
+assert.equal(resolveSourceDateEpoch('1786579200'), 1786579200);
+assert.throws(() => resolveSourceDateEpoch('2026-08-13'));
+assert.equal(
+  normalizeOpenNextInit(
+    'Object.assign(globalThis, { __BUILD_TIMESTAMP_MS__: 1786579200123 });',
+    1786579200,
+  ),
+  'Object.assign(globalThis, { __BUILD_TIMESTAMP_MS__: 1786579200000 });',
+);
+
+const cloudflareDockerfile = readFileSync(`${packageRoot}/Dockerfile.cloudflare`, 'utf8');
+assert.match(
+  cloudflareDockerfile,
+  /--mount=type=secret,id=next_server_actions_encryption_key,required=true/,
+);
+assert.match(cloudflareDockerfile, /\[16, 24, 32\]\.includes\(bytes\.length\)/);
+assert.doesNotMatch(cloudflareDockerfile, /ARG NEXT_SERVER_ACTIONS_ENCRYPTION_KEY/);
+assert.match(cloudflareDockerfile, /ARG LLMKIT_BUILD_ID/);
+assert.match(cloudflareDockerfile, /ARG SOURCE_DATE_EPOCH/);
+assert.match(cloudflareDockerfile, /COPY patches patches/);
+
+const packageJson = JSON.parse(readFileSync(`${packageRoot}/package.json`, 'utf8'));
+for (const scriptName of [
+  'cloudflare:build',
+  'cloudflare:preview',
+  'cloudflare:dry-run',
+  'cloudflare:deploy:staging',
+  'cloudflare:deploy:production',
+]) {
+  assert.match(packageJson.scripts[scriptName], /node scripts\/build-cloudflare\.mjs/);
+}
 
 const worker = readFileSync(`${packageRoot}/cloudflare-worker.ts`, 'utf8');
 assert.doesNotMatch(worker, /@clerk\/nextjs|SUPABASE_SERVICE_KEY/);

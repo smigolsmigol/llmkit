@@ -8,13 +8,14 @@
     "dev": "next dev",
     "prebuild": "corepack pnpm@9.15.4 --filter @f3d1/llmkit-shared build",
     "build": "next build",
-    "cloudflare:build": "opennextjs-cloudflare build",
-    "cloudflare:preview": "opennextjs-cloudflare build --env staging && opennextjs-cloudflare preview --env staging",
-    "cloudflare:dry-run": "opennextjs-cloudflare build --env staging && wrangler deploy --dry-run --env staging",
-    "cloudflare:deploy:staging": "opennextjs-cloudflare build --env staging && opennextjs-cloudflare deploy --env staging",
-    "cloudflare:deploy:production": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cloudflare:build": "node scripts/build-cloudflare.mjs",
+    "cloudflare:preview": "node scripts/build-cloudflare.mjs --env staging && opennextjs-cloudflare preview --env staging",
+    "cloudflare:dry-run": "node scripts/build-cloudflare.mjs --env staging && wrangler deploy --dry-run --env staging",
+    "cloudflare:deploy:staging": "node scripts/build-cloudflare.mjs --env staging && opennextjs-cloudflare deploy --env staging",
+    "cloudflare:deploy:production": "node scripts/build-cloudflare.mjs && opennextjs-cloudflare deploy",
     "cloudflare:typegen": "wrangler types --env staging --env-interface CloudflareEnv cloudflare-env.d.ts",
     "test": "node test/recovery-boundary-test.mjs && node test/public-content-contract-test.mjs",
+    "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "start": "next start",
     "typecheck": "tsc --noEmit"
   },
@@ -38,9 +39,13 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@vitest/browser-playwright": "4.1.10",
+    "@vitest/coverage-istanbul": "4.1.10",
+    "playwright": "1.62.1",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.0",
+    "vitest": "4.1.10",
     "wrangler": "4.114.0"
   }
 }

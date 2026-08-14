@@ -65,6 +65,11 @@ Every PR must pass:
 - Security: gitleaks, Semgrep, KeyGuard, zero-known-vulnerability dependency audits, and Bandit
 - Data-preserving local Supabase migration fixtures, pgTAP, and schema lint
 
+Major new functionality must add automated tests in the same pull request. The tests must exercise
+the new behavior and a nearby failure or boundary case. A pull request may claim that tests are not
+applicable only when its description identifies the non-executable change and the maintainer accepts
+that rationale during review.
+
 The exact commands, gate levels, and current JavaScript coverage boundary are documented in
 [`scripts/QUALITY.md`](scripts/QUALITY.md).
 
@@ -76,10 +81,15 @@ CI enforces the full security pipeline: secrets scan, semgrep static analysis, d
 
 Do not commit `.env` files, API keys, PEM files, or tokens. The hook will catch most of these, but review your diff before pushing.
 
-## Code style
+## Coding standards
 
-- TypeScript strict, no `any`
-- Follow existing patterns in the codebase
+- TypeScript and JavaScript follow the versioned [Biome recommended rules](https://biomejs.dev/linter/)
+  in `biome.json`, plus TypeScript strict mode and the repository's explicit security rules.
+- Python follows the [Ruff formatter's Black-compatible style](https://docs.astral.sh/ruff/formatter/)
+  and the rule families selected in `packages/python-sdk/pyproject.toml`.
+- Biome errors and every warning category except the documented cognitive-complexity baseline fail
+  the local and CI quality gate. Complexity advisories remain visible and are capped per file; a
+  reduction must lower the matching cap in `scripts/run-biome-policy.mjs`, and growth is rejected.
 - Proxy DB calls use raw PostgREST fetch (no ORM)
 - Dashboard DB calls use @supabase/supabase-js
 - Comments only where the logic isn't obvious

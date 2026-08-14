@@ -10,6 +10,18 @@ import {
 
 const npmWorkflow = await readFile('.github/workflows/publish.yml', 'utf8');
 const pypiWorkflow = await readFile('.github/workflows/publish-pypi.yml', 'utf8');
+const sbomWorkflow = await readFile('.github/workflows/sbom.yml', 'utf8');
+
+const sbomActions = [...sbomWorkflow.matchAll(/^\s*-?\s*uses:\s*[^@\s]+@([^\s#]+)/gm)];
+assert.ok(sbomActions.length >= 3, 'SBOM workflow must expose its action revisions');
+for (const [, revision] of sbomActions) {
+  assert.match(revision, /^[0-9a-f]{40}$/, 'SBOM actions must remain pinned to full commit SHAs');
+}
+assert.match(
+  sbomWorkflow,
+  /permissions:\n\s+contents: read[\s\S]*jobs:\n\s+sbom:[\s\S]*permissions:\n\s+contents: write/,
+  'SBOM write permission must stay scoped to its job',
+);
 
 assert.match(npmWorkflow, /github\.ref == 'refs\/heads\/main'/);
 assert.match(pypiWorkflow, /github\.ref == 'refs\/heads\/main'/);

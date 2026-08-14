@@ -39,6 +39,8 @@ function proofRequest(path: string, init: RequestInit = {}, overrides: Partial<E
 
 describe('isolated staging proof surface', () => {
   it('shares the public pricing limit across Worker and Durable Object restarts', async () => {
+    const logicalNow = (Math.floor(Date.now() / 60_000) + 60) * 60_000;
+    vi.spyOn(Date, 'now').mockReturnValue(logicalNow);
     const clientIp = '198.51.100.77';
     const objectName = `public-pricing:${clientIp}`;
     const stub = env.RATE_LIMIT_DO.get(env.RATE_LIMIT_DO.idFromName(objectName));

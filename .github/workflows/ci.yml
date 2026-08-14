@@ -82,6 +82,22 @@ jobs:
         if: always()
         run: corepack pnpm@9.15.4 db:stop
 
+  dashboard-reproducibility:
+    name: dashboard-reproducibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
+      - name: build the dashboard artifact twice from clean layers
+        run: node scripts/run-dashboard-reproducibility.mjs
+
   python-floor:
     name: python-3.11-floor
     runs-on: ubuntu-latest
@@ -160,7 +176,7 @@ jobs:
 
   deploy:
     name: deploy-production-api
-    needs: [quality, python-floor, scorecard-supply-chain, osv]
+    needs: [quality, dashboard-reproducibility, python-floor, scorecard-supply-chain, osv]
     if: >-
       github.ref == 'refs/heads/main' &&
       github.event_name == 'workflow_dispatch' &&
@@ -236,7 +252,7 @@ jobs:
 
   notify-failure:
     name: notify-ci-failure
-    needs: [quality, python-floor, scorecard-supply-chain, osv, deploy, post-deploy-verify]
+    needs: [quality, dashboard-reproducibility, python-floor, scorecard-supply-chain, osv, deploy, post-deploy-verify]
     if: >-
       always() &&
       contains(needs.*.result, 'failure') &&

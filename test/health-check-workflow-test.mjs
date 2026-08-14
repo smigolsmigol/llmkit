@@ -56,6 +56,10 @@ const publicCheck = workflow.indexOf('check_npm "@f3d1/llmkit-sdk"');
 assert(runtimeGate >= 0, 'runtime checks need a manual-only gate');
 assert(publicCheck >= 0 && publicCheck < runtimeGate, 'published artifacts must remain scheduled');
 assert(proxyCheck > runtimeGate, 'proxy health must be inside the runtime gate');
+assert(
+  workflow.includes('check_http "Proxy" "https://api.llmkit.sh/health"'),
+  'health workflow proxy probe must target api.llmkit.sh',
+);
 assert(recoveryCheck > runtimeGate, 'dashboard recovery health must be inside the runtime gate');
 assertRuntimeTruthContract(workflow);
 for (const call of runtimeTruthCalls) {
