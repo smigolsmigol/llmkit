@@ -267,7 +267,7 @@ function runSelfTest() {
 
   let escaped = false;
   try {
-    pathBelow(join(tmpdir(), 'llmkit-dashboard-diagnostic-root'), '..\\escape.js');
+    pathBelow(join(tmpdir(), 'llmkit-dashboard-diagnostic-root'), join('..', 'escape.js'));
   } catch {
     escaped = true;
   }

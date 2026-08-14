@@ -4,6 +4,12 @@ const DEFAULT_BASE_URL = 'https://api.llmkit.sh';
 
 type ChatRequest = Omit<LLMRequest, 'provider'> & { provider?: string };
 
+function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value.charCodeAt(end - 1) === 47) end--;
+  return value.slice(0, end);
+}
+
 async function responseErrorMessage(response: Response): Promise<string> {
   const text = await response.text();
   try {
@@ -21,7 +27,7 @@ export class LLMKit {
   constructor(config: LLMKitConfig) {
     this.config = {
       apiKey: config.apiKey,
-      baseUrl: (config.baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, ''),
+      baseUrl: withoutTrailingSlashes(config.baseUrl || DEFAULT_BASE_URL),
     };
     this.sessionId = config.sessionId;
   }

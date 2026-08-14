@@ -81,6 +81,15 @@ test('self-hosted trailing slash is normalized and request headers are preserved
   }
 });
 
+test('large runs of trailing slashes are normalized without regular expressions', async () => {
+  const baseUrl = `http://127.0.0.1:8787${'/'.repeat(100_000)}`;
+  const request = await captureRequest({ apiKey: 'llmk_test', baseUrl });
+  assert(
+    request?.url === 'http://127.0.0.1:8787/v1/chat/completions',
+    `unexpected URL: ${request?.url}`,
+  );
+});
+
 test('session creates an isolated ID and plain-text errors remain visible', async () => {
   const originalFetch = globalThis.fetch;
   let sessionHeader;

@@ -17,7 +17,7 @@ export default defineConfig({
     include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
     environment: 'node',
     coverage: {
-      provider: 'v8',
+      provider: 'istanbul',
       reporter: ['text', 'json', 'json-summary'],
       reportsDirectory: './coverage/dashboard',
       include: ['src/**/*.ts', 'src/**/*.tsx'],
