@@ -30,6 +30,9 @@ the proxy enforces it before forwarding the request.
 | `x-llmkit-format` | no | Set to `llmkit` to get LLMKit's native response format instead of OpenAI-compatible format. |
 | `Idempotency-Key` | no | Deduplicate a non-streaming Chat Completions or Responses request. Use 8-128 ASCII letters, digits, dots, underscores, colons, or hyphens. |
 
+Provider values are allowlisted. An unsupported provider is rejected before a direct or stored
+provider credential can be sent to an outbound provider URL.
+
 ## Common response headers
 
 Returned on successful `/v1/chat/completions` and `/v1/responses` calls.

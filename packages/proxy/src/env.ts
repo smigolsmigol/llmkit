@@ -18,6 +18,7 @@ export type Env = {
     BUDGET_DO: DurableObjectNamespace<BudgetDO>;
     IDEMPOTENCY_DO: DurableObjectNamespace<IdempotencyDO>;
     RATE_LIMIT_DO: DurableObjectNamespace<RateLimitDO>;
+    CF_VERSION_METADATA?: { id?: string };
     SUPABASE_URL?: string;
     SUPABASE_KEY?: string;
     DEV_MODE?: string;

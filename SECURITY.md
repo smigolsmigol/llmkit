@@ -4,7 +4,9 @@
 
 LLMKit is designed to provide request identity, bounded provider forwarding, cost evidence, and
 pre-dispatch budget admission for supported gateway requests. The complete component and trust
-boundary map is in [ARCHITECTURE.md](ARCHITECTURE.md).
+boundary map is in [ARCHITECTURE.md](ARCHITECTURE.md). The maintainer's threat model, claims,
+code-and-test evidence, residual risks, and runtime HOLDs are in
+[SECURITY-ASSURANCE.md](SECURITY-ASSURANCE.md).
 
 Users can expect:
 

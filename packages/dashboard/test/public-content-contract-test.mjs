@@ -13,6 +13,7 @@ const evidenceFiles = [
   'ROADMAP.md',
   'ARCHITECTURE.md',
   'SECURITY.md',
+  'SECURITY-ASSURANCE.md',
   'ACCESSIBILITY.md',
   'CONTRIBUTING.md',
 ];
@@ -105,8 +106,41 @@ assert.match(architecture, /service role is not a\s+tenant boundary by itself/);
 
 const securityPolicy = readRepo('SECURITY.md');
 assert.match(securityPolicy, /Security Requirements and Limits/);
+assert.match(securityPolicy, /\[SECURITY-ASSURANCE\.md\]\(SECURITY-ASSURANCE\.md\)/);
 assert.match(securityPolicy, /731-entry snapshot dated 2026-03-25/);
 assert.match(securityPolicy, /does not invent cross-modality rankings/);
+
+const securityAssurance = readRepo('SECURITY-ASSURANCE.md');
+for (const requiredSection of [
+  'Threat model',
+  'Entry points and trust boundaries',
+  'Secure design argument',
+  'Common weakness countermeasures',
+  'Cryptography, credentials, and network posture',
+  'Runtime evidence register',
+  'Residual risks and current HOLDs',
+  'Recheck and decision procedure',
+]) {
+  assert.match(securityAssurance, new RegExp(`## ${requiredSection}`));
+}
+for (const requiredEvidence of [
+  'packages/proxy/src/middleware/auth.ts',
+  'packages/proxy/src/crypto.ts',
+  'packages/proxy/src/middleware/budget.ts',
+  'packages/proxy/src/middleware/idempotency.ts',
+  'supabase/tests/database/tenant_isolation.test.sql',
+  '.github/workflows/ci.yml',
+]) {
+  assert.match(securityAssurance, new RegExp(requiredEvidence.replaceAll('/', '\\/').replaceAll('.', '\\.')));
+}
+assert.match(securityAssurance, /maintainer self-assessment/i);
+assert.match(securityAssurance, /TLS 1\.1[\s\S]*HOLD|HOLD[\s\S]*TLS 1\.1/);
+assert.match(securityAssurance, /current production receipt absent/i);
+assert.doesNotMatch(
+  securityAssurance,
+  /bestpractices\.dev[^\n]+(?:proves|evidence for|justifies)/i,
+  'the assurance case must not use the BadgeApp answer as circular evidence',
+);
 
 const accessibility = readRepo('ACCESSIBILITY.md');
 assert.match(accessibility, /target, not a[\s\S]*certification/);

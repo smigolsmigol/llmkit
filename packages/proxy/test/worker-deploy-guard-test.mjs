@@ -25,6 +25,7 @@ const falsifierWranglerConfig = readFileSync(
   resolve(repoRoot, 'packages', 'proxy', 'wrangler.budget-falsifier.toml'),
   'utf8',
 );
+const ciWorkflow = readFileSync(resolve(repoRoot, '.github', 'workflows', 'ci.yml'), 'utf8');
 
 function run(args, env = process.env) {
   return spawnSync(process.execPath, [deployScript, ...args], {
@@ -73,6 +74,19 @@ assert(/^main\s*=\s*"src\/staging\.ts"/m.test(stagingWranglerConfig), 'Staging d
 assert(/^workers_dev\s*=\s*true/m.test(stagingWranglerConfig), 'Staging does not explicitly use workers.dev.');
 assert(/^routes\s*=\s*\[\s*\]/m.test(stagingWranglerConfig), 'Staging does not explicitly clear production routes.');
 assert(/^STAGING_PROOF_ENABLED\s*=\s*"true"/m.test(stagingWranglerConfig), 'Staging proof surface is not explicitly enabled.');
+for (const [label, config] of [
+  ['Production', wranglerConfig],
+  ['Staging', stagingWranglerConfig],
+]) {
+  assert(
+    /\[version_metadata\]\s*binding\s*=\s*"CF_VERSION_METADATA"/m.test(config),
+    `${label} config does not expose immutable Worker version metadata.`,
+  );
+}
+assert(
+  ciWorkflow.includes('x-llmkit-worker-version'),
+  'Production verification does not require the deployed Worker version receipt.',
+);
 const stagingBindings = [...stagingWranglerConfig.matchAll(
   /\[\[durable_objects\.bindings\]\]\s*name\s*=\s*"([^"]+)"\s*class_name\s*=\s*"([^"]+)"/g,
 )].map((match) => `${match[1]}:${match[2]}`).sort();

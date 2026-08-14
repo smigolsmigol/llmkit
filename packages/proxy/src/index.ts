@@ -91,10 +91,16 @@ function sendErrorNotifications(
 
 const app = new Hono<Env>();
 
+app.use('*', async (c, next) => {
+  const versionId = c.env?.CF_VERSION_METADATA?.id;
+  if (versionId) c.header('X-LLMKit-Worker-Version', versionId);
+  await next();
+});
+
 app.use('*', cors({
   origin: '*',
   allowHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'x-llmkit-provider', 'x-llmkit-provider-key', 'x-llmkit-fallback', 'x-llmkit-customer-id', 'x-llmkit-workflow-id', 'x-llmkit-agent-id', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-format', 'x-llmkit-revenue', 'x-llmkit-revenue-token'],
-  exposeHeaders: ['Idempotency-Key', 'x-llmkit-idempotency-status', 'x-llmkit-request-id', 'x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-provider-cost', 'x-llmkit-extra-costs', 'x-llmkit-margin', 'x-llmkit-settlement-status', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
+  exposeHeaders: ['Idempotency-Key', 'x-llmkit-idempotency-status', 'x-llmkit-request-id', 'x-llmkit-cost', 'x-llmkit-provider', 'x-llmkit-latency-ms', 'x-llmkit-session-id', 'x-llmkit-user-id', 'x-llmkit-provider-cost', 'x-llmkit-extra-costs', 'x-llmkit-margin', 'x-llmkit-settlement-status', 'X-LLMKit-Worker-Version', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'Retry-After'],
   allowMethods: ['POST', 'GET', 'DELETE', 'OPTIONS'],
 }));
 
