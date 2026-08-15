@@ -54,108 +54,105 @@ beforeEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   process.env = { ...ORIGINAL_ENV };
-  delete process.env.ANALYTICS_API_URL;
-  delete process.env.ANALYTICS_API_KEY;
   delete process.env.PRICING_API_URL;
 });
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV };
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe('analytics API', () => {
-  it('enforces authentication, admin access, and configuration', async () => {
+  it('enforces authentication and admin access', async () => {
     state.userId = null;
     expect((await getAnalytics()).status).toBe(401);
 
     state.userId = 'user-1';
     expect((await getAnalytics()).status).toBe(403);
-
-    state.plan = 'admin';
-    expect((await getAnalytics()).status).toBe(503);
   });
 
-  it('normalizes the upstream contract and drops malformed alerts', async () => {
+  it('collects a direct snapshot without the retired analytics host', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-15T12:00:00Z'));
     state.plan = 'admin';
-    process.env.ANALYTICS_API_URL = 'https://analytics.example';
-    process.env.ANALYTICS_API_KEY = 'secret';
 
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        npm: {
-          collected_at: '2026-08-13T10:00:00Z',
-          llmkit: {
-            last_week: 99,
-            organic_week: 80,
-            last_month: 300,
-            organic_month: 250,
-            daily: [
-              { day: '2026-08-12', count: 14, organic: 10, ci_noise: 4 },
-              { day: 42, count: 'bad' },
-            ],
-          },
-        },
-        health: {
-          collected_at: '2026-08-13T10:01:00Z',
-          proxy: { status: 'up', latency_ms: 21 },
-          dashboard: { status: 'degraded', latency_ms: 88 },
-          collector: { status: 'unknown', latency_ms: null },
-        },
-        github: { stars: 120, forks: 9, open_issues: 3, watchers: 7 },
-        pypi: { last_week: 12, last_month: 50 },
-        freshness: { last_success: '2026-08-13T09:59:00Z', version: '2.0' },
-        accounts: { total: 2, accounts: [{ id: 'a' }] },
-      }), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({
-        alerts: [
-          { type: 'health', message: 'degraded', created_at: '2026-08-13T10:02:00Z' },
-          { type: 'broken', message: '', created_at: '2026-08-13T10:02:00Z' },
-          null,
-        ],
-      }), { status: 200 }));
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.startsWith('https://api.npmjs.org/downloads/range/')) {
+        return new Response(JSON.stringify({
+          downloads: [
+            { day: '2026-08-07', downloads: 1 },
+            { day: '2026-08-08', downloads: 2 },
+            { day: '2026-08-09', downloads: 3 },
+            { day: '2026-08-10', downloads: 4 },
+            { day: '2026-08-11', downloads: 5 },
+            { day: '2026-08-12', downloads: 6 },
+            { day: '2026-08-13', downloads: 7 },
+            { day: '2026-08-14', downloads: 8 },
+            { day: 42, downloads: 'bad' },
+          ],
+        }), { status: 200 });
+      }
+      if (url === 'https://api.github.com/repos/smigolsmigol/llmkit') {
+        return new Response(JSON.stringify({
+          stargazers_count: 45,
+          forks_count: 31,
+          open_issues_count: 56,
+          subscribers_count: 23,
+        }), { status: 200 });
+      }
+      if (url.startsWith('https://pypistats.org/')) {
+        return new Response(JSON.stringify({ data: { last_week: 12, last_month: 50 } }), { status: 200 });
+      }
+      if (url === 'https://api.llmkit.sh/health') {
+        return new Response(JSON.stringify({ status: 'ok', version: '0.0.1' }), { status: 200 });
+      }
+      throw new Error(`unexpected URL: ${url}`);
+    });
     vi.stubGlobal('fetch', fetchMock);
 
     const response = await getAnalytics();
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body).toMatchObject({
-      npm: [{
-        name: 'llmkit',
-        weekly: 80,
-        weeklyRaw: 99,
-        total: 250,
-        recent: 0,
-        recentDay: '',
-      }],
-      pypi: { name: 'llmkit-sdk', weekly: 12, total: 50 },
-      github: { stars: 120, forks: 9, openIssues: 3, watchers: 7 },
-      freshness: { lastCollection: '2026-08-13T09:59:00Z', version: '2.0' },
-      accounts: { total: 2, list: [{ id: 'a' }] },
-      alerts: [{ type: 'health', message: 'degraded', created_at: '2026-08-13T10:02:00Z' }],
+      pypi: { name: 'llmkit-sdk', weekly: 12, monthly: 50, status: 'ok' },
+      github: { stars: 45, forks: 31, openItems: 56, watchers: 23, status: 'ok' },
+      freshness: { lastCollection: '2026-08-15T12:00:00.000Z', version: 'direct-v1' },
+      alerts: [],
     });
-    expect(body.health.map((item: { status: string }) => item.status)).toEqual([
-      'up', 'degraded', 'down',
-    ]);
-    expect(fetchMock).toHaveBeenNthCalledWith(1, 'https://analytics.example/api/analytics/overview', {
-      headers: { Accept: 'application/json', Authorization: 'Bearer secret' },
-      next: { revalidate: 300 },
+    expect(body.npm).toHaveLength(6);
+    expect(body.npm[0]).toMatchObject({
+      name: '@f3d1/llmkit-mcp-server',
+      weekly: 35,
+      monthly: 36,
+      recent: 8,
+      recentDay: '2026-08-14',
+      status: 'ok',
     });
+    expect(body.health).toEqual([expect.objectContaining({ service: 'proxy', status: 'up', version: '0.0.1' })]);
+    expect(body.sources.every((source: { status: string }) => source.status === 'ok')).toBe(true);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('analytics.example'))).toBe(false);
   });
 
-  it('classifies upstream and transport failures without leaking details', async () => {
+  it('returns an honest partial snapshot without leaking transport details', async () => {
     state.plan = 'admin';
-    process.env.ANALYTICS_API_URL = 'https://analytics.example';
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = String(input);
+      if (url.includes('github.com')) throw new Error('private transport detail');
+      return new Response('', { status: url.includes('pypistats') ? 503 : 429 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
 
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('', { status: 429 })));
-    const upstream = await getAnalytics();
-    expect(upstream.status).toBe(502);
-    expect(await upstream.json()).toEqual({ error: 'upstream 429' });
-
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('private transport detail')));
-    const unavailable = await getAnalytics();
-    expect(unavailable.status).toBe(502);
-    expect(await unavailable.json()).toEqual({ error: 'analytics unavailable' });
+    const response = await getAnalytics();
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.npm.every((pkg: { status: string }) => pkg.status === 'unavailable')).toBe(true);
+    expect(body.github).toMatchObject({ stars: null, status: 'unavailable' });
+    expect(body.pypi).toMatchObject({ weekly: null, status: 'unavailable' });
+    expect(body.health).toEqual([expect.objectContaining({ service: 'proxy', status: 'down' })]);
+    expect(body.alerts).toHaveLength(4);
+    expect(JSON.stringify(body)).not.toContain('private transport detail');
   });
 });
 

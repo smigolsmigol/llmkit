@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       check_runtime:
-        description: Check the proxy, dashboard, and configured analytics host
+        description: Check the proxy and dashboard recovery surfaces
         required: false
         default: true
         type: boolean
@@ -26,7 +26,6 @@ jobs:
       CHECK_RUNTIME: ${{ github.event_name == 'workflow_dispatch' && inputs.check_runtime == true }}
       TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
-      HETZNER_IP: ${{ secrets.HETZNER_IP }}
     steps:
       - name: Check published artifacts and requested runtime surfaces
         shell: bash
@@ -62,16 +61,6 @@ jobs:
               record_failure "${name}: got ${status}, expected 200"
             elif ! printf '%s' "$body" | grep -Fq "$expected"; then
               record_failure "${name}: missing expected recovery marker"
-            fi
-          }
-
-          check_port() {
-            local name="$1" host="$2" port="$3"
-            local status
-            status=$(curl -sS -o /dev/null -w '%{http_code}' \
-              --max-time 10 "http://${host}:${port}/" || true)
-            if [ "$status" = "000" ] || [ -z "$status" ]; then
-              record_failure "${name}: port ${port} not responding"
             fi
           }
 
@@ -116,9 +105,6 @@ jobs:
             check_http_contains "Docs recovery disclosure" \
               "https://llmkit.sh/docs" \
               "Hosted account creation and API-key management are temporarily unavailable"
-            if [ -n "$HETZNER_IP" ]; then
-              check_port "Analytics API" "$HETZNER_IP" 3200
-            fi
           else
             echo "Runtime checks skipped. Use workflow_dispatch with check_runtime=true."
           fi
