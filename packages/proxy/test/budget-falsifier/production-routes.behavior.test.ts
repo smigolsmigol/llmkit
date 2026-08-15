@@ -135,6 +135,7 @@ function makeBindings(rateResult: {
     BUDGET_DO: {},
     IDEMPOTENCY_DO: {},
     RATE_LIMIT_DO: rateLimitNamespace,
+    CF_VERSION_METADATA: { id: 'worker-version-test' },
     SUPABASE_URL: DATABASE_ORIGIN,
     SUPABASE_KEY: SERVICE_KEY,
   } as unknown as Env['Bindings'];
@@ -193,6 +194,8 @@ describe('production app entry, authentication, and rate limiting', () => {
 
     expect(health.status).toBe(200);
     expect(await body(health)).toEqual({ status: 'ok', version: '0.0.1' });
+    expect(health.headers.get('x-llmkit-worker-version')).toBe('worker-version-test');
+    expect(health.headers.get('access-control-expose-headers')).toContain('X-LLMKit-Worker-Version');
     expect(card.status).toBe(200);
     expect(await body<{ capabilities: { tools: boolean } }>(card)).toMatchObject({
       capabilities: { tools: true },
@@ -438,6 +441,31 @@ describe('production inference routes', () => {
     expect(responseBody).toMatchObject({ id: 'response-1', model: 'gpt-4o' });
     expect(providerAuthorizations).toEqual(['Bearer stored-openai-secret']);
     expect(JSON.stringify(responseBody)).not.toContain('stored-openai-secret');
+  });
+
+  it('rejects an unsupported Responses provider before sending its direct credential', async () => {
+    installDatabaseMock((request, url) => {
+      if (url.origin === DATABASE_ORIGIN && url.pathname === '/rest/v1/requests') {
+        return new Response(null, { status: 201 });
+      }
+      if (request.headers.get('authorization') === 'Bearer provider-secret-canary') {
+        throw new Error(`credential reached unexpected provider URL ${url}`);
+      }
+      return undefined;
+    });
+
+    const response = await requestApp('/v1/responses', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-llmkit-provider': 'unsupported-provider',
+        'x-llmkit-provider-key': 'provider-secret-canary',
+      },
+      body: JSON.stringify({ model: 'gpt-4o', input: 'hello' }),
+    });
+
+    expect(response.status).toBe(400);
+    expect(await body(response)).toMatchObject({ error: { code: 'INVALID_REQUEST' } });
   });
 });
 

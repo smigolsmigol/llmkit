@@ -14,7 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://llmkit.sh">Website</a> | <a href="https://llmkit.sh/docs">Docs</a> | <a href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=1000&cacheRead=0&cacheWrite=0">Pricing API</a> | <a href="ARCHITECTURE.md">Architecture</a> | <a href="SECURITY.md">Security</a>
+  <a href="https://llmkit.sh">Website</a> | <a href="https://llmkit.sh/docs">Docs</a> | <a href="https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=1000&cacheRead=0&cacheWrite=0">Pricing API</a> | <a href="ARCHITECTURE.md">Architecture</a> | <a href="SECURITY.md">Security</a> | <a href="SECURITY-ASSURANCE.md">Assurance case</a>
 </p>
 
 LLMKit is an open-source AI gateway and SDK suite for cost attribution, budget admission, and
@@ -165,6 +165,7 @@ See [`STAGING_PROOF.md`](STAGING_PROOF.md) for the isolated hosted proof contrac
 | [Roadmap](ROADMAP.md) | Intended and excluded work through August 2027 |
 | [Architecture](ARCHITECTURE.md) | Components, request flows, identity, storage, deployment, and failure boundaries |
 | [Security](SECURITY.md) | Security requirements, excluded guarantees, reporting, and supported versions |
+| [Security assurance](SECURITY-ASSURANCE.md) | Threat model, trust boundaries, executable evidence, residual risks, and runtime HOLDs |
 | [Accessibility](ACCESSIBILITY.md) | Public-site controls, verification method, known gaps, and language scope |
 | [Contributing](CONTRIBUTING.md) | Setup, quality gates, review expectations, and DCO sign-off |
 

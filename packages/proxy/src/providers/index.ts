@@ -41,7 +41,9 @@ const BASE_URLS: Record<string, string> = {
 };
 
 export function getProviderBaseUrl(provider: ProviderName): string {
-  return BASE_URLS[provider] || 'https://api.openai.com/v1';
+  const baseUrl = BASE_URLS[provider];
+  if (!baseUrl) throw new ValidationError(`unsupported provider: ${provider}`);
+  return baseUrl;
 }
 
 export type { ProviderAdapter, ProviderRequest, ProviderResponse } from './types';

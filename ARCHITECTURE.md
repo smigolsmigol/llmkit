@@ -89,11 +89,13 @@ or rate-limit middleware.
 
 ## Deployment and observation
 
-The API and website are separate Cloudflare Workers. The API exposes a health endpoint. The website
-adds an immutable Worker version header and, in recovery mode, blocks authenticated routes before
-the application handler. Both Workers enable platform observability.
+The API and website are separate Cloudflare Workers. Both bind Cloudflare version metadata and add
+an immutable Worker version header. The API exposes a health endpoint. In recovery mode, the
+website blocks authenticated routes before the application handler. Both Workers enable platform
+observability.
 
 Production API deployment is a separate, manually confirmed workflow action after required CI.
+Post-deploy verification requires the API health response and its immutable Worker version receipt.
 Staging scripts reject production targets and bind proof to an exact source revision, database, and
 cleanup journal. A local or staging pass does not prove production deployment.
 

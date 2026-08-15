@@ -237,17 +237,24 @@ jobs:
       - name: verify API health
         shell: bash
         run: |
+          headers_file=$(mktemp)
+          trap 'rm -f "$headers_file"' EXIT
           for attempt in 1 2 3; do
-            status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
-              --max-time 30 "https://api.llmkit.sh/health")
-            if [ "$status" -eq 200 ]; then
-              echo "Production API health: $status"
+            : > "$headers_file"
+            status=$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              --dump-header "$headers_file" \
+              --max-time 30 "https://api.llmkit.sh/health" || true)
+            worker_version=$(tr -d '\r' < "$headers_file" \
+              | awk -F': ' 'tolower($1) == "x-llmkit-worker-version" { print $2; exit }')
+            if [ "$status" = "200" ] \
+              && [[ "$worker_version" =~ ^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$ ]]; then
+              echo "Production API health: $status; x-llmkit-worker-version: $worker_version"
               exit 0
             fi
-            echo "Attempt ${attempt}: health returned ${status}."
+            echo "Attempt ${attempt}: health returned ${status}; worker version '${worker_version:-missing}'."
             sleep 10
           done
-          echo "::error::Production API health failed after three attempts."
+          echo "::error::Production API health or immutable Worker version receipt failed after three attempts."
           exit 1
 
   notify-failure:
