@@ -158,8 +158,8 @@ const nextConfig = readFileSync(`${packageRoot}/next.config.ts`, 'utf8');
 assert.match(nextConfig, /outputFileTracingRoot: resolve\(import\.meta\.dirname, '\.\.\/\.\.'\)/);
 assert.match(nextConfig, /process\.env\.LLMKIT_BUILD_ID \|\| process\.env\.GITHUB_SHA/);
 assert.match(nextConfig, /generateBuildId: async \(\) => sourceRevision\(\)/);
-assert.match(nextConfig, /chunkIds: 'named'/);
-assert.match(nextConfig, /moduleIds: 'named'/);
+assert.doesNotMatch(nextConfig, /chunkIds:\s*'named'/);
+assert.doesNotMatch(nextConfig, /moduleIds:\s*'named'/);
 
 const buildSecret = Buffer.alloc(32, 7).toString('base64');
 const firstPreviewKeys = derivePreviewKeys(buildSecret);

@@ -106,6 +106,7 @@ jobs:
           path: |
             audits/llmkit-dashboard-reproducibility.json
             audits/llmkit-dashboard-reproducibility-failure/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 

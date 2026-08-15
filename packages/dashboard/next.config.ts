@@ -22,14 +22,6 @@ const config: NextConfig = {
   poweredByHeader: false,
   transpilePackages: ['@f3d1/llmkit-shared'],
   generateBuildId: async () => sourceRevision(),
-  webpack(webpackConfig) {
-    webpackConfig.optimization = {
-      ...webpackConfig.optimization,
-      chunkIds: 'named',
-      moduleIds: 'named',
-    };
-    return webpackConfig;
-  },
   experimental: {
     cpus: 1,
     workerThreads: false,
