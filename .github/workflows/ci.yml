@@ -98,6 +98,17 @@ jobs:
       - name: build the dashboard artifact twice from clean layers
         run: node scripts/run-dashboard-reproducibility.mjs
 
+      - name: retain dashboard reproducibility failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dashboard-reproducibility-${{ github.sha }}
+          path: |
+            audits/llmkit-dashboard-reproducibility.json
+            audits/llmkit-dashboard-reproducibility-failure/
+          if-no-files-found: error
+          retention-days: 7
+
   python-floor:
     name: python-3.11-floor
     runs-on: ubuntu-latest
