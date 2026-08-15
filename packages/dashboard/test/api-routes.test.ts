@@ -139,7 +139,9 @@ describe('analytics API', () => {
     state.plan = 'admin';
     const fetchMock = vi.fn(async (input: string | URL | Request) => {
       const url = String(input);
-      if (url.includes('github.com')) throw new Error('private transport detail');
+      if (url === 'https://api.github.com/repos/smigolsmigol/llmkit') {
+        throw new Error('private transport detail');
+      }
       return new Response('', { status: url.includes('pypistats') ? 503 : 429 });
     });
     vi.stubGlobal('fetch', fetchMock);
