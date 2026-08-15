@@ -30,7 +30,7 @@ describe('public dashboard render contracts', () => {
   it('renders the public product, docs, MCP, pricing, calculator, and recovery surfaces', () => {
     const surfaces = [
       [render(<Home />), 'Cost control for agents that actually run.'],
-      [render(<DocsPage />), 'Start with one surface'],
+      [render(<DocsPage />), 'Measure one run'],
       [render(<McpPage />), 'Eleven cost tools'],
       [render(<PricingPage />), 'Provider pricing without the tab graveyard.'],
       [render(<ComparePage />), 'Turn verified token volume'],
