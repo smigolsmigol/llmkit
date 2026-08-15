@@ -1,12 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-
-interface Alert {
-  type: string;
-  message: string;
-  created_at: string;
-}
+import type { AnalyticsAlert } from '@/lib/ecosystem-analytics';
 
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -23,7 +18,7 @@ function formatDate(iso: string): string {
 }
 
 export function AlertsPanel() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alerts, setAlerts] = useState<AnalyticsAlert[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -51,13 +46,13 @@ export function AlertsPanel() {
             <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
-        <p className="text-sm text-zinc-400">No alerts. Everything is running clean.</p>
-        <p className="mt-1 text-xs text-zinc-600">Alerts fire on: service down, download spike/drop, new signups, collection failures.</p>
+        <p className="text-sm text-zinc-400">All direct analytics sources responded.</p>
+        <p className="mt-1 text-xs text-zinc-600">This is a current snapshot, not persisted alert history.</p>
       </div>
     );
   }
 
-  const grouped = new Map<string, Alert[]>();
+  const grouped = new Map<string, AnalyticsAlert[]>();
   for (const a of alerts) {
     const day = formatDate(a.created_at);
     const existing = grouped.get(day) ?? [];

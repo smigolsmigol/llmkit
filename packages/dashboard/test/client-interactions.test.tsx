@@ -263,21 +263,25 @@ describe('live status and support controls', () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-08-13T12:00:00Z'));
     const payload = {
-      freshness: { lastCollection: '2026-08-13T09:00:00Z', version: '2.0' },
-      accounts: { total: 4 },
+      freshness: { lastCollection: '2026-08-13T09:00:00Z', version: 'direct-v1' },
+      sources: [
+        { name: 'npm', status: 'ok', detail: '6/6 packages available' },
+        { name: 'github', status: 'ok', detail: 'public repository snapshot' },
+        { name: 'pypi-stats', status: 'ok', detail: 'mirror-excluded download counts' },
+        { name: 'proxy-health', status: 'degraded', detail: 'HTTP 200, status degraded' },
+      ],
       alerts: [{ type: 'health', message: 'Proxy degraded', created_at: '2026-08-13T11:00:00Z' }],
       npm: [{
-        name: '@f3d1/llmkit-mcp-server', weekly: 1200, weeklyRaw: 1500,
-        total: 5000, recent: 100, recentDay: '2026-08-13',
-        daily: [{ day: '2026-08-13', count: 100, raw: 120, ci_noise: 20 }],
+        name: '@f3d1/llmkit-mcp-server', weekly: 1200, monthly: 5000,
+        recent: 100, recentDay: '2026-08-13', status: 'ok',
+        daily: [{ day: '2026-08-13', count: 100 }],
       }],
-      pypi: { name: 'llmkit-sdk', weekly: 200, total: 800 },
-      github: { stars: 42, forks: 5, openIssues: 3, watchers: 7 },
+      pypi: { name: 'llmkit-sdk', weekly: 200, monthly: 800, status: 'ok' },
+      github: { stars: 42, forks: 5, openItems: 3, watchers: 7, status: 'ok' },
       health: [
-        { service: 'proxy', status: 'up', latencyMs: 20, lastCheck: '2026-08-13T11:59:00Z' },
-        { service: 'dashboard', status: 'degraded', latencyMs: 80, lastCheck: '2026-08-13T10:00:00Z' },
-        { service: 'collector', status: 'down', latencyMs: 0, lastCheck: '2026-08-11T10:00:00Z' },
+        { service: 'proxy', status: 'degraded', latencyMs: 20, lastCheck: '2026-08-13T11:59:00Z', version: '0.0.1' },
       ],
+      caveats: ['Registry download counts are not unique installs.'],
       updatedAt: '2026-08-13T11:59:00Z',
     };
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(payload), { status: 200 })));
@@ -290,7 +294,7 @@ describe('live status and support controls', () => {
     const ecosystem = render(<EcosystemPanel accountCount={4} activeUserCount={2} />);
     await expect.element(page.getByText('GitHub', { exact: true }).first()).toBeInTheDocument();
     await expect.element(page.getByText('llmkit-mcp-server', { exact: true })).toBeInTheDocument();
-    await expect.element(page.getByText('dashboard', { exact: true }).first()).toBeInTheDocument();
+    await expect.element(page.getByText('proxy', { exact: true }).first()).toBeInTheDocument();
     unmount(ecosystem);
 
     render(<AlertsPanel />);

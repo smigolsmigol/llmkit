@@ -13,8 +13,6 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**"],
       "env": [
-        "ANALYTICS_API_KEY",
-        "ANALYTICS_API_URL",
         "CLERK_SECRET_KEY",
         "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
         "NEXT_PUBLIC_CLERK_SIGN_IN_URL",

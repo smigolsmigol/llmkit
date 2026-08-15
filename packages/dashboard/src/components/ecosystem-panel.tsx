@@ -3,51 +3,15 @@
 import { useEffect, useState } from 'react';
 import { PackageDownloadsChart } from '@/components/charts/package-downloads';
 import { Sparkline } from '@/components/charts/sparkline';
-
-interface NpmPackage {
-  name: string;
-  weekly: number;
-  weeklyRaw?: number;
-  total: number;
-  recent: number;
-  recentDay: string;
-  daily: Array<{ day: string; count: number; raw?: number; ci_noise?: number }>;
-}
-
-interface PypiStats {
-  name: string;
-  weekly: number;
-  total: number;
-}
-
-interface GithubStats {
-  stars: number;
-  forks: number;
-  openIssues: number;
-  watchers: number;
-}
-
-interface HealthEntry {
-  service: string;
-  status: 'up' | 'down' | 'degraded';
-  latencyMs: number;
-  lastCheck: string;
-}
-
-interface AnalyticsData {
-  npm: NpmPackage[];
-  pypi: PypiStats;
-  github: GithubStats;
-  health: HealthEntry[];
-  updatedAt: string;
-}
+import type { EcosystemAnalyticsSnapshot } from '@/lib/ecosystem-analytics';
 
 interface EcosystemPanelProps {
   accountCount: number;
   activeUserCount: number;
 }
 
-function fmt(n: number): string {
+function fmt(n: number | null): string {
+  if (n === null) return 'n/a';
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
   return n.toLocaleString();
@@ -72,8 +36,9 @@ function StatusDot({ status }: { status: string }) {
   return <span className={`inline-block h-2 w-2 rounded-full ${color}`} />;
 }
 
-function FunnelBar({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.max((value / max) * 100, 3) : 0;
+function SignalBar({ label, value, max, color }: { label: string; value: number | null; max: number; color: string }) {
+  const numericValue = value ?? 0;
+  const pct = max > 0 && value !== null ? Math.max((numericValue / max) * 100, 3) : 0;
   return (
     <div className="flex items-center gap-2">
       <span className="w-16 shrink-0 text-right text-[11px] text-muted-foreground">{label}</span>
@@ -87,8 +52,60 @@ function FunnelBar({ label, value, max, color }: { label: string; value: number;
   );
 }
 
+function buildNpmSparkline(packages: EcosystemAnalyticsSnapshot['npm']): number[] {
+  const dailyMap = new Map<string, number>();
+  for (const pkg of packages) {
+    for (const day of pkg.daily) {
+      dailyMap.set(day.day, (dailyMap.get(day.day) ?? 0) + day.count);
+    }
+  }
+  return Array.from(dailyMap.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([, count]) => count);
+}
+
+function summarizeEcosystem(
+  data: EcosystemAnalyticsSnapshot,
+  accountCount: number,
+  activeUserCount: number,
+) {
+  const availableNpmPackages = data.npm.filter((pkg) => pkg.status === 'ok').length;
+  const npmWeekly = availableNpmPackages > 0
+    ? data.npm.reduce((sum, pkg) => sum + (pkg.weekly ?? 0), 0)
+    : null;
+  const npmMonthly = availableNpmPackages > 0
+    ? data.npm.reduce((sum, pkg) => sum + (pkg.monthly ?? 0), 0)
+    : null;
+  const sortedByWeekly = [...data.npm].sort((a, b) => (b.weekly ?? -1) - (a.weekly ?? -1));
+  const servicesUp = data.health.filter((health) => health.status === 'up').length;
+  const maxSignal = Math.max(
+    npmWeekly ?? 0,
+    data.pypi.weekly ?? 0,
+    data.github.stars ?? 0,
+    accountCount,
+    activeUserCount,
+    1,
+  );
+  const monthlyTotal = npmMonthly === null && data.pypi.monthly === null
+    ? null
+    : (npmMonthly ?? 0) + (data.pypi.monthly ?? 0);
+
+  return {
+    availableNpmPackages,
+    npmWeekly,
+    sortedByWeekly,
+    servicesUp,
+    allUp: servicesUp === data.health.length && data.health.length > 0,
+    npmSparkline: buildNpmSparkline(data.npm),
+    maxSignal,
+    maxWeekly: Math.max(sortedByWeekly[0]?.weekly ?? 0, data.pypi.weekly ?? 0),
+    monthlyTotal,
+    monthlyTotalIsPartial: availableNpmPackages < data.npm.length || data.pypi.monthly === null,
+  };
+}
+
 export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanelProps) {
-  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [data, setData] = useState<EcosystemAnalyticsSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -126,31 +143,26 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
     );
   }
 
-  const totalNpmWeekly = data.npm.reduce((s, p) => s + p.weekly, 0);
-  const totalNpmWeeklyRaw = data.npm.reduce((s, p) => s + (p.weeklyRaw ?? p.weekly), 0);
-  const ciNoise = totalNpmWeeklyRaw - totalNpmWeekly;
-  const sortedByWeekly = [...data.npm].sort((a, b) => b.weekly - a.weekly);
-  const servicesUp = data.health.filter((h) => h.status === 'up').length;
-  const allUp = servicesUp === data.health.length && data.health.length > 0;
+  return <EcosystemContent data={data} accountCount={accountCount} activeUserCount={activeUserCount} />;
+}
 
-  // aggregate daily downloads (organic) across all npm packages
-  const dailyMap = new Map<string, number>();
-  for (const pkg of data.npm) {
-    for (const d of pkg.daily) {
-      dailyMap.set(d.day, (dailyMap.get(d.day) ?? 0) + d.count);
-    }
-  }
-  const aggregatedDaily = Array.from(dailyMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([day, count]) => ({ day, count }));
-
-  // sparkline data: daily totals
-  const npmSparkline = aggregatedDaily.map((d) => d.count);
-
-  const funnelMax = totalNpmWeekly + data.pypi.weekly;
-
-  const maxWeekly = Math.max(sortedByWeekly[0]?.weekly ?? 0, data.pypi.weekly);
-  const grandTotal = data.npm.reduce((s, p) => s + p.total, 0) + data.pypi.total;
+function EcosystemContent({
+  data,
+  accountCount,
+  activeUserCount,
+}: EcosystemPanelProps & { data: EcosystemAnalyticsSnapshot }) {
+  const {
+    availableNpmPackages,
+    npmWeekly,
+    sortedByWeekly,
+    servicesUp,
+    allUp,
+    npmSparkline,
+    maxSignal,
+    maxWeekly,
+    monthlyTotal,
+    monthlyTotalIsPartial,
+  } = summarizeEcosystem(data, accountCount, activeUserCount);
 
   return (
     <div className="space-y-1.5">
@@ -158,13 +170,11 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-1.5">
         <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">npm Organic</p>
-            <span className="text-[10px] text-muted-foreground">{data.npm.length} pkgs</span>
+            <p className="text-xs text-muted-foreground">npm downloads</p>
+            <span className="text-[10px] text-muted-foreground">{availableNpmPackages}/{data.npm.length} pkgs</span>
           </div>
-          <p className="mt-0.5 font-mono text-2xl font-bold text-violet-400">{fmt(totalNpmWeekly)}</p>
-          {ciNoise > 0 && (
-            <div className="text-[10px] text-muted-foreground">{fmt(ciNoise)} CI noise stripped</div>
-          )}
+          <p className="mt-0.5 font-mono text-2xl font-bold text-violet-400">{fmt(npmWeekly)}</p>
+          <div className="text-[10px] text-muted-foreground">7d registry count, includes automation</div>
           <Sparkline data={npmSparkline} color="#7c3aed" height={28} />
         </div>
 
@@ -174,14 +184,14 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
             <span className="text-[10px] text-muted-foreground">{data.pypi.name}</span>
           </div>
           <p className="mt-0.5 font-mono text-2xl font-bold text-amber-400">{fmt(data.pypi.weekly)}</p>
-          <div className="mt-1 text-[10px] text-muted-foreground">{fmt(data.pypi.total)} monthly</div>
+          <div className="mt-1 text-[10px] text-muted-foreground">{fmt(data.pypi.monthly)} over 30d</div>
         </div>
 
         <div className="glow-hover rounded-lg border border-[#2a2a2a] bg-card p-3">
           <p className="text-xs text-muted-foreground">GitHub</p>
           <p className="mt-0.5 font-mono text-2xl font-bold">{fmt(data.github.stars)}</p>
           <p className="mt-1 text-[10px] text-muted-foreground">
-            {data.github.forks} forks, {data.github.openIssues} issues, {data.github.watchers} watching
+            {fmt(data.github.forks)} forks, {fmt(data.github.openItems)} open items, {fmt(data.github.watchers)} watching
           </p>
         </div>
 
@@ -198,35 +208,33 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
         </div>
       </div>
 
-      {/* download trend + conversion funnel */}
+      {/* download trend + adoption signals */}
       <div className="grid grid-cols-2 gap-1.5">
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
           <div className="mb-1 border-b border-[#1a1a1a] pb-1">
             <h2 className="text-xs font-medium">Daily Downloads</h2>
-            <p className="text-[10px] text-muted-foreground">per package, last 14 days</p>
+            <p className="text-[10px] text-muted-foreground">raw registry counts, last 14 days</p>
           </div>
           <PackageDownloadsChart packages={data.npm} />
         </div>
 
         <div className="rounded-lg border border-[#2a2a2a] bg-card p-2">
           <div className="mb-1 border-b border-[#1a1a1a] pb-1">
-            <h2 className="text-xs font-medium">Conversion Funnel</h2>
-            <p className="text-[10px] text-muted-foreground">weekly installs to active users</p>
+            <h2 className="text-xs font-medium">Adoption signals</h2>
+            <p className="text-[10px] text-muted-foreground">directional counts, not one conversion cohort</p>
           </div>
           <div className="space-y-1.5 py-2">
-            <FunnelBar label="Installs" value={funnelMax} max={funnelMax} color="bg-violet-600" />
-            <FunnelBar label="Stars" value={data.github.stars} max={funnelMax} color="bg-blue-500" />
-            <FunnelBar label="Signups" value={accountCount} max={funnelMax} color="bg-teal-500" />
-            <FunnelBar label="Active" value={activeUserCount} max={funnelMax} color="bg-emerald-500" />
+            <SignalBar label="npm 7d" value={npmWeekly} max={maxSignal} color="bg-violet-600" />
+            <SignalBar label="PyPI 7d" value={data.pypi.weekly} max={maxSignal} color="bg-amber-500" />
+            <SignalBar label="Stars" value={data.github.stars} max={maxSignal} color="bg-blue-500" />
+            <SignalBar label="Accounts" value={accountCount} max={maxSignal} color="bg-teal-500" />
+            <SignalBar label="Active" value={activeUserCount} max={maxSignal} color="bg-emerald-500" />
           </div>
-          {funnelMax > 0 && (
-            <div className="border-t border-[#1a1a1a] pt-1">
-              <p className="text-[10px] text-muted-foreground">
-                {accountCount > 0 ? ((activeUserCount / accountCount) * 100).toFixed(0) : '0'}% activation,{' '}
-                {funnelMax > 0 ? ((accountCount / funnelMax) * 100).toFixed(1) : '0'}% install-to-signup
-              </p>
-            </div>
-          )}
+          <div className="border-t border-[#1a1a1a] pt-1">
+            <p className="text-[10px] text-muted-foreground">
+              Downloads are not unique installs. No install-to-account conversion is inferred.
+            </p>
+          </div>
         </div>
       </div>
 
@@ -243,9 +251,11 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
           </div>
           <div className="space-y-1.5 py-1">
             {data.health.map((svc) => {
-              const maxMs = Math.max(...data.health.map((h) => h.latencyMs), 1);
-              const pct = Math.min((svc.latencyMs / maxMs) * 100, 100);
-              const barColor = svc.latencyMs < 100 ? 'bg-emerald-400' : svc.latencyMs < 300 ? 'bg-amber-400' : 'bg-red-400';
+              const maxMs = Math.max(...data.health.map((h) => h.latencyMs ?? 0), 1);
+              const pct = svc.latencyMs === null ? 0 : Math.min((svc.latencyMs / maxMs) * 100, 100);
+              const barColor = svc.latencyMs !== null && svc.latencyMs < 100
+                ? 'bg-emerald-400'
+                : svc.latencyMs !== null && svc.latencyMs < 300 ? 'bg-amber-400' : 'bg-red-400';
               return (
                 <div key={svc.service} className="flex items-center gap-2">
                   <StatusDot status={svc.status} />
@@ -254,7 +264,7 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
                     <div className={`h-1.5 rounded-full ${barColor}`} style={{ width: `${pct}%` }} />
                   </div>
                   <span className="w-12 shrink-0 text-right font-mono text-[10px] text-muted-foreground">
-                    {svc.latencyMs}ms
+                    {svc.latencyMs === null ? 'n/a' : `${svc.latencyMs}ms`}
                   </span>
                 </div>
               );
@@ -272,7 +282,7 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
                 <th className="pb-1">Package</th>
                 <th className="pb-1 text-right">Weekly</th>
                 <th className="w-24 pb-1" />
-                <th className="pb-1 text-right">Total</th>
+                <th className="pb-1 text-right">30d</th>
               </tr>
             </thead>
             <tbody>
@@ -284,11 +294,11 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
                     <div className="h-1.5 w-full rounded-full bg-[#1a1a1a]">
                       <div
                         className="h-1.5 rounded-full bg-violet-500"
-                        style={{ width: `${maxWeekly > 0 ? Math.max((pkg.weekly / maxWeekly) * 100, 1) : 0}%` }}
+                        style={{ width: `${maxWeekly > 0 && pkg.weekly !== null ? Math.max((pkg.weekly / maxWeekly) * 100, 1) : 0}%` }}
                       />
                     </div>
                   </td>
-                  <td className="py-1 text-right font-mono text-[11px] text-muted-foreground">{fmt(pkg.total)}</td>
+                  <td className="py-1 text-right font-mono text-[11px] text-muted-foreground">{fmt(pkg.monthly)}</td>
                 </tr>
               ))}
               <tr className="border-t border-[#2a2a2a]">
@@ -301,17 +311,19 @@ export function EcosystemPanel({ accountCount, activeUserCount }: EcosystemPanel
                   <div className="h-1.5 w-full rounded-full bg-[#1a1a1a]">
                     <div
                       className="h-1.5 rounded-full bg-amber-500"
-                      style={{ width: `${maxWeekly > 0 ? Math.max((data.pypi.weekly / maxWeekly) * 100, 1) : 0}%` }}
+                      style={{ width: `${maxWeekly > 0 && data.pypi.weekly !== null ? Math.max((data.pypi.weekly / maxWeekly) * 100, 1) : 0}%` }}
                     />
                   </div>
                 </td>
-                <td className="py-1 text-right font-mono text-[11px] text-muted-foreground">{fmt(data.pypi.total)}</td>
+                <td className="py-1 text-right font-mono text-[11px] text-muted-foreground">{fmt(data.pypi.monthly)}</td>
               </tr>
             </tbody>
           </table></div>
           <div className="mt-1 flex justify-between border-t border-[#2a2a2a] pt-1 text-[10px]">
             <span className="font-medium">Total</span>
-            <span className="font-mono text-muted-foreground">{fmt(grandTotal)} all time</span>
+            <span className="font-mono text-muted-foreground">
+              {fmt(monthlyTotal)} over 30d{monthlyTotalIsPartial ? ' (partial)' : ''}
+            </span>
           </div>
         </div>
       </div>
