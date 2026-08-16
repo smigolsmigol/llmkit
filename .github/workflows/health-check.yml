@@ -27,6 +27,14 @@ jobs:
       TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
     steps:
+      - name: Checkout health contracts
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+
+      - name: Setup Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 24
+
       - name: Check published artifacts and requested runtime surfaces
         shell: bash
         run: |
@@ -73,6 +81,36 @@ jobs:
             fi
           }
 
+          check_mcp_registry_version() {
+            local server_name="$1" pkg="$2" url="$3"
+            local npm_version response status body result
+            npm_version=$(npm view "$pkg" version --fetch-retries=2 --fetch-timeout=15000 2>/dev/null || true)
+            if [ -z "$npm_version" ] || echo "$npm_version" | grep -qiE '(^npm error|E404|not found)'; then
+              record_failure "MCP Registry: unable to resolve npm ${pkg} version"
+              return
+            fi
+
+            response=$(curl -sS -w '\n%{http_code}' \
+              --max-time 15 --retry 2 --retry-all-errors "$url" || true)
+            status="${response##*$'\n'}"
+            body="${response%$'\n'*}"
+            if [ "$status" = "000" ] || [ -z "$status" ]; then
+              record_failure "MCP Registry: connection failed"
+              return
+            fi
+            if [ "$status" != "200" ]; then
+              record_failure "MCP Registry: got ${status}, expected 200"
+              return
+            fi
+
+            if ! result=$(printf '%s' "$body" | node scripts/check-mcp-registry-version.mjs \
+              "$npm_version" "$server_name" "$pkg" 2>&1); then
+              record_failure "MCP Registry: ${result}"
+            else
+              echo "$result"
+            fi
+          }
+
           check_pypi() {
             local pkg="$1"
             local status
@@ -92,8 +130,9 @@ jobs:
           check_npm "@f3d1/llmkit-shared"
           check_pypi "llmkit-sdk"
           check_http "Glama" "https://glama.ai/mcp/servers/smigolsmigol-llmkit"
-          check_http "MCP Registry" \
-            "https://registry.modelcontextprotocol.io/v0/servers/io.github.smigolsmigol%2Fllmkit/versions"
+          check_mcp_registry_version "io.github.smigolsmigol/llmkit" \
+            "@f3d1/llmkit-mcp-server" \
+            "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.smigolsmigol%2Fllmkit/versions/latest"
 
           # Parked or private runtime surfaces are checked only on an explicit manual run.
           if [ "$CHECK_RUNTIME" = "true" ]; then

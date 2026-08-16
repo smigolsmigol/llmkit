@@ -16,6 +16,7 @@ const { PROXY_TOOLS, LOCAL_TOOLS } = await import('../packages/mcp-server/dist/t
 
 const serverJson = JSON.parse(readFileSync('packages/mcp-server/server.json', 'utf8'));
 const mcpPkg = JSON.parse(readFileSync('packages/mcp-server/package.json', 'utf8'));
+const mcpIndex = readFileSync('packages/mcp-server/src/index.ts', 'utf8');
 const readme = readFileSync('README.md', 'utf8');
 const budgetPathDiagram = readFileSync('.github/budget-path.svg', 'utf8');
 const pyPricingData = readFileSync('packages/python-sdk/src/llmkit/_pricing_data.py', 'utf8');
@@ -64,6 +65,13 @@ test('server.json version matches package.json version', () => {
   const pkgVersion = serverJson.packages?.[0]?.version;
   assert(pkgVersion === mcpPkg.version,
     `server.json package version ${pkgVersion} != package.json ${mcpPkg.version}`);
+});
+
+test('MCP CLI help uses a non-interactive npx install', () => {
+  assert(
+    /args.*-y.*@f3d1\/llmkit-mcp-server/.test(mcpIndex),
+    'MCP CLI help must include npx -y for unattended client startup',
+  );
 });
 
 // manifest.json version sync

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { assertRegistryMatches } from '../scripts/check-mcp-registry-version.mjs';
 
 const workflow = readFileSync('.github/workflows/health-check.yml', 'utf8');
 
@@ -94,5 +95,78 @@ assert(
   workflow.includes('|| true)'),
   'transport failures must be collected instead of aborting before the summary',
 );
+
+assert(
+  workflow.includes('actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803'),
+  'registry semantic checks need the pinned repository script',
+);
+assert(
+  workflow.includes('actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38'),
+  'registry semantic checks need the pinned Node runtime',
+);
+assert(
+  workflow.includes('node scripts/check-mcp-registry-version.mjs'),
+  'MCP Registry health must validate semantic version equality',
+);
+assert(
+  workflow.includes(
+    'https://registry.modelcontextprotocol.io/v0.1/servers/io.github.smigolsmigol%2Fllmkit/versions/latest',
+  ),
+  'MCP Registry health must use the stable exact-latest endpoint',
+);
+assert(
+  !workflow.includes('/v0/servers/io.github.smigolsmigol%2Fllmkit/versions'),
+  'the legacy status-only MCP Registry probe must stay retired',
+);
+
+const serverName = 'io.github.smigolsmigol/llmkit';
+const packageName = '@f3d1/llmkit-mcp-server';
+const packageVersion = JSON.parse(
+  readFileSync('packages/mcp-server/package.json', 'utf8'),
+).version;
+const registryFixture = ({
+  serverVersion = packageVersion,
+  registryPackageVersion = packageVersion,
+  registryType = 'npm',
+  transportType = 'stdio',
+  status = 'active',
+  duplicate = false,
+} = {}) => {
+  const packageRecord = {
+    identifier: packageName,
+    registryType,
+    version: registryPackageVersion,
+    transport: { type: transportType },
+  };
+  return {
+    server: {
+      name: serverName,
+      version: serverVersion,
+      packages: duplicate ? [packageRecord, { ...packageRecord }] : [packageRecord],
+    },
+    _meta: {
+      'io.modelcontextprotocol.registry/official': { isLatest: true, status },
+    },
+  };
+};
+
+assertRegistryMatches(registryFixture(), packageVersion, serverName, packageName);
+for (const [label, fixture] of [
+  ['server version drift', registryFixture({ serverVersion: '0.0.0-stale' })],
+  ['package version drift', registryFixture({ registryPackageVersion: '0.0.0-stale' })],
+  ['inactive record', registryFixture({ status: 'deprecated' })],
+  ['wrong registry type', registryFixture({ registryType: 'pypi' })],
+  ['wrong transport', registryFixture({ transportType: 'streamable-http' })],
+  ['duplicate package', registryFixture({ duplicate: true })],
+  ['missing latest record', {}],
+]) {
+  let rejected = false;
+  try {
+    assertRegistryMatches(fixture, packageVersion, serverName, packageName);
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, `registry contract accepted ${label}`);
+}
 
 console.log('health-check workflow contract passed');
