@@ -12,6 +12,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `/compare` cost calculator page on the dashboard
 
 ### Fixed
+- Made MCP client help non-interactive with `npx -y` and added official Registry/npm version drift detection
 - Restricted the public pricing comparison API to explicit exact model keys, rejected invalid token counts, and removed global cross-modality ranking behavior
 - 15 adapter fixes from cross-reference audit
 - xAI tool name mapping, o1-mini pricing, grok-4 alias

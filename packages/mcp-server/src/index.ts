@@ -58,7 +58,7 @@ function printUsage(): void {
     ${dim('"mcpServers": {')}
       ${dim('"llmkit": {')}
         ${dim('"command": "npx",')}
-        ${dim('"args": ["@f3d1/llmkit-mcp-server"]')}
+        ${dim('"args": ["-y", "@f3d1/llmkit-mcp-server"]')}
       ${dim('}')}
     ${dim('}')}
   ${dim('}')}
