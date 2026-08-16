@@ -1,24 +1,64 @@
 {
-  "manifest_version": "0.2",
-  "name": "@f3d1/llmkit-mcp-server",
-  "version": "0.4.9",
-  "description": "AI cost tracking: 11 tools for spend, budgets, and local costs (Claude Code + Cline + Cursor)",
+  "manifest_version": "0.3",
+  "name": "llmkit",
+  "display_name": "LLMKit",
+  "version": "0.4.10",
+  "description": "Inspect Claude Code and Cline costs locally, with optional read-only LLMKit account queries.",
+  "long_description": "Five local tools inspect supported Claude Code sessions and Cline tasks without an account. Six optional gateway tools query spend, budgets, keys, sessions, and health when an existing LLMKit API key is provided.",
   "author": {
     "name": "F3d1",
     "url": "https://github.com/smigolsmigol"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smigolsmigol/llmkit.git"
+  },
+  "homepage": "https://llmkit.sh",
+  "documentation": "https://llmkit.sh/mcp",
+  "support": "https://github.com/smigolsmigol/llmkit/issues",
   "server": {
     "type": "node",
-    "entry_point": "./dist/index.js",
+    "entry_point": "server/index.js",
     "mcp_config": {
       "command": "node",
       "args": [
-        "${__dirname}/./dist/index.js"
+        "${__dirname}/server/index.js"
       ],
       "env": {
-        "LLMKIT_API_KEY": ""
+        "LLMKIT_API_KEY": "${user_config.llmkit_api_key}"
       }
     }
   },
-  "license": "MIT"
+  "tools_generated": true,
+  "prompts_generated": true,
+  "keywords": [
+    "ai-costs",
+    "claude-code",
+    "cline",
+    "cost-tracking",
+    "mcp"
+  ],
+  "license": "MIT",
+  "privacy_policies": [
+    "https://github.com/smigolsmigol/llmkit/blob/main/packages/mcp-server/MCP_PRIVACY.md"
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32",
+      "linux"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "llmkit_api_key": {
+      "type": "string",
+      "title": "LLMKit API key",
+      "description": "Optional existing key for the six gateway tools. Leave blank to use the five local tools only.",
+      "sensitive": true,
+      "required": false
+    }
+  }
 }

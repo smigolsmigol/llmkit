@@ -75,6 +75,10 @@ jobs:
       - name: build
         run: pnpm turbo build --filter=@f3d1/llmkit-${{ inputs.package }}
 
+      - name: build MCPB artifact
+        if: inputs.package == 'mcp-server'
+        run: pnpm mcpb:build
+
       - name: pack tarball
         run: cd packages/${{ inputs.package }} && pnpm pack --pack-destination /tmp/pkg
 
@@ -88,6 +92,7 @@ jobs:
           tar -xzf /tmp/pkg/*.tgz -C /tmp/pkg-check
           pnpm exec publint /tmp/pkg-check/package
           node --input-type=module <<'NODE'
+          import { createHash } from 'node:crypto';
           import { readFile } from 'node:fs/promises';
           import { assertPublishedVersion } from './scripts/assert-unpublished-version.mjs';
 
@@ -111,6 +116,17 @@ jobs:
             }
             await assertPublishedVersion('npm', '@f3d1/llmkit-shared', expected);
           }
+
+          if (process.env.PACKAGE_DIR === 'mcp-server') {
+            const [sourceMcpb, packedMcpb] = await Promise.all([
+              readFile('packages/mcp-server/mcp-server.mcpb'),
+              readFile('/tmp/pkg-check/package/mcp-server.mcpb'),
+            ]);
+            const sha256 = (contents) => createHash('sha256').update(contents).digest('hex');
+            if (sha256(sourceMcpb) !== sha256(packedMcpb)) {
+              throw new Error('Packed MCPB does not match the verified source artifact.');
+            }
+          }
           NODE
 
       - name: attest artifact
@@ -118,8 +134,24 @@ jobs:
         with:
           subject-path: /tmp/pkg/*.tgz
 
+      - name: attest MCPB artifact
+        if: inputs.package == 'mcp-server'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: packages/mcp-server/mcp-server.mcpb
+
       - name: publish with provenance
         run: npm publish /tmp/pkg/*.tgz --provenance --access public
+
+      - name: retain MCPB convenience artifact
+        if: inputs.package == 'mcp-server'
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: llmkit-mcp-server-${{ steps.release.outputs.version }}-mcpb
+          path: packages/mcp-server/mcp-server.mcpb
+          if-no-files-found: error
+          retention-days: 30
 
       - name: alert on failure
         if: failure()

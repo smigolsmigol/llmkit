@@ -38,6 +38,12 @@ assert.match(npmWorkflow, /tar -xzf \/tmp\/pkg\/\*\.tgz -C \/tmp\/pkg-check/);
 assert.match(npmWorkflow, /source\.dependencies\?\.\['@f3d1\/llmkit-shared'\]/);
 assert.match(npmWorkflow, /packed\.dependencies\?\.\['@f3d1\/llmkit-shared'\]/);
 assert.match(npmWorkflow, /if \(sourceShared\)/);
+assert.match(npmWorkflow, /if: inputs\.package == 'mcp-server'[\s\S]*run: pnpm mcpb:build/);
+assert.match(npmWorkflow, /subject-path: packages\/mcp-server\/mcp-server\.mcpb/);
+assert.match(npmWorkflow, /name: llmkit-mcp-server-\$\{\{ steps\.release\.outputs\.version \}\}-mcpb/);
+assert.match(npmWorkflow, /readFile\('\/tmp\/pkg-check\/package\/mcp-server\.mcpb'\)/);
+assert.match(npmWorkflow, /readFile\('packages\/mcp-server\/mcp-server\.mcpb'\)/);
+assert.match(npmWorkflow, /continue-on-error: true/);
 
 const verifyPackedStart = npmWorkflow.indexOf('      - name: verify packed artifact');
 const verifyPackedEnd = npmWorkflow.indexOf('\n      - name:', verifyPackedStart + 1);
@@ -60,10 +66,19 @@ assert.match(pypiWorkflow, /packages-dir: packages\/python-sdk\/dist\//);
 const packAt = npmWorkflow.indexOf('pnpm pack --pack-destination /tmp/pkg');
 const verifyAt = npmWorkflow.indexOf('pnpm exec publint /tmp/pkg-check/package');
 const attestAt = npmWorkflow.indexOf('subject-path: /tmp/pkg/*.tgz');
+const mcpbBuildAt = npmWorkflow.indexOf('run: pnpm mcpb:build');
+const mcpbAttestAt = npmWorkflow.indexOf('subject-path: packages/mcp-server/mcp-server.mcpb');
 const publishAt = npmWorkflow.indexOf('npm publish /tmp/pkg/*.tgz');
+const mcpbRetainAt = npmWorkflow.indexOf(
+  ['name: llmkit-mcp-server-', '$', '{{ steps.release.outputs.version }}', '-mcpb'].join(''),
+);
 assert(packAt >= 0 && packAt < verifyAt, 'artifact verification must follow the canonical pack');
+assert(mcpbBuildAt < packAt, 'MCPB must be built before the durable npm tarball is packed');
 assert(verifyAt < attestAt, 'the verified artifact must be attested');
+assert(verifyAt < mcpbAttestAt, 'MCPB artifact must be attested after its packed hash is verified');
 assert(attestAt < publishAt, 'the attested artifact must be published');
+assert(mcpbAttestAt < publishAt, 'the attested MCPB must be bound before npm publication');
+assert(publishAt < mcpbRetainAt, 'MCPB retention must follow successful npm publication');
 
 const publishStepStart = npmWorkflow.indexOf('      - name: publish with provenance');
 const publishStepEnd = npmWorkflow.indexOf('\n      - name:', publishStepStart + 1);

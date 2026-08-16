@@ -229,14 +229,7 @@ export const HANDLER_MAP: Record<string, Handler> = {
 
 export function registerTools(server: Server): void {
   server.setRequestHandler(ListToolsRequestSchema, async () => {
-    const clientInfo = server.getClientVersion();
-    const clientName = clientInfo?.name?.toLowerCase() ?? '';
-    const isDesktop = clientName.includes('desktop') && !clientName.includes('code');
-    const tools = [
-      ...PROXY_TOOLS,
-      ...(isDesktop ? [] : LOCAL_TOOLS),
-    ];
-    return { tools };
+    return { tools: [...PROXY_TOOLS, ...LOCAL_TOOLS] };
   });
 
   server.setRequestHandler(CallToolRequestSchema, async (request) => {

@@ -43,6 +43,37 @@ test('tools/list returns tools', async () => {
   assert(result.tools.length >= 11, `expected 11+ tools, got ${result.tools.length}`);
 });
 
+test('Claude Desktop sees the five local no-key tools', async () => {
+  const desktopServer = new Server(
+    { name: 'llmkit-test', version: '0.0.0' },
+    { capabilities: { tools: {} } },
+  );
+  registerTools(desktopServer);
+
+  const [desktopClientTransport, desktopServerTransport] = InMemoryTransport.createLinkedPair();
+  await desktopServer.connect(desktopServerTransport);
+  const desktopClient = new Client({ name: 'claude-desktop', version: '1.0.0' });
+  await desktopClient.connect(desktopClientTransport);
+
+  try {
+    const result = await desktopClient.listTools();
+    const names = new Set(result.tools.map((tool) => tool.name));
+    assert(result.tools.length === 11, `expected 11 tools, got ${result.tools.length}`);
+    for (const name of [
+      'llmkit_local_session',
+      'llmkit_local_projects',
+      'llmkit_local_cache',
+      'llmkit_local_forecast',
+      'llmkit_local_agents',
+    ]) {
+      assert(names.has(name), `Claude Desktop is missing ${name}`);
+    }
+  } finally {
+    await desktopClient.close();
+    await desktopServer.close();
+  }
+});
+
 test('every tool has name, description, inputSchema', async () => {
   const result = await client.listTools();
   for (const tool of result.tools) {

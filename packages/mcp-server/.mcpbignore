@@ -1,7 +1,7 @@
 .mcpregistry_*
 src/
+test/
 *.ts
-!*.d.ts
 tsconfig.json
 Dockerfile
 glama.json
