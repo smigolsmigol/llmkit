@@ -34,6 +34,7 @@ const tests = [
   'packages/ai-sdk-provider/test/unit-test.mjs',
   'packages/shared/test/exports-test.mjs',
   'packages/mcp-server/test/integration-test.mjs',
+  'scripts/build-mcpb.mjs',
   'test/contract-test.mjs',
   'test/health-check-workflow-test.mjs',
   'test/notification-signal-workflow-test.mjs',

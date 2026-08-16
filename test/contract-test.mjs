@@ -81,6 +81,26 @@ test('manifest.json version matches package.json version', () => {
     `manifest.json ${manifest.version} != package.json ${mcpPkg.version}`);
 });
 
+test('MCPB manifest is local-first and uses the current bundle contract', () => {
+  assert(manifest.manifest_version === '0.3', 'MCPB manifest must use specification 0.3');
+  assert(manifest.server?.type === 'node', 'MCPB server must use the bundled Node runtime');
+  assert(manifest.server?.entry_point === 'server/index.js', 'MCPB entry point must use bundled output');
+  assert(
+    manifest.server?.mcp_config?.args?.[0] === ['$', '{__dirname}/server/index.js'].join(''),
+    'MCPB command must resolve its bundled entry point',
+  );
+  assert(manifest.user_config?.llmkit_api_key?.required === false,
+    'MCPB API key must remain optional for local-only use');
+  assert(manifest.user_config?.llmkit_api_key?.sensitive === true,
+    'MCPB API key must remain secret');
+  assert(manifest.tools_generated === true, 'MCPB must discover the server tools at runtime');
+  assert(mcpPkg.files?.includes('mcp-server.mcpb'), 'npm package must retain the exact MCPB artifact');
+});
+
+test('obsolete Smithery source deployment contract is absent', () => {
+  assert(!existsSync('smithery.yaml'), 'obsolete Supabase-era smithery.yaml must not return');
+});
+
 // MCPB freshness check (skipped if mcpb not present - file is gitignored, built locally)
 import { existsSync, statSync } from 'node:fs';
 

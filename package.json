@@ -28,6 +28,7 @@
     "quality:dashboard-reproducibility": "node scripts/run-dashboard-reproducibility.mjs",
     "security:semgrep:test": "node scripts/run-semgrep.mjs test",
     "security:semgrep": "node scripts/run-semgrep.mjs scan",
+    "mcpb:build": "node scripts/build-mcpb.mjs --pack",
     "check-all": "node scripts/run-ts-quality.mjs"
   },
   "pnpm": {
@@ -49,6 +50,7 @@
       "postcss": "8.5.26",
       "qs": "6.15.3",
       "sharp": "0.35.2",
+      "tmp": "0.2.7",
       "ws": "8.21.0"
     },
     "patchedDependencies": {
@@ -56,8 +58,10 @@
     }
   },
   "devDependencies": {
+    "@anthropic-ai/mcpb": "2.1.2",
     "@biomejs/biome": "^2.5.7",
     "c8": "12.0.0",
+    "esbuild": "0.28.1",
     "kguard": "^0.1.0",
     "knip": "^5.85.0",
     "publint": "^0.3.23",
