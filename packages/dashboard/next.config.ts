@@ -26,6 +26,24 @@ const config: NextConfig = {
     cpus: 1,
     workerThreads: false,
   },
+  webpack(webpackConfig, { dev, webpack }) {
+    if (dev) return webpackConfig;
+
+    // Avoid order-dependent collision resolution in Webpack's small default ID space.
+    webpackConfig.optimization = {
+      ...webpackConfig.optimization,
+      moduleIds: false,
+    };
+    webpackConfig.plugins = webpackConfig.plugins ?? [];
+    webpackConfig.plugins.push(
+      new webpack.ids.DeterministicModuleIdsPlugin({
+        maxLength: 9,
+        fixedLength: true,
+        failOnConflict: true,
+      }),
+    );
+    return webpackConfig;
+  },
 };
 
 export default config;
