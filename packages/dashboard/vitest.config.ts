@@ -50,7 +50,7 @@ export default defineConfig({
     ],
     coverage: {
       provider: 'istanbul',
-      reporter: ['text', 'json', 'json-summary'],
+      reporter: ['text', 'json', 'json-summary', 'lcovonly'],
       reportsDirectory: './coverage/dashboard',
       include: ['src/**/*.ts', 'src/**/*.tsx'],
       thresholds: {

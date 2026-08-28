@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import nextConfigRuntime from '../next.config.ts';
 import {
   canonicalizeClientReferenceManifest,
   canonicalizeManifest,
@@ -160,6 +161,33 @@ assert.match(nextConfig, /process\.env\.LLMKIT_BUILD_ID \|\| process\.env\.GITHU
 assert.match(nextConfig, /generateBuildId: async \(\) => sourceRevision\(\)/);
 assert.doesNotMatch(nextConfig, /chunkIds:\s*'named'/);
 assert.doesNotMatch(nextConfig, /moduleIds:\s*'named'/);
+
+class TestDeterministicModuleIdsPlugin {
+  constructor(options) {
+    this.options = options;
+  }
+}
+
+const productionWebpackConfig = {
+  optimization: { minimize: true },
+  plugins: [],
+};
+assert.equal(
+  nextConfigRuntime.webpack(productionWebpackConfig, {
+    dev: false,
+    webpack: { ids: { DeterministicModuleIdsPlugin: TestDeterministicModuleIdsPlugin } },
+  }),
+  productionWebpackConfig,
+);
+assert.deepEqual(productionWebpackConfig.optimization, {
+  minimize: true,
+  moduleIds: false,
+});
+assert.deepEqual(productionWebpackConfig.plugins[0].options, {
+  maxLength: 9,
+  fixedLength: true,
+  failOnConflict: true,
+});
 
 const buildSecret = Buffer.alloc(32, 7).toString('base64');
 const firstPreviewKeys = derivePreviewKeys(buildSecret);

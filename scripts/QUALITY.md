@@ -55,6 +55,9 @@ The proxy and dashboard also retain their local 80% floors so a large well-teste
 hide a regression in either application. Changed money-path code remains subject to the stricter
 90% statements, branches, functions, and lines gate. Repository-wide 90% across all four
 JavaScript metrics remains a longer-term objective and is not implied by a green `quality:pr`.
+CI exports these same reports to Codecov from a separate OIDC-only job that never executes pull
+request code. Codecov project and patch checks are informational, PR comments are disabled, and the
+local coverage floors remain authoritative. No permanent Codecov upload token is used.
 Absolute Miniflare wall-clock timings are not correctness assertions because benchmark results vary
 by machine, operating system, and runner load. The local gate still proves budget admission,
 release, retry, and replay behavior. The hosted staging proof owns the server-side coordination

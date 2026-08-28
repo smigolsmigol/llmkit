@@ -1,0 +1,14 @@
+codecov:
+  notify:
+    after_n_builds: 4
+
+coverage:
+  status:
+    project:
+      default:
+        informational: true
+    patch:
+      default:
+        informational: true
+
+comment: false
