@@ -173,21 +173,101 @@ const coverageExportContracts = new Map([
   ],
 ]);
 
-for (const [path, fragments] of coverageExportContracts) {
-  const contents = readFileSync(path, 'utf8');
-  for (const fragment of fragments) {
-    if (!contents.includes(fragment)) {
-      throw new Error(`${path} is missing Codecov report generation: ${fragment}`);
+function assertCoverageExportContracts(contentsByPath) {
+  for (const [path, fragments] of coverageExportContracts) {
+    const contents = contentsByPath.get(path);
+    if (contents === undefined) {
+      throw new Error(`Codecov report generation input is missing: ${path}`);
+    }
+    for (const fragment of fragments) {
+      if (!contents.includes(fragment)) {
+        throw new Error(`${path} is missing Codecov report generation: ${fragment}`);
+      }
     }
   }
 }
 
-const codecovConfig = readFileSync('codecov.yml', 'utf8');
-for (const fragment of ['after_n_builds: 4', 'informational: true', 'comment: false']) {
-  if (!codecovConfig.includes(fragment)) {
-    throw new Error(`Codecov must remain non-blocking and quiet: ${fragment}`);
+function assertCodecovConfig(contents) {
+  for (const fragment of ['after_n_builds: 4', 'informational: true', 'comment: false']) {
+    if (!contents.includes(fragment)) {
+      throw new Error(`Codecov must remain non-blocking and quiet: ${fragment}`);
+    }
   }
 }
+
+function replaceFixture(contents, original, replacement) {
+  if (!contents.includes(original)) {
+    throw new Error(`Codecov violation fixture is stale: ${original}`);
+  }
+  return contents.replace(original, replacement);
+}
+
+function assertViolationBlocked(label, assertion) {
+  let blocked = false;
+  try {
+    assertion();
+  } catch {
+    blocked = true;
+  }
+  if (!blocked) {
+    throw new Error(`${label} violation fixture was accepted.`);
+  }
+}
+
+const coverageExportContents = new Map(
+  [...coverageExportContracts.keys()].map((path) => [path, readFileSync(path, 'utf8')]),
+);
+assertCoverageExportContracts(coverageExportContents);
+
+const codecovConfig = readFileSync('codecov.yml', 'utf8');
+assertCodecovConfig(codecovConfig);
+
+const oidcViolation = replaceFixture(
+  workflow,
+  '          use_oidc: true',
+  '          use_oidc: false',
+);
+assertViolationBlocked('Codecov OIDC', () => assertCoverageWorkflowContract(oidcViolation));
+
+const packageUploadRoot = `          flags: packages
+          root_dir: .
+          use_oidc: true`;
+const dashboardUploadRoot = `          flags: dashboard
+          root_dir: packages/dashboard
+          use_oidc: true`;
+const misplacedRootDirViolation = replaceFixture(
+  replaceFixture(
+    workflow,
+    packageUploadRoot,
+    packageUploadRoot.replace('root_dir: .', 'root_dir: packages/dashboard'),
+  ),
+  dashboardUploadRoot,
+  dashboardUploadRoot.replace(
+    'root_dir: packages/dashboard',
+    `root_dir: packages/dashboard
+          root_dir: .`,
+  ),
+);
+assertViolationBlocked('Codecov upload step boundary', () =>
+  assertCoverageWorkflowContract(misplacedRootDirViolation),
+);
+
+const coverageExportViolation = new Map(coverageExportContents);
+coverageExportViolation.set(
+  'scripts/run-package-coverage.mjs',
+  replaceFixture(
+    coverageExportContents.get('scripts/run-package-coverage.mjs'),
+    "'--reporter=lcovonly'",
+    "'--reporter=json'",
+  ),
+);
+assertViolationBlocked('Codecov report generation', () =>
+  assertCoverageExportContracts(coverageExportViolation),
+);
+
+const codecovConfigViolation = replaceFixture(codecovConfig, 'comment: false', 'comment: true');
+assertViolationBlocked('Codecov configuration', () => assertCodecovConfig(codecovConfigViolation));
+
 const moneyPathGateFragments = [
   "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier']);",
   "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier:coverage']);",
