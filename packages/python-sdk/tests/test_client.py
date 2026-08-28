@@ -86,13 +86,21 @@ def test_client_headers():
             api_key="llmk_test",
             provider_key="sk-abc",
             provider="anthropic",
+            customer_id="tenant-1",
+            workflow_id="release-review",
+            agent_id="reviewer",
             session_id="sess-1",
+            end_user_id="user@example.com",
             fallback="openai",
         )
         headers = mock_openai.call_args.kwargs["default_headers"]
         assert headers["x-llmkit-provider-key"] == "sk-abc"
         assert headers["x-llmkit-provider"] == "anthropic"
+        assert headers["x-llmkit-customer-id"] == "tenant-1"
+        assert headers["x-llmkit-workflow-id"] == "release-review"
+        assert headers["x-llmkit-agent-id"] == "reviewer"
         assert headers["x-llmkit-session-id"] == "sess-1"
+        assert headers["x-llmkit-user-id"] == "user@example.com"
         assert headers["x-llmkit-fallback"] == "openai"
 
 
@@ -126,14 +134,36 @@ def test_session_inherits_config():
             api_key="llmk_test",
             provider_key="sk-abc",
             provider="anthropic",
+            customer_id="tenant-1",
+            workflow_id="release-review",
+            agent_id="reviewer",
+            end_user_id="user@example.com",
             fallback="openai",
         )
         client.session("s1")
         child_headers = mock_openai.call_args.kwargs["default_headers"]
         assert child_headers["x-llmkit-provider-key"] == "sk-abc"
         assert child_headers["x-llmkit-provider"] == "anthropic"
+        assert child_headers["x-llmkit-customer-id"] == "tenant-1"
+        assert child_headers["x-llmkit-workflow-id"] == "release-review"
+        assert child_headers["x-llmkit-agent-id"] == "reviewer"
+        assert child_headers["x-llmkit-user-id"] == "user@example.com"
         assert child_headers["x-llmkit-fallback"] == "openai"
         assert child_headers["x-llmkit-session-id"] == "s1"
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("session_id", "contains spaces", "invalid session ID"),
+        ("customer_id", "../tenant", "invalid customer ID"),
+        ("workflow_id", " release-review", "invalid workflow ID"),
+        ("end_user_id", "user/segment", "invalid end user ID"),
+    ],
+)
+def test_client_rejects_invalid_attribution(field, value, message):
+    with patch("llmkit._client.OpenAI"), pytest.raises(ValueError, match=message):
+        LLMKit(api_key="llmk_test", **{field: value})
 
 
 def test_on_cost_callback():

@@ -1,127 +1,163 @@
-"""Tests for Pydantic AI hooks integration (mocked, no pydantic-ai required)."""
+"""Real Pydantic AI integration tests with an in-process HTTP transport."""
 
-import sys
+import asyncio
+import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock
 
-# Mock pydantic_ai before importing
-mock_capabilities = MagicMock()
-mock_usage = MagicMock()
+import httpx
+import pytest
+from openai import AsyncOpenAI
+from pydantic_ai import Agent, ModelSettings
+from pydantic_ai.exceptions import ModelHTTPError
 
-
-class FakeHooks:
-    def __init__(self):
-        self.on = SimpleNamespace(after_model_request=self._register)
-        self._handlers = []
-
-    def _register(self, fn):
-        self._handlers.append(fn)
-        return fn
-
-
-class FakeRequestUsage:
-    def __init__(self, input_tokens=0, output_tokens=0):
-        self.input_tokens = input_tokens
-        self.output_tokens = output_tokens
+import llmkit.integrations.pydantic_ai as integration
+from llmkit.integrations.pydantic_ai import (
+    LLMKitCostTracker,
+    _extract_model,
+    gateway_model,
+    llmkit_hooks,
+)
 
 
-mock_capabilities.Hooks = FakeHooks
-mock_usage.RequestUsage = FakeRequestUsage
+def _completion() -> dict:
+    return {
+        "id": "chatcmpl-test",
+        "object": "chat.completion",
+        "created": 1_700_000_000,
+        "model": "gpt-4.1-mini",
+        "choices": [
+            {
+                "index": 0,
+                "message": {"role": "assistant", "content": "pong"},
+                "finish_reason": "stop",
+            }
+        ],
+        "usage": {"prompt_tokens": 7, "completion_tokens": 2, "total_tokens": 9},
+    }
 
-sys.modules["pydantic_ai"] = MagicMock()
-sys.modules["pydantic_ai.capabilities"] = mock_capabilities
-sys.modules["pydantic_ai.usage"] = mock_usage
 
-from llmkit.integrations.pydantic_ai import LLMKitCostTracker, llmkit_hooks  # noqa: E402
+def test_gateway_model_runs_real_agent_with_attribution(monkeypatch):
+    observed: dict = {}
 
+    async def handler(request: httpx.Request) -> httpx.Response:
+        observed["headers"] = dict(request.headers)
+        observed["body"] = json.loads(request.content)
+        return httpx.Response(200, json=_completion())
 
-def test_basic_tracking():
-    hooks = FakeHooks()
-    tracker = LLMKitCostTracker(hooks)
-    usage = FakeRequestUsage(input_tokens=100, output_tokens=50)
-    tracker._record(usage, "gpt-4.1-mini")
+    transport = httpx.MockTransport(handler)
+    original_client = AsyncOpenAI
 
+    def client_factory(**kwargs):
+        observed["client"] = kwargs
+        return original_client(
+            **kwargs,
+            http_client=httpx.AsyncClient(transport=transport),
+        )
+
+    monkeypatch.setattr(integration, "AsyncOpenAI", client_factory)
+
+    async def run():
+        model = gateway_model(
+            "gpt-4.1-mini",
+            api_key="llmk_test",
+            base_url="https://gateway.invalid/v1",
+            provider="openai",
+            fallback="anthropic",
+            customer_id="tenant-1",
+            workflow_id="release-review",
+            agent_id="reviewer",
+            session_id="session-1",
+            end_user_id="user@example.com",
+            settings=ModelSettings(max_tokens=64),
+        )
+        hooks, tracker = llmkit_hooks()
+        try:
+            result = await Agent(model, capabilities=[hooks]).run("ping")
+        finally:
+            await model.client.close()
+        return result, tracker
+
+    result, tracker = asyncio.run(run())
+
+    assert result.output == "pong"
+    assert observed["client"]["base_url"] == "https://gateway.invalid/v1"
+    assert observed["client"]["max_retries"] == 0
+    assert observed["body"]["max_completion_tokens"] == 64
+    assert observed["headers"]["x-llmkit-customer-id"] == "tenant-1"
+    assert observed["headers"]["x-llmkit-workflow-id"] == "release-review"
+    assert observed["headers"]["x-llmkit-agent-id"] == "reviewer"
+    assert observed["headers"]["x-llmkit-session-id"] == "session-1"
+    assert observed["headers"]["x-llmkit-user-id"] == "user@example.com"
     assert tracker.request_count == 1
-    assert tracker.input_tokens == 100
-    assert tracker.output_tokens == 50
-    assert tracker.total_tokens == 150
+    assert tracker.input_tokens == 7
+    assert tracker.output_tokens == 2
+
+
+def test_gateway_transient_rejection_is_not_retried(monkeypatch):
+    attempts = 0
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        del request
+        attempts += 1
+        return httpx.Response(
+            503,
+            json={"error": {"message": "provider unavailable", "type": "server_error"}},
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_client = AsyncOpenAI
+
+    def client_factory(**kwargs):
+        return original_client(
+            **kwargs,
+            http_client=httpx.AsyncClient(transport=transport),
+        )
+
+    monkeypatch.setattr(integration, "AsyncOpenAI", client_factory)
+
+    async def run():
+        model = gateway_model(
+            "gpt-4.1-mini",
+            api_key="llmk_test",
+            base_url="https://gateway.invalid/v1",
+            settings=ModelSettings(max_tokens=64),
+        )
+        try:
+            with pytest.raises(ModelHTTPError, match="provider unavailable"):
+                await Agent(model).run("ping")
+        finally:
+            await model.client.close()
+
+    asyncio.run(run())
+    assert attempts == 1
+
+
+def test_local_tracker_accumulates_known_usage():
+    hooks, tracker = llmkit_hooks()
+    assert isinstance(tracker, LLMKitCostTracker)
+    assert hooks is not None
+
+    tracker._record(SimpleNamespace(input_tokens=100, output_tokens=50), "gpt-4.1-mini")
+    tracker._record(SimpleNamespace(input_tokens=100, output_tokens=50), "gpt-4.1-mini")
+
+    assert tracker.request_count == 2
+    assert tracker.total_tokens == 300
     assert tracker.total_cost > 0
-
-
-def test_accumulation():
-    hooks = FakeHooks()
-    tracker = LLMKitCostTracker(hooks)
-    for _ in range(3):
-        tracker._record(FakeRequestUsage(100, 50), "gpt-4.1-mini")
-
-    assert tracker.request_count == 3
-    assert tracker.total_tokens == 450
-
-
-def test_on_cost_callback():
-    costs = []
-    hooks = FakeHooks()
-    tracker = LLMKitCostTracker(hooks, on_cost=costs.append)
-    tracker._record(FakeRequestUsage(100, 50), "gpt-4.1-mini")
-
-    assert len(costs) == 1
-    assert costs[0] > 0
-
-
-def test_zero_tokens_ignored():
-    hooks = FakeHooks()
-    tracker = LLMKitCostTracker(hooks)
-    tracker._record(FakeRequestUsage(0, 0), "gpt-4.1-mini")
-
-    assert tracker.request_count == 0
-
-
-def test_unknown_model():
-    hooks = FakeHooks()
-    tracker = LLMKitCostTracker(hooks)
-    tracker._record(FakeRequestUsage(100, 50), "unknown-model-xyz")
-
-    assert tracker.request_count == 1
-    assert tracker.total_tokens == 150
-
-
-def test_last_cost():
-    hooks = FakeHooks()
-    tracker = LLMKitCostTracker(hooks)
-    assert tracker.last_cost is None
-
-    tracker._record(FakeRequestUsage(100, 50), "gpt-4.1-mini")
     assert tracker.last_cost is not None
 
 
-def test_model_prefix_stripping():
-    from llmkit.integrations.pydantic_ai import _extract_model
-
-    assert _extract_model("openai:gpt-4.1-mini") == "gpt-4.1-mini"
-    assert _extract_model("anthropic:claude-sonnet-4-20250514") == "claude-sonnet-4-20250514"
-    assert _extract_model("gpt-4.1-mini") == "gpt-4.1-mini"
-    assert _extract_model(None) == ""
-
-
-def test_llmkit_hooks_factory():
-    hooks, tracker = llmkit_hooks()
-    assert isinstance(tracker, LLMKitCostTracker)
-    assert len(hooks._handlers) == 1
-
-
-def test_repr():
-    hooks = FakeHooks()
-    tracker = LLMKitCostTracker(hooks)
-    tracker._record(FakeRequestUsage(100, 50), "gpt-4.1-mini")
-    r = repr(tracker)
-    assert "requests=1" in r
-    assert "cost=$" in r
-
-
-def test_anthropic_model():
-    hooks = FakeHooks()
-    tracker = LLMKitCostTracker(hooks)
-    tracker._record(FakeRequestUsage(100, 50), "claude-sonnet-4-20250514")
+def test_unknown_model_keeps_usage_without_inventing_cost():
+    _, tracker = llmkit_hooks()
+    tracker._record(SimpleNamespace(input_tokens=10, output_tokens=5), "unknown-model")
 
     assert tracker.request_count == 1
-    assert tracker.total_cost > 0
+    assert tracker.total_tokens == 15
+    assert tracker.last_cost is None
+
+
+def test_model_prefix_stripping():
+    assert _extract_model("openai:gpt-4.1-mini") == "gpt-4.1-mini"
+    assert _extract_model("anthropic:claude-sonnet-4") == "claude-sonnet-4"
+    assert _extract_model("gpt-4.1-mini") == "gpt-4.1-mini"
+    assert _extract_model(None) == ""

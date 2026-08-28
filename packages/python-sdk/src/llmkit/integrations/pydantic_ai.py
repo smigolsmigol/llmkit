@@ -1,40 +1,81 @@
-"""Pydantic AI hooks for LLMKit cost tracking.
+"""Pydantic AI integration for LLMKit gateway control and local cost estimates.
 
 Usage:
-    from llmkit.integrations.pydantic_ai import llmkit_hooks
+    from llmkit.integrations.pydantic_ai import gateway_model
     from pydantic_ai import Agent
 
-    hooks, tracker = llmkit_hooks()
-    agent = Agent("openai:gpt-4.1", capabilities=[hooks])
-
+    agent = Agent(gateway_model("gpt-4.1", session_id="release-review"))
     result = await agent.run("explain CQRS")
-    print(f"Cost: ${tracker.total_cost:.4f}")
 
-Or manually with an existing Hooks instance:
-    from llmkit.integrations.pydantic_ai import LLMKitCostTracker
-    from pydantic_ai.capabilities import Hooks
-
-    hooks = Hooks()
-    tracker = LLMKitCostTracker(hooks)
-    # tracker registers itself on hooks.on.after_model_request
-
-Requires: pip install pydantic-ai
+Requires: pip install "llmkit-sdk[pydantic-ai]"
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from typing import Any
 
+from openai import AsyncOpenAI
+
 try:
+    from pydantic_ai import ModelRequestContext, ModelSettings, RunContext
     from pydantic_ai.capabilities import Hooks
+    from pydantic_ai.messages import ModelResponse
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.providers.openai import OpenAIProvider
     from pydantic_ai.usage import RequestUsage
 except ImportError as e:
     raise ImportError(
-        "pydantic-ai is required for this integration. Install it with: pip install pydantic-ai"
+        "pydantic-ai is required for this integration. "
+        'Install it with: pip install "llmkit-sdk[pydantic-ai]"'
     ) from e
 
+from llmkit._client import DEFAULT_BASE_URL, ENV_API_KEY, ENV_BASE_URL, _build_headers
 from llmkit._pricing import calculate_cost
+
+
+def gateway_model(
+    model: str,
+    api_key: str | None = None,
+    *,
+    base_url: str | None = None,
+    provider_key: str | None = None,
+    provider: str | None = None,
+    fallback: str | None = None,
+    customer_id: str | None = None,
+    workflow_id: str | None = None,
+    agent_id: str | None = None,
+    session_id: str | None = None,
+    end_user_id: str | None = None,
+    settings: ModelSettings | None = None,
+) -> OpenAIChatModel:
+    """Build a Pydantic AI chat model routed through the LLMKit gateway."""
+    resolved_key = api_key or os.environ.get(ENV_API_KEY)
+    if not resolved_key:
+        raise ValueError(f"api_key required: pass it directly or set {ENV_API_KEY}")
+
+    headers = _build_headers(
+        provider_key,
+        provider,
+        session_id,
+        fallback,
+        customer_id=customer_id,
+        workflow_id=workflow_id,
+        agent_id=agent_id,
+        end_user_id=end_user_id,
+    )
+    client = AsyncOpenAI(
+        api_key=resolved_key,
+        base_url=base_url or os.environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL,
+        default_headers=headers,
+        max_retries=0,
+    )
+    return OpenAIChatModel(
+        model,
+        provider=OpenAIProvider(openai_client=client),
+        settings=settings,
+    )
 
 
 class LLMKitCostTracker:
@@ -50,8 +91,15 @@ class LLMKitCostTracker:
         self._last_cost: float | None = None
 
         @hooks.on.after_model_request
-        async def _track_cost(usage: RequestUsage, model: Any = None, **kwargs: Any) -> None:
-            self._record(usage, _extract_model(model))
+        async def _track_cost(
+            ctx: RunContext[Any],
+            *,
+            request_context: ModelRequestContext,
+            response: ModelResponse,
+        ) -> ModelResponse:
+            del ctx, request_context
+            self._record(response.usage, _extract_model(response.model_name))
+            return response
 
     @property
     def last_cost(self) -> float | None:

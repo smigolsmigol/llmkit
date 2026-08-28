@@ -201,11 +201,13 @@ class ProviderBarrier {
     });
     this.crossings.push({
       requestId,
-      requestedMaxTokens: typeof body.max_tokens === 'number'
-        ? body.max_tokens
-        : typeof body.max_output_tokens === 'number'
-          ? body.max_output_tokens
-          : undefined,
+      requestedMaxTokens: typeof body.max_completion_tokens === 'number'
+        ? body.max_completion_tokens
+        : typeof body.max_tokens === 'number'
+          ? body.max_tokens
+          : typeof body.max_output_tokens === 'number'
+            ? body.max_output_tokens
+            : undefined,
       actualOutputTokens,
       failed,
     });
@@ -431,6 +433,8 @@ type ProofRequestInput = {
   limitCents: number;
   settlementFailure?: boolean;
   noBudget?: boolean;
+  maxField?: 'max_completion_tokens' | 'max_tokens';
+  maxTokens?: number;
 };
 
 function proofHttpRequest(input: ProofRequestInput): Request {
@@ -450,7 +454,7 @@ function proofHttpRequest(input: ProofRequestInput): Request {
     body: JSON.stringify({
       model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: input.requestId }],
-      max_tokens: 150_000,
+      [input.maxField ?? 'max_tokens']: input.maxTokens ?? 150_000,
     }),
   });
 }
@@ -539,6 +543,8 @@ async function executeRun(input: {
   failures?: Iterable<string>;
   outputTokens?: Map<string, number>;
   supportedRequestShape?: boolean;
+  maxField?: 'max_completion_tokens' | 'max_tokens';
+  maxTokens?: number;
 }): Promise<ProofRun> {
   const provider = new ProviderBarrier({ failures: input.failures, outputTokens: input.outputTokens });
   activeProvider = provider;
@@ -550,6 +556,8 @@ async function executeRun(input: {
         budgetId: input.budgetId,
         requestId,
         limitCents: input.limitCents,
+        maxField: input.maxField,
+        maxTokens: input.maxTokens,
       });
       await response.text();
       return { requestId, status: response.status };
@@ -614,6 +622,25 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
       && legacy.Authorization === 'Bearer legacy-service-role-jwt';
     receipt.integrationChecks.push({ scenario: 'supabase-service-key-header-contract', passed });
     expect(passed).toBe(true);
+  });
+
+  it('admits the max_completion_tokens shape emitted by current PydanticAI before provider dispatch', async () => {
+    const requestId = `pydantic-ai-${crypto.randomUUID()}`;
+    const run = await executeRun({
+      scenario: 'pydantic-ai-max-completion-tokens',
+      repeat: 0,
+      variant: 'hard',
+      budgetId: `pydantic-ai-${crypto.randomUUID()}`,
+      requestIds: [requestId],
+      limitCents: 100,
+      outputTokens: new Map([[requestId, 1]]),
+      maxField: 'max_completion_tokens',
+      maxTokens: 1,
+    });
+
+    expect(statusCount(run, 200)).toBe(1);
+    expect(run.providerCrossings[0]?.requestedMaxTokens).toBe(1);
+    expect(run.invariantBeforeProviderCompletion).toBe(true);
   });
 
   it('persists an unbudgeted request without inventing a settlement while retaining tool attribution', async () => {
@@ -727,7 +754,7 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
     expect(text).toBeGreaterThan(0);
     expect(withFunctionSchema).toBeGreaterThan(text);
     await expect(estimateCost({ model: 'gpt-4o-mini', input: 'x' }, 'openai')).rejects.toThrow(
-      'hard budgets require an explicit positive integer max_tokens',
+      'hard budgets require an explicit positive integer max_completion_tokens or max_tokens',
     );
     await expect(estimateCost({ model: 'future-unpriced-model', input: 'x', max_output_tokens: 1 }, 'openai')).rejects.toThrow(
       'hard budgets require pinned pricing',

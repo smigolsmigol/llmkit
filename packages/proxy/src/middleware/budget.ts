@@ -29,7 +29,7 @@ async function parseBody(c: { req: { json(): Promise<Record<string, unknown>> } 
 
 const BUDGETED_POST_PATHS = new Set(['/v1/chat/completions', '/v1/responses']);
 const HARD_BUDGET_CHAT_FIELDS = new Set([
-  'model', 'messages', 'temperature', 'max_tokens', 'maxTokens',
+  'model', 'messages', 'temperature', 'max_completion_tokens', 'max_tokens', 'maxTokens',
   'tools', 'tool_choice', 'response_format', 'stream', 'stream_options', 'provider',
 ]);
 const HARD_BUDGET_RESPONSES_FIELDS = new Set([
@@ -99,19 +99,22 @@ function validateHardBudgetToolBoundary(body: Record<string, unknown>): void {
 }
 
 function requestedMaxOutputTokens(body: Record<string, unknown>, path?: string): number {
-  const chatMax = body.max_tokens ?? body.maxTokens;
+  const chatFields = [
+    ['max_completion_tokens', body.max_completion_tokens],
+    ['max_tokens', body.max_tokens],
+    ['maxTokens', body.maxTokens],
+  ] as const;
+  const suppliedChatFields = chatFields.filter(([, candidate]) => candidate !== undefined);
+  const chatMax = suppliedChatFields[0]?.[1];
   const value = path === '/v1/responses' ? body.max_output_tokens : path === '/v1/chat/completions' ? chatMax : chatMax ?? body.max_output_tokens;
   if (!Number.isSafeInteger(value) || (value as number) <= 0) {
-    const field = path === '/v1/responses' ? 'max_output_tokens' : 'max_tokens';
+    const field = path === '/v1/responses' ? 'max_output_tokens' : 'max_completion_tokens or max_tokens';
     throw new ValidationError(`hard budgets require an explicit positive integer ${field}`);
   }
-  if (
-    path === '/v1/chat/completions'
-    && body.max_tokens !== undefined
-    && body.maxTokens !== undefined
-    && body.max_tokens !== body.maxTokens
-  ) {
-    throw new ValidationError('max_tokens and maxTokens must match when both are provided');
+  if (path === '/v1/chat/completions' && suppliedChatFields.some(([, candidate]) => candidate !== value)) {
+    throw new ValidationError(
+      'max_completion_tokens, max_tokens, and maxTokens must match when provided together',
+    );
   }
   return value as number;
 }
