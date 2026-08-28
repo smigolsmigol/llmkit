@@ -15,6 +15,7 @@ const childEnvironment = {
   PRE_COMMIT_HOME: join(root, '.cache', 'pre-commit'),
 };
 const pythonCoveragePath = join(root, '.cache', 'python-coverage.json');
+const pythonCoverageXmlPath = join(root, '.cache', 'python-coverage.xml');
 const coverageFloor = 90;
 
 if (!['fast', 'static', 'pr', '--self-test'].includes(mode)) {
@@ -137,6 +138,7 @@ function runPythonProof() {
   python(['-m', 'coverage', 'run', '--branch', '-m', 'pytest', 'tests'], sdk);
   python(['-m', 'coverage', 'run', '--branch', '--append', 'fuzz/run_local.py'], sdk);
   python(['-m', 'coverage', 'report'], sdk);
+  python(['-m', 'coverage', 'xml', '-o', pythonCoverageXmlPath], sdk);
   python(['-m', 'coverage', 'json', '-o', pythonCoveragePath], sdk);
   const coverage = JSON.parse(readFileSync(pythonCoveragePath, 'utf8'));
   assertPythonCoverage(coverage.totals);

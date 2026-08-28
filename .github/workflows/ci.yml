@@ -82,6 +82,82 @@ jobs:
         if: always()
         run: corepack pnpm@9.15.4 db:stop
 
+      - name: retain coverage reports for isolated upload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: codecov-reports-${{ github.sha }}
+          path: |
+            .cache/python-coverage.xml
+            coverage/package-libraries/lcov.info
+            packages/dashboard/coverage/dashboard/lcov.info
+            packages/proxy/coverage/budget-falsifier/lcov.info
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  coverage-observability:
+    name: coverage-observability
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: codecov-reports-${{ github.sha }}
+          path: coverage-reports
+
+      - name: upload package coverage
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: coverage-reports/coverage/package-libraries/lcov.info
+          flags: packages
+          root_dir: .
+          use_oidc: true
+          version: v11.3.1
+
+      - name: upload dashboard coverage
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: coverage-reports/packages/dashboard/coverage/dashboard/lcov.info
+          flags: dashboard
+          root_dir: packages/dashboard
+          use_oidc: true
+          version: v11.3.1
+
+      - name: upload proxy coverage
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: coverage-reports/packages/proxy/coverage/budget-falsifier/lcov.info
+          flags: proxy
+          root_dir: packages/proxy
+          use_oidc: true
+          version: v11.3.1
+
+      - name: upload Python SDK coverage
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          disable_search: true
+          fail_ci_if_error: false
+          files: coverage-reports/.cache/python-coverage.xml
+          flags: python-sdk
+          root_dir: packages/python-sdk
+          use_oidc: true
+          version: v11.3.1
+
   dashboard-reproducibility:
     name: dashboard-reproducibility
     runs-on: ubuntu-latest

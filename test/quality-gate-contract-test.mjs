@@ -44,11 +44,89 @@ const requiredWorkflowFragments = [
   'run: corepack pnpm@9.15.4 db:start',
   'name: stop local database proof stack',
   'run: corepack pnpm@9.15.4 db:stop',
+  'name: retain coverage reports for isolated upload',
+  'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c',
+  'codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f',
+  'files: coverage-reports/.cache/python-coverage.xml',
+  'files: coverage-reports/coverage/package-libraries/lcov.info',
+  'files: coverage-reports/packages/dashboard/coverage/dashboard/lcov.info',
+  'files: coverage-reports/packages/proxy/coverage/budget-falsifier/lcov.info',
+  'version: v11.3.1',
 ];
 
 const databaseStopContract = `- name: stop local database proof stack
         if: always()
         run: corepack pnpm@9.15.4 db:stop`;
+
+const codecovUploadContracts = [
+  [
+    'upload package coverage',
+    'files: coverage-reports/coverage/package-libraries/lcov.info',
+    'flags: packages',
+    'root_dir: .',
+  ],
+  [
+    'upload dashboard coverage',
+    'files: coverage-reports/packages/dashboard/coverage/dashboard/lcov.info',
+    'flags: dashboard',
+    'root_dir: packages/dashboard',
+  ],
+  [
+    'upload proxy coverage',
+    'files: coverage-reports/packages/proxy/coverage/budget-falsifier/lcov.info',
+    'flags: proxy',
+    'root_dir: packages/proxy',
+  ],
+  [
+    'upload Python SDK coverage',
+    'files: coverage-reports/.cache/python-coverage.xml',
+    'flags: python-sdk',
+    'root_dir: packages/python-sdk',
+  ],
+];
+
+function assertCodecovUploadStep(coverageJob, [name, ...fragments]) {
+  const start = coverageJob.indexOf(`- name: ${name}`);
+  const end = coverageJob.indexOf('\n      - name:', start + 1);
+  const step = coverageJob.slice(start, end === -1 ? undefined : end);
+  if (start === -1 || fragments.some((fragment) => !step.includes(fragment))) {
+    throw new Error(`Codecov upload contract is incomplete for: ${name}`);
+  }
+}
+
+function assertCoverageWorkflowContract(workflow) {
+  const qualityStart = workflow.indexOf('  quality:');
+  const coverageStart = workflow.indexOf('  coverage-observability:');
+  const dashboardStart = workflow.indexOf('  dashboard-reproducibility:');
+  if (!(qualityStart < coverageStart && coverageStart < dashboardStart)) {
+    throw new Error('Codecov upload must remain a separate job after the quality job.');
+  }
+
+  const qualityJob = workflow.slice(qualityStart, coverageStart);
+  const coverageJob = workflow.slice(coverageStart, dashboardStart);
+  if (qualityJob.includes('id-token: write')) {
+    throw new Error('The job that executes pull-request code must not receive OIDC permission.');
+  }
+  if ((workflow.match(/id-token: write/g) ?? []).length !== 1) {
+    throw new Error('Only the isolated Codecov job may receive OIDC permission.');
+  }
+  for (const fragment of ['needs: quality', 'id-token: write']) {
+    if (!coverageJob.includes(fragment)) {
+      throw new Error(`The isolated Codecov job is missing: ${fragment}`);
+    }
+  }
+  if ((coverageJob.match(/codecov\/codecov-action@/g) ?? []).length !== 4) {
+    throw new Error('Codecov must receive exactly one report for each measured surface.');
+  }
+  for (const fragment of ['use_oidc: true', 'disable_search: true', 'fail_ci_if_error: false']) {
+    if (coverageJob.split(fragment).length - 1 !== 4) {
+      throw new Error(`Every Codecov upload must include: ${fragment}`);
+    }
+  }
+  for (const upload of codecovUploadContracts) {
+    assertCodecovUploadStep(coverageJob, upload);
+  }
+}
 
 function assertWorkflowContract(workflow) {
   for (const fragment of requiredWorkflowFragments) {
@@ -66,6 +144,7 @@ function assertWorkflowContract(workflow) {
   if (!workflow.includes(databaseStopContract)) {
     throw new Error('CI database cleanup must run after every quality outcome.');
   }
+  assertCoverageWorkflowContract(workflow);
 }
 
 const workflow = readFileSync('.github/workflows/ci.yml', 'utf8');
@@ -75,6 +154,40 @@ if (!workflow.includes('--max-time 30 "https://api.llmkit.sh/health"')) {
 }
 
 const qualityGate = readFileSync('scripts/run-quality-gate.mjs', 'utf8');
+const coverageExportContracts = new Map([
+  [
+    'scripts/run-quality-gate.mjs',
+    [
+      "const pythonCoverageXmlPath = join(root, '.cache', 'python-coverage.xml');",
+      "python(['-m', 'coverage', 'xml', '-o', pythonCoverageXmlPath], sdk);",
+    ],
+  ],
+  ['scripts/run-package-coverage.mjs', ["'--reporter=lcovonly'"]],
+  [
+    'packages/dashboard/vitest.config.ts',
+    ["reporter: ['text', 'json', 'json-summary', 'lcovonly']"],
+  ],
+  [
+    'packages/proxy/vitest.budget-falsifier.config.ts',
+    ["reporter: ['text', 'json', 'json-summary', 'lcovonly']"],
+  ],
+]);
+
+for (const [path, fragments] of coverageExportContracts) {
+  const contents = readFileSync(path, 'utf8');
+  for (const fragment of fragments) {
+    if (!contents.includes(fragment)) {
+      throw new Error(`${path} is missing Codecov report generation: ${fragment}`);
+    }
+  }
+}
+
+const codecovConfig = readFileSync('codecov.yml', 'utf8');
+for (const fragment of ['after_n_builds: 4', 'informational: true', 'comment: false']) {
+  if (!codecovConfig.includes(fragment)) {
+    throw new Error(`Codecov must remain non-blocking and quiet: ${fragment}`);
+  }
+}
 const moneyPathGateFragments = [
   "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier']);",
   "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier:coverage']);",

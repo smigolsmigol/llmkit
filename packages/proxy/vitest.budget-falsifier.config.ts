@@ -17,7 +17,7 @@ export default defineConfig({
     hookTimeout: 600_000,
     coverage: {
       provider: 'istanbul',
-      reporter: ['text', 'json', 'json-summary'],
+      reporter: ['text', 'json', 'json-summary', 'lcovonly'],
       reportsDirectory: './coverage/budget-falsifier',
       include: ['src/**/*.ts'],
       thresholds: {
