@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import uuid
 from collections.abc import AsyncIterator, Callable, Iterator
 from typing import Any
@@ -14,6 +15,17 @@ from ._types import CostInfo, SessionStats
 DEFAULT_BASE_URL = "https://api.llmkit.sh/v1"
 ENV_API_KEY = "LLMKIT_API_KEY"
 ENV_BASE_URL = "LLMKIT_BASE_URL"
+_ATTRIBUTION_ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:@/+~-]{0,254}$")
+_SESSION_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+_END_USER_ID_PATTERN = re.compile(r"^[A-Za-z0-9_@.+-]{1,256}$")
+
+
+def _validated_id(name: str, value: str | None, pattern: re.Pattern[str]) -> str | None:
+    if value is None:
+        return None
+    if not pattern.fullmatch(value):
+        raise ValueError(f"invalid {name}")
+    return value
 
 
 def _build_headers(
@@ -21,14 +33,27 @@ def _build_headers(
     provider: str | None,
     session_id: str | None,
     fallback: str | None,
+    *,
+    customer_id: str | None = None,
+    workflow_id: str | None = None,
+    agent_id: str | None = None,
+    end_user_id: str | None = None,
 ) -> dict[str, str]:
     headers: dict[str, str] = {}
     if provider_key:
         headers["x-llmkit-provider-key"] = provider_key
     if provider:
         headers["x-llmkit-provider"] = provider
-    if session_id:
-        headers["x-llmkit-session-id"] = session_id
+    if customer := _validated_id("customer ID", customer_id, _ATTRIBUTION_ID_PATTERN):
+        headers["x-llmkit-customer-id"] = customer
+    if workflow := _validated_id("workflow ID", workflow_id, _ATTRIBUTION_ID_PATTERN):
+        headers["x-llmkit-workflow-id"] = workflow
+    if agent := _validated_id("agent ID", agent_id, _ATTRIBUTION_ID_PATTERN):
+        headers["x-llmkit-agent-id"] = agent
+    if session := _validated_id("session ID", session_id, _SESSION_ID_PATTERN):
+        headers["x-llmkit-session-id"] = session
+    if end_user := _validated_id("end user ID", end_user_id, _END_USER_ID_PATTERN):
+        headers["x-llmkit-user-id"] = end_user
     if fallback:
         headers["x-llmkit-fallback"] = fallback
     return headers
@@ -80,7 +105,11 @@ class LLMKit:
         base_url: str | None = None,
         provider_key: str | None = None,
         provider: str | None = None,
+        customer_id: str | None = None,
+        workflow_id: str | None = None,
+        agent_id: str | None = None,
         session_id: str | None = None,
+        end_user_id: str | None = None,
         fallback: str | None = None,
         on_cost: Callable[[CostInfo], Any] | None = None,
         **openai_kwargs: Any,
@@ -92,12 +121,25 @@ class LLMKit:
         self._session_id = session_id
         self._provider_key = provider_key
         self._provider = provider
+        self._customer_id = customer_id
+        self._workflow_id = workflow_id
+        self._agent_id = agent_id
+        self._end_user_id = end_user_id
         self._fallback = fallback
         self._base_url = base_url or os.environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL
         self._on_cost = on_cost
         self._stats = SessionStats(session_id=session_id or "")
 
-        headers = _build_headers(provider_key, provider, session_id, fallback)
+        headers = _build_headers(
+            provider_key,
+            provider,
+            session_id,
+            fallback,
+            customer_id=customer_id,
+            workflow_id=workflow_id,
+            agent_id=agent_id,
+            end_user_id=end_user_id,
+        )
 
         self.openai = OpenAI(
             api_key=resolved_key,
@@ -127,9 +169,13 @@ class LLMKit:
             base_url=self._base_url,
             provider_key=self._provider_key,
             provider=self._provider,
+            customer_id=self._customer_id,
+            workflow_id=self._workflow_id,
+            agent_id=self._agent_id,
             fallback=self._fallback,
             on_cost=self._on_cost,
             session_id=sid,
+            end_user_id=self._end_user_id,
         )
 
     def chat(self, **kwargs: Any) -> tuple[ChatCompletion, CostInfo]:
@@ -215,7 +261,11 @@ class AsyncLLMKit:
         base_url: str | None = None,
         provider_key: str | None = None,
         provider: str | None = None,
+        customer_id: str | None = None,
+        workflow_id: str | None = None,
+        agent_id: str | None = None,
         session_id: str | None = None,
+        end_user_id: str | None = None,
         fallback: str | None = None,
         on_cost: Callable[[CostInfo], Any] | None = None,
         **openai_kwargs: Any,
@@ -227,12 +277,25 @@ class AsyncLLMKit:
         self._session_id = session_id
         self._provider_key = provider_key
         self._provider = provider
+        self._customer_id = customer_id
+        self._workflow_id = workflow_id
+        self._agent_id = agent_id
+        self._end_user_id = end_user_id
         self._fallback = fallback
         self._base_url = base_url or os.environ.get(ENV_BASE_URL) or DEFAULT_BASE_URL
         self._on_cost = on_cost
         self._stats = SessionStats(session_id=session_id or "")
 
-        headers = _build_headers(provider_key, provider, session_id, fallback)
+        headers = _build_headers(
+            provider_key,
+            provider,
+            session_id,
+            fallback,
+            customer_id=customer_id,
+            workflow_id=workflow_id,
+            agent_id=agent_id,
+            end_user_id=end_user_id,
+        )
 
         self.openai = AsyncOpenAI(
             api_key=resolved_key,
@@ -262,9 +325,13 @@ class AsyncLLMKit:
             base_url=self._base_url,
             provider_key=self._provider_key,
             provider=self._provider,
+            customer_id=self._customer_id,
+            workflow_id=self._workflow_id,
+            agent_id=self._agent_id,
             fallback=self._fallback,
             on_cost=self._on_cost,
             session_id=sid,
+            end_user_id=self._end_user_id,
         )
 
     async def chat(self, **kwargs: Any) -> tuple[ChatCompletion, CostInfo]:

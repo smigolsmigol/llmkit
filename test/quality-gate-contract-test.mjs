@@ -206,7 +206,7 @@ const reproducibilityContracts = new Map([
       'slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a',
     ],
   ],
-  ['requirements-ci.txt', ['--generate-hashes', 'idna==3.18', 'pip==26.1.2']],
+  ['requirements-ci.txt', ['--generate-hashes', 'idna==3.18', 'pip==26.2.1']],
   ['packages/python-sdk/pyproject.toml', ['hatchling==1.31.0']],
 ]);
 

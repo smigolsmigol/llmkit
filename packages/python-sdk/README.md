@@ -69,7 +69,42 @@ chain.invoke("Summarize this report", config={"callbacks": [handler]})
 print(f"${handler.total_cost:.4f}")
 ```
 
-Framework integrations are optional. Install the framework you use separately.
+Framework integrations are optional. Use a tested LLMKit extra where one is documented below;
+other integrations require their framework package separately.
+
+## PydanticAI gateway model
+
+Use the native PydanticAI model interface when requests need shared budget admission, stable
+attribution, and gateway receipts:
+
+```bash
+pip install "llmkit-sdk[pydantic-ai]"
+```
+
+```python
+from pydantic_ai import Agent, ModelSettings, UsageLimits
+from llmkit.integrations.pydantic_ai import gateway_model
+
+model = gateway_model(
+    "gpt-4.1-mini",
+    session_id="release-review-42",
+    workflow_id="release-review",
+    agent_id="reviewer",
+)
+agent = Agent(model, model_settings=ModelSettings(max_tokens=512))
+
+result = await agent.run(
+    "Review this release candidate.",
+    usage_limits=UsageLimits(request_limit=4, total_tokens_limit=8_000),
+)
+```
+
+`UsageLimits` remains the in-run token and request guard. LLMKit gateway mode adds the shared,
+multi-run spend boundary and receipt. Hard budgets require an explicit positive output-token limit.
+Client-side function tools are supported; provider-managed tools, images, and file attachments fail
+closed when the gateway cannot prove a pre-dispatch cost ceiling.
+Transparent OpenAI SDK transport retries are disabled in gateway mode. Retry transient failures
+explicitly at the run boundary so every dispatch has a distinct budget reservation and receipt.
 
 ## Sessions and gateway mode
 
