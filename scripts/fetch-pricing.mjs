@@ -135,7 +135,7 @@ function mergeSource(source, merged, current, onlyMissing) {
       const extraRates = currentModels[model]?.extraRates || providerExtraRates;
       target[model] = extraRates
         ? { ...pricing, extraRates: structuredClone(extraRates) }
-        : pricing;
+        : structuredClone(pricing);
     }
   }
 }

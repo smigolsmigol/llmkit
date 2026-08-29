@@ -90,6 +90,20 @@ test('pricing refresh does not infer mixed provider extra rates', () => {
   assert.equal(merged.providers.provider.added.extraRates, undefined);
 });
 
+test('pricing refresh clones source pricing without extra rates', () => {
+  const genai = {
+    provider: {
+      added: { input: 3, output: 4, metadata: { unit: 'token' } },
+    },
+  };
+
+  const merged = merge(genai, {}, { providers: {} });
+
+  merged.providers.provider.added.metadata.unit = 'request';
+  assert.notEqual(merged.providers.provider.added, genai.provider.added);
+  assert.equal(genai.provider.added.metadata.unit, 'token');
+});
+
 // ============================
 // SPECIFIC MODEL PRICES
 // ============================
