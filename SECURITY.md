@@ -101,7 +101,7 @@ Pull requests and main-branch changes run a layered quality and security pipelin
 2. **Static analysis**: semgrep security-audit rules across the entire codebase
 3. **Dependency audit**: `pnpm audit` (TS) + `pip-audit` (Python) + `bandit` (Python security linter)
 4. **Project scanner**: [KeyGuard](https://github.com/smigolsmigol/keyguard) scans for leaked secrets, credential files, vulnerable configs
-5. **Type safety**: `tsc --noEmit` + `mypy` (Python) - type errors don't ship
+5. **Type safety**: `tsc --noEmit` + strict `mypy` and pinned `ty` (Python) - type errors don't ship
 6. **Release verification**: health checks, pricing sync validation, phantom URL detection, and private-info scanning where the workflow has a deployed target
 
 ### Local Protection

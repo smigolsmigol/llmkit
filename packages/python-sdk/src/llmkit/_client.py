@@ -4,7 +4,7 @@ import os
 import re
 import uuid
 from collections.abc import AsyncIterator, Callable, Iterator
-from typing import Any
+from typing import Any, cast
 
 from openai import AsyncOpenAI, OpenAI
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
@@ -183,16 +183,18 @@ class LLMKit:
 
         Returns (completion, cost_info). For proxy users, cost comes from
         response headers (exact). For direct API usage, use estimate_cost().
+        Use chat_stream() for streaming responses.
         """
-        raw = self.openai.chat.completions.with_raw_response.create(**kwargs)
+        if kwargs.pop("stream", False) is not False:
+            raise ValueError("chat() is non-streaming; use chat_stream()")
+        raw = self.openai.chat.completions.with_raw_response.create(stream=False, **kwargs)
         cost = CostInfo.from_headers(raw.headers)
+        completion = cast(ChatCompletion, raw.parse())
         if cost.total_cost is None:
             # no proxy headers: fall back to usage-based estimation
-            parsed = raw.parse()
-            cost = _cost_from_usage(parsed.model, parsed.usage)
+            cost = _cost_from_usage(completion.model, completion.usage)
             self._record(cost)
-            return parsed, cost
-        completion = raw.parse()
+            return completion, cost
         self._record(cost)
         return completion, cost
 
@@ -335,15 +337,19 @@ class AsyncLLMKit:
         )
 
     async def chat(self, **kwargs: Any) -> tuple[ChatCompletion, CostInfo]:
-        """Async chat completion with cost extraction."""
-        raw = await self.openai.chat.completions.with_raw_response.create(**kwargs)
+        """Async chat completion with cost extraction. Use chat_stream() for streaming."""
+        if kwargs.pop("stream", False) is not False:
+            raise ValueError("chat() is non-streaming; use chat_stream()")
+        raw = await self.openai.chat.completions.with_raw_response.create(
+            stream=False,
+            **kwargs,
+        )
         cost = CostInfo.from_headers(raw.headers)
+        completion = cast(ChatCompletion, raw.parse())
         if cost.total_cost is None:
-            parsed = raw.parse()
-            cost = _cost_from_usage(parsed.model, parsed.usage)
+            cost = _cost_from_usage(completion.model, completion.usage)
             self._record(cost)
-            return parsed, cost
-        completion = raw.parse()
+            return completion, cost
         self._record(cost)
         return completion, cost
 

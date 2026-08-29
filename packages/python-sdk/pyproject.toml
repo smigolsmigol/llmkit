@@ -132,6 +132,12 @@ module = "llmkit.integrations.pydantic_ai"
 # Pydantic AI's runtime hook decorator is intentionally untyped upstream.
 disable_error_code = ["untyped-decorator"]
 
+[tool.ty.analysis]
+allowed-unresolved-imports = [
+    "langchain_core.**",
+    "llama_index.**",
+]
+
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "build", "dist"]
 

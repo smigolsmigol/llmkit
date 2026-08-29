@@ -19,7 +19,7 @@ proof. No quality command deploys or mutates the hosted Supabase project.
 | Command | Contract |
 | --- | --- |
 | `quality:fast` | Repository hygiene, secret checks, GitHub Actions lint, Ruff, Bandit, Biome, dormant-package boundary, and the proxy logging guard. |
-| `quality:static` | Fast gate plus workspace build/typecheck, Knip, Publint, generated pricing check, strict Mypy, Semgrep rules and scan, and KeyGuard fixtures. |
+| `quality:static` | Fast gate plus workspace build/typecheck, Knip, Publint, generated pricing check, strict Mypy, pinned Astral ty, Semgrep rules and scan, and KeyGuard fixtures. |
 | `quality:pr` | Static gate plus deterministic JavaScript tests, Python tests and fuzzing, Python statement/branch coverage, zero-known-vulnerability npm and Python audits, the local data-preserving Supabase migration proof, and a real Worker/database compatibility request. |
 | `quality:dashboard-reproducibility` | Two no-cache dashboard container builds with one ephemeral pair secret, followed by an exact path and byte comparison. |
 
@@ -67,7 +67,9 @@ The Python environment is resolved from `requirements-ci.in` into the hash-locke
 `requirements-ci.txt`; editable SDK installation and wheel builds run without dependency or build
 isolation fetches. Regenerate the lock with pip-tools 7.5.3 in the immutable Python 3.11 builder
 declared by `.clusterfuzzlite/Dockerfile`, then prove it in clean Python 3.11 and Windows
-environments before committing it.
+environments before committing it. Mypy remains the compatibility backstop while ty is beta; both
+run from the same pinned environment, and ty suppresses unresolved imports only for the optional
+LangChain and LlamaIndex integrations that are absent from the core SDK quality environment.
 
 ## Intentional Knip boundaries
 
