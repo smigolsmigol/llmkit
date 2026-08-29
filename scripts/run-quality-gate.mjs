@@ -9,6 +9,9 @@ const mode = process.argv[2];
 const venvPython = process.platform === 'win32'
   ? join(root, '.venv', 'Scripts', 'python.exe')
   : join(root, '.venv', 'bin', 'python');
+const venvTy = process.platform === 'win32'
+  ? join(root, '.venv', 'Scripts', 'ty.exe')
+  : join(root, '.venv', 'bin', 'ty');
 const childEnvironment = {
   ...process.env,
   LLMKIT_QUALITY_PYTHON: venvPython,
@@ -92,6 +95,9 @@ if (mode === '--self-test') {
 if (!existsSync(venvPython)) {
   throw new Error('Quality environment missing. Run pnpm quality:bootstrap first.');
 }
+if (!existsSync(venvTy)) {
+  throw new Error('Quality environment missing ty. Run pnpm quality:bootstrap first.');
+}
 
 function pnpmWithVersion(version, args) {
   const allArgs = [`pnpm@${version}`, ...args];
@@ -128,6 +134,7 @@ function runPythonStatic() {
   python(['-m', 'ruff', 'check', 'src', 'tests', 'fuzz'], sdk);
   python(['-m', 'ruff', 'format', '--check', 'src', 'tests', 'fuzz'], sdk);
   python(['-m', 'mypy'], sdk);
+  run(venvTy, ['check', '--python', venvPython, 'src'], { cwd: sdk });
   python(['-m', 'bandit', '-c', 'pyproject.toml', '-r', 'src', 'fuzz', '-ll'], sdk);
 }
 

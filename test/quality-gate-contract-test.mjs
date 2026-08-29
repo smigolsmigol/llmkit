@@ -268,6 +268,11 @@ assertViolationBlocked('Codecov report generation', () =>
 const codecovConfigViolation = replaceFixture(codecovConfig, 'comment: false', 'comment: true');
 assertViolationBlocked('Codecov configuration', () => assertCodecovConfig(codecovConfigViolation));
 
+const pythonTypeGateFragments = [
+  "if (!existsSync(venvTy))",
+  "python(['-m', 'mypy'], sdk);",
+  "run(venvTy, ['check', '--python', venvPython, 'src'], { cwd: sdk });",
+];
 const moneyPathGateFragments = [
   "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier']);",
   "pnpm(['--filter', '@f3d1/llmkit-proxy', 'test:budget-falsifier:coverage']);",
@@ -281,6 +286,14 @@ const projectCoverageGateFragment =
 const artifactReproducibilityGateFragment =
   "run(process.execPath, ['scripts/run-artifact-reproducibility.mjs']);";
 
+function assertPythonTypeGate(contents) {
+  for (const fragment of pythonTypeGateFragments) {
+    if (!contents.includes(fragment)) {
+      throw new Error(`Python type-check contract is missing: ${fragment}`);
+    }
+  }
+}
+
 function assertMoneyPathGate(contents) {
   for (const fragment of moneyPathGateFragments) {
     if (!contents.includes(fragment)) {
@@ -290,6 +303,7 @@ function assertMoneyPathGate(contents) {
 }
 
 assertMoneyPathGate(qualityGate);
+assertPythonTypeGate(qualityGate);
 for (const fragment of [
   packageCoverageGateFragment,
   dashboardCoverageGateFragment,
@@ -309,6 +323,18 @@ for (const fragment of moneyPathGateFragments) {
   }
   if (!moneyPathViolationBlocked) {
     throw new Error(`Money-path quality-gate violation fixture was accepted: ${fragment}`);
+  }
+}
+
+for (const fragment of pythonTypeGateFragments) {
+  let typeGateViolationBlocked = false;
+  try {
+    assertPythonTypeGate(qualityGate.replace(fragment, ''));
+  } catch {
+    typeGateViolationBlocked = true;
+  }
+  if (!typeGateViolationBlocked) {
+    throw new Error(`Python type-check violation fixture was accepted: ${fragment}`);
   }
 }
 
@@ -399,8 +425,12 @@ const reproducibilityContracts = new Map([
       'slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a',
     ],
   ],
-  ['requirements-ci.txt', ['--generate-hashes', 'idna==3.18', 'pip==26.2.1']],
-  ['packages/python-sdk/pyproject.toml', ['hatchling==1.31.0']],
+  ['requirements-ci.in', ['ty==0.0.75']],
+  ['requirements-ci.txt', ['--generate-hashes', 'idna==3.18', 'pip==26.2.1', 'ty==0.0.75']],
+  [
+    'packages/python-sdk/pyproject.toml',
+    ['hatchling==1.31.0', '[tool.ty.analysis]', '"langchain_core.**"', '"llama_index.**"'],
+  ],
 ]);
 
 function assertReproducibilityContracts(contentsByPath) {

@@ -236,13 +236,24 @@ def test_chat_prefers_exact_proxy_headers():
         client = LLMKit(api_key="llmk_test")
     client.openai, create = _sync_openai(raw)
 
-    completion, cost = client.chat(model="gpt-4o", messages=[])
+    completion, cost = client.chat(model="gpt-4o", messages=[], stream=None)
 
     assert completion is parsed
     assert cost.total_cost == 0.125
     assert cost.estimated is False
     assert client.stats.request_count == 1
-    create.assert_called_once_with(model="gpt-4o", messages=[])
+    create.assert_called_once_with(model="gpt-4o", messages=[], stream=False)
+
+
+def test_chat_rejects_streaming():
+    with patch("llmkit._client.OpenAI"):
+        client = LLMKit(api_key="llmk_test")
+    client.openai, create = _sync_openai(MagicMock())
+
+    with pytest.raises(ValueError, match=r"use chat_stream\(\)"):
+        client.chat(model="gpt-4o", messages=[], stream=True)
+
+    create.assert_not_called()
 
 
 def test_chat_falls_back_to_usage_estimate():
@@ -325,10 +336,24 @@ def test_async_client_boundaries():
         assert cost.estimated is True
         assert client.stats.request_count == 1
         assert callback_costs == [cost]
-        create.assert_awaited_once_with(model="gpt-4o", messages=[])
+        create.assert_awaited_once_with(model="gpt-4o", messages=[], stream=False)
 
         async with client as entered:
             assert entered is client
+
+    asyncio.run(exercise())
+
+
+def test_async_chat_rejects_streaming():
+    async def exercise() -> None:
+        with patch("llmkit._client.AsyncOpenAI"):
+            client = AsyncLLMKit(api_key="llmk_test")
+        client.openai, create = _async_openai(MagicMock())
+
+        with pytest.raises(ValueError, match=r"use chat_stream\(\)"):
+            await client.chat(model="gpt-4o", messages=[], stream=True)
+
+        create.assert_not_awaited()
 
     asyncio.run(exercise())
 
@@ -341,12 +366,13 @@ def test_async_chat_prefers_exact_headers():
         parsed = SimpleNamespace(model="gpt-4o", usage=_usage())
         raw = MagicMock(headers={"x-llmkit-cost": "0.25"})
         raw.parse.return_value = parsed
-        client.openai, _ = _async_openai(raw)
+        client.openai, create = _async_openai(raw)
 
-        completion, cost = await client.chat(model="gpt-4o", messages=[])
+        completion, cost = await client.chat(model="gpt-4o", messages=[], stream=None)
         assert completion is parsed
         assert cost.total_cost == 0.25
         assert cost.estimated is False
+        create.assert_awaited_once_with(model="gpt-4o", messages=[], stream=False)
 
     asyncio.run(exercise())
 
