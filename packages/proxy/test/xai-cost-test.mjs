@@ -2,6 +2,7 @@
 // usage: node test/xai-cost-test.mjs
 
 import { strict as assert } from 'node:assert';
+import { merge } from '../../../scripts/fetch-pricing.mjs';
 import { calculateCostFromPricing, getModelPricing, PRICING } from '../../shared/dist/index.js';
 
 let passed = 0;
@@ -23,7 +24,7 @@ function test(name, fn) {
 // xAI MODEL COVERAGE
 // ============================
 
-test('all 9 xAI models have valid pricing', () => {
+test('all xAI models have valid pricing', () => {
   const models = Object.keys(PRICING.xai);
   assert.ok(models.length >= 9, `expected at least 9 xAI models, got ${models.length}`);
   for (const model of models) {
@@ -38,6 +39,55 @@ test('all xAI models have extraRates (7 dimensions)', () => {
     assert.ok(pricing.extraRates, `${model} should have extraRates`);
     assert.equal(pricing.extraRates.length, 7, `${model} should have 7 extra rate dimensions`);
   }
+});
+
+test('pricing refresh preserves uniform provider extra rates', () => {
+  const extraRates = {
+    web_search: { rate: 5, per: 1000 },
+    x_search: { rate: 5, per: 1000 },
+  };
+  const current = {
+    providers: {
+      xai: {
+        existing: { input: 1, output: 2, extraRates },
+        alias: { input: 1, output: 2, extraRates },
+      },
+    },
+  };
+  const genai = {
+    xai: {
+      existing: { input: 3, output: 4 },
+      added: { input: 5, output: 6 },
+    },
+  };
+  const litellm = { xai: { fallback: { input: 7, output: 8 } } };
+
+  const merged = merge(genai, litellm, current);
+
+  assert.equal(merged.providers.xai.existing.input, 3);
+  assert.deepEqual(merged.providers.xai.existing.extraRates, extraRates);
+  assert.deepEqual(merged.providers.xai.added.extraRates, extraRates);
+  assert.deepEqual(merged.providers.xai.fallback.extraRates, extraRates);
+
+  merged.providers.xai.added.extraRates.web_search.rate = 99;
+  assert.equal(current.providers.xai.existing.extraRates.web_search.rate, 5);
+  assert.equal(merged.providers.xai.existing.extraRates.web_search.rate, 5);
+  assert.equal(merged.providers.xai.fallback.extraRates.web_search.rate, 5);
+});
+
+test('pricing refresh does not infer mixed provider extra rates', () => {
+  const current = {
+    providers: {
+      provider: {
+        first: { input: 1, output: 2, extraRates: { search: { rate: 1, per: 1 } } },
+        second: { input: 1, output: 2, extraRates: { search: { rate: 2, per: 1 } } },
+      },
+    },
+  };
+
+  const merged = merge({ provider: { added: { input: 3, output: 4 } } }, {}, current);
+
+  assert.equal(merged.providers.provider.added.extraRates, undefined);
 });
 
 // ============================
