@@ -9,8 +9,9 @@
 
 import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
@@ -112,24 +113,37 @@ function parseLiteLLM(data) {
   return result;
 }
 
-function merge(genai, litellm, current) {
+function uniformExtraRates(models) {
+  const entries = Object.values(models);
+  if (entries.length === 0 || entries.some((entry) => !entry.extraRates)) return undefined;
+
+  // Only extend local tool pricing when every existing model establishes the same provider rate.
+  const expected = entries[0].extraRates;
+  return entries.every((entry) => isDeepStrictEqual(entry.extraRates, expected))
+    ? expected
+    : undefined;
+}
+
+function mergeSource(source, merged, current, onlyMissing) {
+  for (const [provider, models] of Object.entries(source)) {
+    if (!merged.providers[provider]) merged.providers[provider] = {};
+    const target = merged.providers[provider];
+    const currentModels = current.providers[provider] || {};
+    const providerExtraRates = uniformExtraRates(currentModels);
+    for (const [model, pricing] of Object.entries(models)) {
+      if (onlyMissing && target[model]) continue;
+      const extraRates = currentModels[model]?.extraRates || providerExtraRates;
+      target[model] = extraRates
+        ? { ...pricing, extraRates: structuredClone(extraRates) }
+        : structuredClone(pricing);
+    }
+  }
+}
+
+export function merge(genai, litellm, current) {
   const merged = JSON.parse(JSON.stringify(current));
-
-  for (const [provider, models] of Object.entries(genai)) {
-    if (!merged.providers[provider]) merged.providers[provider] = {};
-    for (const [model, pricing] of Object.entries(models)) {
-      merged.providers[provider][model] = pricing;
-    }
-  }
-
-  for (const [provider, models] of Object.entries(litellm)) {
-    if (!merged.providers[provider]) merged.providers[provider] = {};
-    for (const [model, pricing] of Object.entries(models)) {
-      if (!merged.providers[provider][model]) {
-        merged.providers[provider][model] = pricing;
-      }
-    }
-  }
+  mergeSource(genai, merged, current, false);
+  mergeSource(litellm, merged, current, true);
 
   return merged;
 }
@@ -271,7 +285,9 @@ async function main() {
   console.log('\ndone. run tests to verify: pnpm turbo build && node test/contract-test.mjs');
 }
 
-main().catch(err => {
-  console.error(err);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().catch(err => {
+    console.error(err);
+    process.exit(1);
+  });
+}
