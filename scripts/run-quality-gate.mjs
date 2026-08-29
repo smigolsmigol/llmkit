@@ -95,6 +95,9 @@ if (mode === '--self-test') {
 if (!existsSync(venvPython)) {
   throw new Error('Quality environment missing. Run pnpm quality:bootstrap first.');
 }
+if (!existsSync(venvTy)) {
+  throw new Error('Quality environment missing ty. Run pnpm quality:bootstrap first.');
+}
 
 function pnpmWithVersion(version, args) {
   const allArgs = [`pnpm@${version}`, ...args];

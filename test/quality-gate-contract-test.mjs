@@ -269,6 +269,7 @@ const codecovConfigViolation = replaceFixture(codecovConfig, 'comment: false', '
 assertViolationBlocked('Codecov configuration', () => assertCodecovConfig(codecovConfigViolation));
 
 const pythonTypeGateFragments = [
+  "if (!existsSync(venvTy))",
   "python(['-m', 'mypy'], sdk);",
   "run(venvTy, ['check', '--python', venvPython, 'src'], { cwd: sdk });",
 ];

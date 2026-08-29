@@ -236,7 +236,7 @@ def test_chat_prefers_exact_proxy_headers():
         client = LLMKit(api_key="llmk_test")
     client.openai, create = _sync_openai(raw)
 
-    completion, cost = client.chat(model="gpt-4o", messages=[])
+    completion, cost = client.chat(model="gpt-4o", messages=[], stream=None)
 
     assert completion is parsed
     assert cost.total_cost == 0.125
@@ -366,12 +366,13 @@ def test_async_chat_prefers_exact_headers():
         parsed = SimpleNamespace(model="gpt-4o", usage=_usage())
         raw = MagicMock(headers={"x-llmkit-cost": "0.25"})
         raw.parse.return_value = parsed
-        client.openai, _ = _async_openai(raw)
+        client.openai, create = _async_openai(raw)
 
-        completion, cost = await client.chat(model="gpt-4o", messages=[])
+        completion, cost = await client.chat(model="gpt-4o", messages=[], stream=None)
         assert completion is parsed
         assert cost.total_cost == 0.25
         assert cost.estimated is False
+        create.assert_awaited_once_with(model="gpt-4o", messages=[], stream=False)
 
     asyncio.run(exercise())
 

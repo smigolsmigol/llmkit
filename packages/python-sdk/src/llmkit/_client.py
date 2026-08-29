@@ -185,7 +185,7 @@ class LLMKit:
         response headers (exact). For direct API usage, use estimate_cost().
         Use chat_stream() for streaming responses.
         """
-        if kwargs.pop("stream", False) is not False:
+        if kwargs.pop("stream", False):
             raise ValueError("chat() is non-streaming; use chat_stream()")
         raw = self.openai.chat.completions.with_raw_response.create(stream=False, **kwargs)
         cost = CostInfo.from_headers(raw.headers)
@@ -338,7 +338,7 @@ class AsyncLLMKit:
 
     async def chat(self, **kwargs: Any) -> tuple[ChatCompletion, CostInfo]:
         """Async chat completion with cost extraction. Use chat_stream() for streaming."""
-        if kwargs.pop("stream", False) is not False:
+        if kwargs.pop("stream", False):
             raise ValueError("chat() is non-streaming; use chat_stream()")
         raw = await self.openai.chat.completions.with_raw_response.create(
             stream=False,
