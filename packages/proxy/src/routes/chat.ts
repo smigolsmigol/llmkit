@@ -23,6 +23,7 @@ import { resolveCost } from '../pricing';
 import type { ProviderRequest, ProviderResponse } from '../providers';
 import { getAdapter } from '../providers';
 import { resolveProviderChain } from '../providers/chain';
+import type { StreamEvent } from '../providers/types';
 
 const encoder = new TextEncoder();
 
@@ -371,7 +372,6 @@ async function handleStream(
 interface StreamResult {
   tokens: ProviderResponse['usage'];
   finishReason: string;
-  toolCallCount: number;
   providerCostUsd?: number;
   model: string;
   id: string;
@@ -381,8 +381,8 @@ interface StreamResult {
 
 async function consumeStream(
   s: StreamingApi,
-  gen: AsyncGenerator<{ type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string; providerCostUsd?: number }>,
-  first: IteratorResult<{ type: string; text?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string; providerCostUsd?: number }>,
+  gen: AsyncGenerator<StreamEvent>,
+  first: IteratorResult<StreamEvent>,
   requestModel: string,
   llmkitFmt: boolean,
 ): Promise<StreamResult | null> {
@@ -413,11 +413,38 @@ async function consumeStream(
     })}\n\n`));
   };
 
-  let toolCallCount = 0;
+  const writeToolCall = async (event: StreamEvent) => {
+    if (llmkitFmt) {
+      await s.write(encoder.encode(`event: tool\ndata: ${JSON.stringify({
+        index: event.toolIndex ?? 0,
+        id: event.toolCallId,
+        name: event.toolName,
+        arguments: event.toolArguments,
+      })}\n\n`));
+      return;
+    }
 
-  const processEvent = async (event: { type: string; text?: string; toolName?: string; usage?: ProviderResponse['usage']; finishReason?: string; model?: string; id?: string; providerCostUsd?: number }) => {
+    const functionDelta: Record<string, string> = {};
+    if (event.toolName !== undefined) functionDelta.name = event.toolName;
+    if (event.toolArguments !== undefined) functionDelta.arguments = event.toolArguments;
+    const toolCall: Record<string, unknown> = {
+      index: event.toolIndex ?? 0,
+      type: 'function',
+      function: functionDelta,
+    };
+    if (event.toolCallId !== undefined) toolCall.id = event.toolCallId;
+
+    await s.write(encoder.encode(`data: ${JSON.stringify({
+      id: streamId, object: 'chat.completion.chunk', created, model: requestModel,
+      choices: [{ delta: { tool_calls: [toolCall] }, index: 0, finish_reason: null }],
+    })}\n\n`));
+  };
+
+  const processEvent = async (event: StreamEvent) => {
     if (event.type === 'text' && event.text) await writeText(event.text);
-    if (event.type === 'tool') toolCallCount++;
+    if (event.type === 'tool') {
+      await writeToolCall(event);
+    }
     if (event.type === 'end') {
       finalUsage = event.usage;
       finalFinishReason = event.finishReason || 'stop';
@@ -431,7 +458,7 @@ async function consumeStream(
   for await (const event of gen) await processEvent(event);
 
   if (!finalUsage) return null;
-  return { tokens: finalUsage, finishReason: finalFinishReason, toolCallCount, providerCostUsd: finalProviderCostUsd, model: finalModel, id: finalId, created, streamId };
+  return { tokens: finalUsage, finishReason: finalFinishReason, providerCostUsd: finalProviderCostUsd, model: finalModel, id: finalId, created, streamId };
 }
 
 async function writeStreamFinale(
@@ -448,7 +475,7 @@ async function writeStreamFinale(
 
   await s.write(encoder.encode(`data: ${JSON.stringify({
     id: p.streamId, object: 'chat.completion.chunk', created: p.created, model: p.model,
-    choices: [{ delta: {}, index: 0, finish_reason: 'stop' }],
+    choices: [{ delta: {}, index: 0, finish_reason: toOpenAIFinishReason(p.finishReason) }],
   })}\n\n`));
   await s.write(encoder.encode(`data: ${JSON.stringify({
     id: p.streamId, object: 'chat.completion.chunk', created: p.created, model: p.model,
@@ -485,6 +512,12 @@ function validateBody(body: Record<string, unknown>): void {
       throw new ValidationError(`message role must be one of: ${[...VALID_ROLES].join(', ')}`);
     }
     if (typeof m.content === 'string') continue;
+    if (m.role === 'assistant' && m.content === null) {
+      if (!Array.isArray(m.tool_calls) || m.tool_calls.length === 0) {
+        throw new ValidationError('assistant messages with null content require tool_calls');
+      }
+      continue;
+    }
     if (!Array.isArray(m.content)) {
       throw new ValidationError('message content must be a string or array of content blocks');
     }

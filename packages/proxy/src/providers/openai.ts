@@ -5,8 +5,11 @@ import { readSseLines } from './sse-lines';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
 interface OpenAIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string | Array<{ type: string; text?: string; image_url?: { url: string; detail?: string } }>;
+  role: 'developer' | 'system' | 'user' | 'assistant' | 'tool';
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string; detail?: string } }> | null;
+  name?: string;
+  tool_call_id?: string;
+  tool_calls?: OpenAIToolCall[];
 }
 
 interface OpenAIUsage {
@@ -45,6 +48,18 @@ interface OpenAIStreamChunk {
   usage?: OpenAIUsage;
 }
 
+function toOpenAIMessage(message: ProviderRequest['messages'][number]): OpenAIMessage {
+  const source = message as unknown as Record<string, unknown>;
+  const mapped: OpenAIMessage = {
+    role: message.role as OpenAIMessage['role'],
+    content: message.content as OpenAIMessage['content'],
+  };
+  if (typeof source.name === 'string') mapped.name = source.name;
+  if (typeof source.tool_call_id === 'string') mapped.tool_call_id = source.tool_call_id;
+  if (Array.isArray(source.tool_calls)) mapped.tool_calls = source.tool_calls as OpenAIToolCall[];
+  return mapped;
+}
+
 // reusable for any provider that speaks the OpenAI chat completions protocol
 export class OpenAIAdapter implements ProviderAdapter {
   name: ProviderName;
@@ -56,10 +71,7 @@ export class OpenAIAdapter implements ProviderAdapter {
   }
 
   async chat(req: ProviderRequest): Promise<ProviderResponse> {
-    const messages: OpenAIMessage[] = req.messages.map((m) => ({
-      role: m.role as OpenAIMessage['role'],
-      content: m.content as OpenAIMessage['content'],
-    }));
+    const messages = req.messages.map(toOpenAIMessage);
 
     const body: Record<string, unknown> = {
       model: req.model,
@@ -93,10 +105,7 @@ export class OpenAIAdapter implements ProviderAdapter {
   }
 
   async *chatStream(req: ProviderRequest): AsyncGenerator<StreamEvent> {
-    const messages: OpenAIMessage[] = req.messages.map((m) => ({
-      role: m.role as OpenAIMessage['role'],
-      content: m.content as OpenAIMessage['content'],
-    }));
+    const messages = req.messages.map(toOpenAIMessage);
 
     const body: Record<string, unknown> = {
       model: req.model,

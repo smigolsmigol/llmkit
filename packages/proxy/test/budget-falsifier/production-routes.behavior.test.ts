@@ -399,6 +399,194 @@ describe('production inference routes', () => {
     expect(await body<Record<string, unknown>>(nonFinite)).not.toHaveProperty('margin');
   });
 
+  it('preserves OpenAI streaming function-call deltas and finish state', async () => {
+    let upstreamBody: Record<string, unknown> | undefined;
+    installDatabaseMock(async (request, url) => {
+      if (url.origin === 'https://api.openai.com' && url.pathname === '/v1/chat/completions') {
+        upstreamBody = await request.json() as Record<string, unknown>;
+        const chunks = [
+          {
+            id: 'chatcmpl-upstream',
+            model: 'gpt-4o',
+            choices: [{
+              index: 0,
+              delta: {
+                role: 'assistant',
+                tool_calls: [{
+                  index: 0,
+                  id: 'call-1',
+                  type: 'function',
+                  function: { name: 'lookup', arguments: '' },
+                }],
+              },
+              finish_reason: null,
+            }],
+          },
+          {
+            id: 'chatcmpl-upstream',
+            model: 'gpt-4o',
+            choices: [{
+              index: 0,
+              delta: { tool_calls: [{ function: { arguments: '{"q":"llm' } }] },
+              finish_reason: null,
+            }],
+          },
+          {
+            id: 'chatcmpl-upstream',
+            model: 'gpt-4o',
+            choices: [{
+              index: 0,
+              delta: { tool_calls: [{ index: 0, function: { arguments: 'kit"}' } }] },
+              finish_reason: null,
+            }],
+          },
+          {
+            id: 'chatcmpl-upstream',
+            model: 'gpt-4o',
+            choices: [{ index: 0, delta: {}, finish_reason: 'tool_calls' }],
+          },
+          {
+            id: 'chatcmpl-upstream',
+            model: 'gpt-4o',
+            choices: [],
+            usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+          },
+        ];
+        return new Response(
+          `${chunks.map(chunk => `data: ${JSON.stringify(chunk)}\n\n`).join('')}data: [DONE]\n\n`,
+          { headers: { 'content-type': 'text/event-stream' } },
+        );
+      }
+      if (url.origin === DATABASE_ORIGIN && url.pathname === '/rest/v1/requests') {
+        return new Response(null, { status: 201 });
+      }
+      return undefined;
+    });
+
+    const requestPayload = {
+      model: 'gpt-4o',
+      messages: [
+        { role: 'developer', content: 'Answer with the schema.' },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'inspect this image' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,aGVsbG8=', detail: 'low' } },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: null,
+          tool_calls: [{
+            id: 'call-previous',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{"q":"before"}' },
+          }],
+        },
+        { role: 'tool', tool_call_id: 'call-previous', name: 'lookup', content: 'found' },
+      ],
+      tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object' } } }],
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'answer', strict: true, schema: { type: 'object' } },
+      },
+      stream: true,
+    };
+    const response = await requestApp('/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-llmkit-provider-key': 'direct-openai-secret',
+      },
+      body: JSON.stringify(requestPayload),
+    });
+    const data = (await response.text())
+      .split('\n')
+      .filter(line => line.startsWith('data: ') && line !== 'data: [DONE]')
+      .map(line => JSON.parse(line.slice(6)) as Record<string, unknown>);
+
+    expect(response.status).toBe(200);
+    expect(upstreamBody).toMatchObject({
+      model: 'gpt-4o',
+      stream: true,
+      stream_options: { include_usage: true },
+      messages: [
+        { role: 'developer', content: 'Answer with the schema.' },
+        { role: 'user', content: expect.any(Array) },
+        { role: 'assistant', content: null, tool_calls: expect.any(Array) },
+        { role: 'tool', content: 'found', tool_call_id: 'call-previous', name: 'lookup' },
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'answer', strict: true, schema: { type: 'object' } },
+      },
+    });
+    expect(data[0]).toMatchObject({
+      choices: [{
+        delta: { tool_calls: [{ index: 0, id: 'call-1', function: { name: 'lookup', arguments: '' } }] },
+        finish_reason: null,
+      }],
+    });
+    expect(data[1]).toMatchObject({
+      choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: '{"q":"llm' } }] } }],
+    });
+    expect(data[2]).toMatchObject({
+      choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: 'kit"}' } }] } }],
+    });
+    expect(data.at(-2)).toMatchObject({
+      choices: [{ delta: {}, finish_reason: 'tool_calls' }],
+    });
+    expect(data.at(-1)).toMatchObject({
+      choices: [],
+      usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    });
+
+    const llmkitResponse = await requestApp('/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-llmkit-provider-key': 'direct-openai-secret',
+        'x-llmkit-format': 'llmkit',
+      },
+      body: JSON.stringify(requestPayload),
+    });
+    const llmkitEvents = (await llmkitResponse.text())
+      .trim()
+      .split('\n\n')
+      .map((block) => {
+        const separator = block.indexOf('\n');
+        if (separator === -1) throw new Error(`malformed LLMKit stream event: ${block}`);
+        const eventLine = block.slice(0, separator);
+        const dataLine = block.slice(separator + 1);
+        return {
+          event: eventLine.slice('event: '.length),
+          data: JSON.parse(dataLine.slice('data: '.length)) as Record<string, unknown>,
+        };
+      });
+
+    expect(llmkitResponse.status).toBe(200);
+    expect(llmkitEvents.filter(event => event.event === 'tool')).toEqual([
+      { event: 'tool', data: { index: 0, id: 'call-1', name: 'lookup', arguments: '' } },
+      { event: 'tool', data: { index: 0, arguments: '{"q":"llm' } },
+      { event: 'tool', data: { index: 0, arguments: 'kit"}' } },
+    ]);
+    expect(llmkitEvents.at(-1)).toMatchObject({
+      event: 'done',
+      data: { finishReason: 'tool_calls' },
+    });
+
+    const rejected = await requestApp('/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'assistant', content: null }],
+      }),
+    });
+    expect(rejected.status).toBe(400);
+    expect(await body(rejected)).toMatchObject({ error: { code: 'INVALID_REQUEST' } });
+  });
+
   it('decrypts a stored provider key for the Responses API without exposing it', async () => {
     const encryptionKey = btoa(String.fromCharCode(...new Uint8Array(32).fill(11)));
     const stored = await encrypt('stored-openai-secret', encryptionKey, 'user-1:openai');
