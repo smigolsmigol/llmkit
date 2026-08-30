@@ -40,6 +40,15 @@ GrantResolver = Callable[[EffectAction, ToolContext[Any]], GrantResolution]
 Acknowledgement = Callable[[Any], EffectAcknowledgement | None]
 
 
+@dataclass(frozen=True)
+class _PendingAdmission:
+    runtime: BoundaryRuntime
+    admission: Admission
+
+
+_AdmissionKey = tuple[int, str, str]
+
+
 @dataclass
 class OpenAIBoundaryContext:
     principal: str
@@ -49,8 +58,25 @@ class OpenAIBoundaryContext:
     grant_resolver: GrantResolver
     provenance: str | None = None
     receipts: list[BoundaryReceipt] = field(default_factory=list)
-    _admissions: dict[tuple[str, str], Admission] = field(default_factory=dict, repr=False)
+    _admissions: dict[_AdmissionKey, _PendingAdmission] = field(default_factory=dict, repr=False)
     _admission_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+    _finalized: bool = field(default=False, repr=False)
+
+
+def _admission_key(runtime: BoundaryRuntime, action: EffectAction) -> _AdmissionKey:
+    return (id(runtime), action.call_id, action.sha256)
+
+
+def _find_call_admission(
+    context: OpenAIBoundaryContext,
+    runtime: BoundaryRuntime,
+    call_id: str,
+) -> _AdmissionKey | None:
+    runtime_id = id(runtime)
+    return next(
+        (key for key in context._admissions if key[0] == runtime_id and key[1] == call_id),
+        None,
+    )
 
 
 def openai_agents_coverage() -> CoverageReport:
@@ -147,6 +173,22 @@ async def _resolve_grant(
     return result
 
 
+async def release_pending_admissions(
+    context: OpenAIBoundaryContext,
+    reason: str = "run_ended_before_dispatch",
+) -> tuple[BoundaryReceipt, ...]:
+    """Release admissions left pending when an Agents run ends before invocation."""
+    released: list[BoundaryReceipt] = []
+    async with context._admission_lock:
+        context._finalized = True
+        for key, pending in list(context._admissions.items()):
+            receipt = pending.runtime.release(pending.admission, reason)
+            del context._admissions[key]
+            context.receipts.append(receipt)
+            released.append(receipt)
+    return tuple(released)
+
+
 def protect_function_tool(
     tool: FunctionTool,
     *,
@@ -162,6 +204,20 @@ def protect_function_tool(
             "approval-required function tools are unsupported because the SDK "
             "does not expose a rejection release hook"
         )
+
+    def finalized_output(
+        context: OpenAIBoundaryContext,
+        action: EffectAction,
+    ) -> ToolGuardrailFunctionOutput:
+        denial = runtime.deny(
+            action=action,
+            reason="boundary_context_finalized",
+            principal=context.principal,
+            tenant=context.tenant,
+            workload=context.workload,
+        )
+        context.receipts.append(denial.receipt)
+        return ToolGuardrailFunctionOutput.raise_exception(output_info=denial.receipt.as_dict())
 
     async def guard(data: ToolInputGuardrailData) -> ToolGuardrailFunctionOutput:
         context = data.context.context
@@ -179,15 +235,16 @@ def protect_function_tool(
             )
         except ValueError:
             async with context._admission_lock:
-                existing_key = next(
-                    (key for key in context._admissions if key[0] == data.context.tool_call_id),
-                    None,
+                existing_key = _find_call_admission(
+                    context,
+                    runtime,
+                    data.context.tool_call_id,
                 )
                 if existing_key is not None:
-                    invalidated_admission = context._admissions.pop(existing_key)
+                    invalidated = context._admissions.pop(existing_key)
                     context.receipts.append(
-                        runtime.release(
-                            invalidated_admission,
+                        invalidated.runtime.release(
+                            invalidated.admission,
                             "arguments_changed_after_admission",
                         )
                     )
@@ -195,22 +252,28 @@ def protect_function_tool(
                 output_info={"state": "denied", "reason": "invalid_tool_arguments"}
             )
 
-        admission_key = (data.context.tool_call_id, action.sha256)
+        admission_key = _admission_key(runtime, action)
         async with context._admission_lock:
-            cached_admission = context._admissions.get(admission_key)
-            if cached_admission is not None:
+            if context._finalized:
+                return finalized_output(context, action)
+            cached = context._admissions.get(admission_key)
+            if cached is not None:
                 return ToolGuardrailFunctionOutput.allow(
-                    output_info=cached_admission.receipt.as_dict()
+                    output_info=cached.admission.receipt.as_dict()
                 )
 
-            changed_key = next(
-                (key for key in context._admissions if key[0] == data.context.tool_call_id),
-                None,
+            changed_key = _find_call_admission(
+                context,
+                runtime,
+                data.context.tool_call_id,
             )
             if changed_key is not None:
                 changed = context._admissions.pop(changed_key)
                 context.receipts.append(
-                    runtime.release(changed, "arguments_changed_after_admission")
+                    changed.runtime.release(
+                        changed.admission,
+                        "arguments_changed_after_admission",
+                    )
                 )
                 denial = runtime.deny(
                     action=action,
@@ -224,9 +287,48 @@ def protect_function_tool(
                     output_info=denial.receipt.as_dict()
                 )
 
-            try:
-                grant = await _resolve_grant(context.grant_resolver, action, data.context)
-            except Exception:
+        resolution_failed = False
+        try:
+            grant = await _resolve_grant(context.grant_resolver, action, data.context)
+        except Exception:
+            grant = None
+            resolution_failed = True
+
+        async with context._admission_lock:
+            if context._finalized:
+                return finalized_output(context, action)
+            cached = context._admissions.get(admission_key)
+            if cached is not None:
+                return ToolGuardrailFunctionOutput.allow(
+                    output_info=cached.admission.receipt.as_dict()
+                )
+
+            changed_key = _find_call_admission(
+                context,
+                runtime,
+                data.context.tool_call_id,
+            )
+            if changed_key is not None:
+                changed = context._admissions.pop(changed_key)
+                context.receipts.append(
+                    changed.runtime.release(
+                        changed.admission,
+                        "arguments_changed_after_admission",
+                    )
+                )
+                denial = runtime.deny(
+                    action=action,
+                    reason="action_changed_after_admission",
+                    principal=context.principal,
+                    tenant=context.tenant,
+                    workload=context.workload,
+                )
+                context.receipts.append(denial.receipt)
+                return ToolGuardrailFunctionOutput.raise_exception(
+                    output_info=denial.receipt.as_dict()
+                )
+
+            if resolution_failed:
                 admission = runtime.deny(
                     action=action,
                     reason="grant_resolution_failed",
@@ -249,7 +351,7 @@ def protect_function_tool(
                 return ToolGuardrailFunctionOutput.raise_exception(
                     output_info=admission.receipt.as_dict()
                 )
-            context._admissions[admission_key] = admission
+            context._admissions[admission_key] = _PendingAdmission(runtime, admission)
             return ToolGuardrailFunctionOutput.allow(output_info=admission.receipt.as_dict())
 
     input_guardrail: ToolInputGuardrail[Any] = ToolInputGuardrail(
@@ -272,32 +374,41 @@ def protect_function_tool(
             )
         except ValueError as error:
             async with boundary_context._admission_lock:
-                changed_key = next(
-                    (key for key in boundary_context._admissions if key[0] == context.tool_call_id),
-                    None,
+                changed_key = _find_call_admission(
+                    boundary_context,
+                    runtime,
+                    context.tool_call_id,
                 )
                 if changed_key is not None:
                     changed = boundary_context._admissions.pop(changed_key)
                     boundary_context.receipts.append(
-                        runtime.release(changed, "arguments_changed_after_admission")
+                        changed.runtime.release(
+                            changed.admission,
+                            "arguments_changed_after_admission",
+                        )
                     )
             raise RuntimeError("LLMKit tool arguments changed after admission") from error
 
-        admission_key = (context.tool_call_id, invoked_action.sha256)
+        admission_key = _admission_key(runtime, invoked_action)
         async with boundary_context._admission_lock:
-            admission = boundary_context._admissions.pop(admission_key, None)
-            if admission is None:
-                changed_key = next(
-                    (key for key in boundary_context._admissions if key[0] == context.tool_call_id),
-                    None,
+            pending = boundary_context._admissions.pop(admission_key, None)
+            if pending is None:
+                changed_key = _find_call_admission(
+                    boundary_context,
+                    runtime,
+                    context.tool_call_id,
                 )
                 if changed_key is not None:
                     changed = boundary_context._admissions.pop(changed_key)
                     boundary_context.receipts.append(
-                        runtime.release(changed, "arguments_changed_after_admission")
+                        changed.runtime.release(
+                            changed.admission,
+                            "arguments_changed_after_admission",
+                        )
                     )
                     raise RuntimeError("LLMKit tool arguments changed after admission")
                 raise RuntimeError("LLMKit admission was bypassed")
+            admission = pending.admission
         if admission.action.sha256 != invoked_action.sha256:
             boundary_context.receipts.append(
                 runtime.release(admission, "arguments_changed_after_admission")

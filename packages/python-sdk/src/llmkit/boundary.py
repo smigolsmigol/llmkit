@@ -3,12 +3,14 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import math
 import re
 import threading
 import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
@@ -44,6 +46,13 @@ def _strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return result
 
 
+def _parse_lossless_float(value: str) -> float:
+    parsed = float(value)
+    if not math.isfinite(parsed) or Decimal(value) != Decimal(str(parsed)):
+        raise ValueError("JSON number loses precision")
+    return parsed
+
+
 def canonical_arguments(value: Mapping[str, Any] | str) -> dict[str, Any]:
     """Return the exact JSON object used to bind a tool action."""
     parsed: Any = value
@@ -52,6 +61,7 @@ def canonical_arguments(value: Mapping[str, Any] | str) -> dict[str, Any]:
             value,
             object_pairs_hook=_strict_object,
             parse_constant=_reject_constant,
+            parse_float=_parse_lossless_float,
         )
     elif isinstance(value, Mapping):
         parsed = dict(value)
@@ -329,10 +339,17 @@ class MemoryReplayStore:
         self._consumed: set[str] = set()
         self._lock = threading.Lock()
 
-    def consume(self, grant_id: str) -> bool:
+    def consume(
+        self,
+        grant_id: str,
+        *,
+        commit: Callable[[], None] | None = None,
+    ) -> bool:
         with self._lock:
             if grant_id in self._consumed:
                 return False
+            if commit is not None:
+                commit()
             self._consumed.add(grant_id)
             return True
 
@@ -533,8 +550,6 @@ class BoundaryRuntime:
             reason = "policy_mismatch"
         elif grant.budget_scope != budget_scope:
             reason = "budget_scope_mismatch"
-        elif not self.replay_store.consume(grant.grant_id):
-            reason = "replayed_grant"
 
         if reason is not None:
             return self.deny(
@@ -545,6 +560,8 @@ class BoundaryRuntime:
                 tenant=tenant,
                 workload=workload,
             )
+        if grant is None:
+            raise RuntimeError("admission invariant lost its verified grant")
         receipt = self._receipt(
             state=BoundaryState.RESERVED,
             reason="exact_grant_verified",
@@ -554,7 +571,18 @@ class BoundaryRuntime:
             action=action,
             grant=grant,
         )
-        self._lifecycle.reserve(receipt.receipt_id)
+        if not self.replay_store.consume(
+            grant.grant_id,
+            commit=lambda: self._lifecycle.reserve(receipt.receipt_id),
+        ):
+            return self.deny(
+                action=action,
+                grant=grant,
+                reason="replayed_grant",
+                principal=principal,
+                tenant=tenant,
+                workload=workload,
+            )
         return Admission(action=action, grant=grant, receipt=receipt)
 
     def dispatch(self, admission: Admission) -> BoundaryReceipt:

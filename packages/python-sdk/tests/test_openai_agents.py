@@ -20,6 +20,7 @@ from llmkit.integrations.openai_agents import (
     OpenAIBoundaryContext,
     openai_agents_coverage,
     protect_function_tool,
+    release_pending_admissions,
 )
 
 NOW = datetime(2026, 8, 30, 12, tzinfo=UTC)
@@ -37,11 +38,16 @@ def setup_boundary():
     return runtime, authority
 
 
-def tool_context(context: object, arguments: str) -> ToolContext:
+def tool_context(
+    context: object,
+    arguments: str,
+    *,
+    call_id: str = "call-1",
+) -> ToolContext:
     return ToolContext(
         context=context,
         tool_name="post_review_comment",
-        tool_call_id="call-1",
+        tool_call_id=call_id,
         tool_arguments=arguments,
     )
 
@@ -193,6 +199,178 @@ def test_real_openai_function_tool_settles_only_with_exact_grant_and_ack():
         BoundaryState.SETTLED,
     ]
     assert all(authority.verify_receipt(receipt) for receipt in context.receipts)
+
+
+def test_run_finalizer_releases_admission_not_invoked():
+    runtime, authority = setup_boundary()
+
+    def resolve(action, context):
+        del context
+        return authority.issue(
+            grant_id="grant-canceled-run",
+            principal="reviewer",
+            tenant="smigolsmigol",
+            workload="pr-review",
+            action=action,
+            policy_sha256=POLICY,
+            expires_at=NOW + timedelta(minutes=5),
+            budget_scope="review-budget",
+        )
+
+    async def sink(context, raw_arguments):
+        del context, raw_arguments
+
+    context = OpenAIBoundaryContext(
+        principal="reviewer",
+        tenant="smigolsmigol",
+        workload="pr-review",
+        budget_scope="review-budget",
+        grant_resolver=resolve,
+    )
+    protected = protect_function_tool(
+        function_tool(sink),
+        runtime=runtime,
+        tool_version="1",
+        effect_class="github.review",
+    )
+    result = run_guardrail(protected, tool_context(context, arguments()))
+
+    released = asyncio.run(release_pending_admissions(context))
+
+    assert result.behavior["type"] == "allow"
+    assert [receipt.state for receipt in context.receipts] == [
+        BoundaryState.RESERVED,
+        BoundaryState.RELEASED,
+    ]
+    assert released == (context.receipts[-1],)
+    assert released[0].reason == "run_ended_before_dispatch"
+    assert asyncio.run(release_pending_admissions(context)) == ()
+
+
+def test_async_grant_resolution_does_not_serialize_other_calls():
+    runtime, authority = setup_boundary()
+
+    async def scenario():
+        slow_started = asyncio.Event()
+        release_slow = asyncio.Event()
+        fast_started = asyncio.Event()
+
+        async def resolve(action, context):
+            del context
+            if action.call_id == "call-slow":
+                slow_started.set()
+                await release_slow.wait()
+            else:
+                fast_started.set()
+            return authority.issue(
+                grant_id=f"grant-{action.call_id}",
+                principal="reviewer",
+                tenant="smigolsmigol",
+                workload="pr-review",
+                action=action,
+                policy_sha256=POLICY,
+                expires_at=NOW + timedelta(minutes=5),
+                budget_scope="review-budget",
+            )
+
+        async def sink(context, raw_arguments):
+            del context, raw_arguments
+
+        context = OpenAIBoundaryContext(
+            principal="reviewer",
+            tenant="smigolsmigol",
+            workload="pr-review",
+            budget_scope="review-budget",
+            grant_resolver=resolve,
+        )
+        protected = protect_function_tool(
+            function_tool(sink),
+            runtime=runtime,
+            tool_version="1",
+            effect_class="github.review",
+        )
+        guardrail = protected.tool_input_guardrails[-1]
+
+        def data(call_id: str) -> ToolInputGuardrailData:
+            return ToolInputGuardrailData(
+                context=tool_context(context, arguments(), call_id=call_id),
+                agent=Agent(name="reviewer"),
+            )
+
+        slow = asyncio.create_task(guardrail.run(data("call-slow")))
+        await asyncio.wait_for(slow_started.wait(), timeout=1)
+        fast = asyncio.create_task(guardrail.run(data("call-fast")))
+        try:
+            await asyncio.wait_for(fast_started.wait(), timeout=1)
+        finally:
+            release_slow.set()
+        results = await asyncio.gather(slow, fast)
+        released = await release_pending_admissions(context)
+        return results, released
+
+    results, released = asyncio.run(scenario())
+
+    assert [result.behavior["type"] for result in results] == ["allow", "allow"]
+    assert len(released) == 2
+    assert all(receipt.state is BoundaryState.RELEASED for receipt in released)
+
+
+def test_run_finalizer_blocks_late_grant_resolution():
+    runtime, authority = setup_boundary()
+
+    async def scenario():
+        resolver_started = asyncio.Event()
+        finish_resolver = asyncio.Event()
+
+        async def resolve(action, context):
+            del context
+            resolver_started.set()
+            await finish_resolver.wait()
+            return authority.issue(
+                grant_id="grant-late-resolution",
+                principal="reviewer",
+                tenant="smigolsmigol",
+                workload="pr-review",
+                action=action,
+                policy_sha256=POLICY,
+                expires_at=NOW + timedelta(minutes=5),
+                budget_scope="review-budget",
+            )
+
+        async def sink(context, raw_arguments):
+            del context, raw_arguments
+
+        context = OpenAIBoundaryContext(
+            principal="reviewer",
+            tenant="smigolsmigol",
+            workload="pr-review",
+            budget_scope="review-budget",
+            grant_resolver=resolve,
+        )
+        protected = protect_function_tool(
+            function_tool(sink),
+            runtime=runtime,
+            tool_version="1",
+            effect_class="github.review",
+        )
+        guardrail = protected.tool_input_guardrails[-1]
+        data = ToolInputGuardrailData(
+            context=tool_context(context, arguments()),
+            agent=Agent(name="reviewer"),
+        )
+        pending = asyncio.create_task(guardrail.run(data))
+        await asyncio.wait_for(resolver_started.wait(), timeout=1)
+        released = await release_pending_admissions(context)
+        finish_resolver.set()
+        result = await pending
+        return context, result, released
+
+    context, result, released = asyncio.run(scenario())
+
+    assert released == ()
+    assert result.behavior["type"] == "raise_exception"
+    assert result.output_info["reason"] == "boundary_context_finalized"
+    assert [receipt.state for receipt in context.receipts] == [BoundaryState.DENIED]
 
 
 def test_expired_grant_releases_reservation_before_openai_tool_sink():

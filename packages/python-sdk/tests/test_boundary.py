@@ -271,6 +271,7 @@ def test_tampered_receipt_fails_verification_and_contains_no_raw_content():
 
 def test_canonical_arguments_reject_ambiguous_or_non_object_json():
     assert canonical_arguments('{"b":2,"a":1}') == {"a": 1, "b": 2}
+    assert canonical_arguments('{"value":0.1}') == {"value": 0.1}
     assert canonical_arguments(UserDict({"a": 1})) == {"a": 1}
     with pytest.raises(ValueError, match="duplicate JSON key"):
         canonical_arguments('{"a":1,"a":2}')
@@ -278,6 +279,8 @@ def test_canonical_arguments_reject_ambiguous_or_non_object_json():
         canonical_arguments("[]")
     with pytest.raises(ValueError, match="non-finite"):
         canonical_arguments('{"value":NaN}')
+    with pytest.raises(ValueError, match="loses precision"):
+        canonical_arguments('{"value":0.10000000000000001}')
 
 
 def test_boundary_inputs_reject_malformed_values_and_duplicate_inventory():
@@ -358,19 +361,23 @@ def test_grant_expiry_is_rechecked_before_dispatch():
 
 def test_receipt_identifiers_cannot_be_reused():
     authority = HmacAuthority("test-key", SECRET)
+    receipt_ids = iter(["receipt-duplicate", "receipt-duplicate", "receipt-retry"])
     boundary = BoundaryRuntime(
         authority=authority,
         policy_sha256=POLICY,
         adapter="test",
         clock=lambda: NOW,
-        receipt_id_factory=lambda: "receipt-duplicate",
+        receipt_id_factory=lambda: next(receipt_ids),
     )
     first = action(body="first")
     assert admit(boundary, first, grant(authority, first)).allowed
 
     second = action(body="second")
+    second_grant = grant(authority, second, grant_id="grant-2")
     with pytest.raises(ValueError, match="already has lifecycle state"):
-        admit(boundary, second, grant(authority, second, grant_id="grant-2"))
+        admit(boundary, second, second_grant)
+
+    assert admit(boundary, second, second_grant).allowed
 
 
 def test_coverage_is_explicit_and_unknown_surfaces_are_uncovered():

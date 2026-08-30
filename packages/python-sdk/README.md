@@ -125,6 +125,11 @@ The [local PR-review example][openai-boundary-example] calls the SDK guardrail a
 directly. It runs one poisoned request with no grant and one granted request without calling a
 Runner, model, or GitHub.
 
+Wrap each Agents run in `try` / `finally` and call
+`await release_pending_admissions(boundary_context)` in the finalizer. This closes reservations
+when a run ends after the guardrail allows a tool but before the SDK invokes it. The context is
+single-run and rejects admissions after finalization.
+
 [openai-boundary-example]: https://github.com/smigolsmigol/llmkit/blob/main/examples/openai_agents_boundary_review.py
 
 Only function tools passed through `protect_function_tool()` are enforced. The coverage report is
