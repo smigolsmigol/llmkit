@@ -1,0 +1,57 @@
+[
+  {
+    "id": "poisoned-context-unauthorized-write",
+    "oracle": "denied_before_sink",
+    "owner": "boundary-runtime"
+  },
+  {
+    "id": "missing-provenance",
+    "oracle": "denied",
+    "owner": "boundary-runtime"
+  },
+  {
+    "id": "laundered-context",
+    "oracle": "denied_or_uncovered",
+    "owner": "coverage-contract"
+  },
+  {
+    "id": "grant-replay-expiry-and-binding",
+    "oracle": "denied_before_sink",
+    "owner": "boundary-runtime"
+  },
+  {
+    "id": "openai-surface-coverage",
+    "oracle": "enforced_or_explicitly_uncovered",
+    "owner": "openai-agents-adapter"
+  },
+  {
+    "id": "concurrent-budget",
+    "oracle": "atomic_no_overspend",
+    "owner": "packages/proxy/test/budget-falsifier/budget-do.behavior.test.ts"
+  },
+  {
+    "id": "strict-unknown-pricing-and-shapes",
+    "oracle": "denied_before_provider",
+    "owner": "packages/proxy/test/budget-falsifier/production-routes.behavior.test.ts"
+  },
+  {
+    "id": "post-dispatch-failure",
+    "oracle": "uncertain_never_released",
+    "owner": "boundary-runtime"
+  },
+  {
+    "id": "tampered-receipt",
+    "oracle": "verification_fails",
+    "owner": "boundary-runtime"
+  },
+  {
+    "id": "openai-pydantic-portability",
+    "oracle": "same_contract_or_explicitly_uncovered",
+    "owner": "coverage-contract"
+  },
+  {
+    "id": "raw-content-disabled",
+    "oracle": "explainable_without_raw_content",
+    "owner": "boundary-runtime"
+  }
+]

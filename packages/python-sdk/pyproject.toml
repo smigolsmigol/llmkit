@@ -59,6 +59,7 @@ Issues = "https://github.com/smigolsmigol/llmkit/issues"
 Changelog = "https://github.com/smigolsmigol/llmkit/releases"
 
 [project.optional-dependencies]
+openai-agents = ["openai-agents>=0.20,<0.21"]
 pydantic-ai = ["pydantic-ai-slim[openai]>=2.31,<3"]
 
 [tool.hatch.build.targets.wheel]

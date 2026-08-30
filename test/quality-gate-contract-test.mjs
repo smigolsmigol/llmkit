@@ -48,7 +48,6 @@ const requiredWorkflowFragments = [
   'actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c',
   'codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f',
   'files: coverage-reports/.cache/python-coverage.xml',
-  'files: coverage-reports/coverage/package-libraries/lcov.info',
   'files: coverage-reports/packages/dashboard/coverage/dashboard/lcov.info',
   'files: coverage-reports/packages/proxy/coverage/budget-falsifier/lcov.info',
   'version: v11.3.1',
@@ -59,12 +58,6 @@ const databaseStopContract = `- name: stop local database proof stack
         run: corepack pnpm@9.15.4 db:stop`;
 
 const codecovUploadContracts = [
-  [
-    'upload package coverage',
-    'files: coverage-reports/coverage/package-libraries/lcov.info',
-    'flags: packages',
-    'root_dir: .',
-  ],
   [
     'upload dashboard coverage',
     'files: coverage-reports/packages/dashboard/coverage/dashboard/lcov.info',
@@ -94,6 +87,14 @@ function assertCodecovUploadStep(coverageJob, [name, ...fragments]) {
   }
 }
 
+function assertNoUnmappableCodecovUpload(workflow) {
+  for (const fragment of ['upload package coverage', 'flags: packages', 'package-libraries/lcov.info']) {
+    if (workflow.includes(fragment)) {
+      throw new Error(`Codecov must not upload untracked package build output: ${fragment}`);
+    }
+  }
+}
+
 function assertCoverageWorkflowContract(workflow) {
   const qualityStart = workflow.indexOf('  quality:');
   const coverageStart = workflow.indexOf('  coverage-observability:');
@@ -115,14 +116,18 @@ function assertCoverageWorkflowContract(workflow) {
       throw new Error(`The isolated Codecov job is missing: ${fragment}`);
     }
   }
-  if ((coverageJob.match(/codecov\/codecov-action@/g) ?? []).length !== 4) {
-    throw new Error('Codecov must receive exactly one report for each measured surface.');
+  if (
+    (coverageJob.match(/codecov\/codecov-action@/g) ?? []).length
+    !== codecovUploadContracts.length
+  ) {
+    throw new Error('Codecov must receive exactly one report for each mappable surface.');
   }
   for (const fragment of ['use_oidc: true', 'disable_search: true', 'fail_ci_if_error: false']) {
-    if (coverageJob.split(fragment).length - 1 !== 4) {
+    if (coverageJob.split(fragment).length - 1 !== codecovUploadContracts.length) {
       throw new Error(`Every Codecov upload must include: ${fragment}`);
     }
   }
+  assertNoUnmappableCodecovUpload(workflow);
   for (const upload of codecovUploadContracts) {
     assertCodecovUploadStep(coverageJob, upload);
   }
@@ -162,7 +167,6 @@ const coverageExportContracts = new Map([
       "python(['-m', 'coverage', 'xml', '-o', pythonCoverageXmlPath], sdk);",
     ],
   ],
-  ['scripts/run-package-coverage.mjs', ["'--reporter=lcovonly'"]],
   [
     'packages/dashboard/vitest.config.ts',
     ["reporter: ['text', 'json', 'json-summary', 'lcovonly']"],
@@ -188,7 +192,7 @@ function assertCoverageExportContracts(contentsByPath) {
 }
 
 function assertCodecovConfig(contents) {
-  for (const fragment of ['after_n_builds: 4', 'informational: true', 'comment: false']) {
+  for (const fragment of ['after_n_builds: 3', 'informational: true', 'comment: false']) {
     if (!contents.includes(fragment)) {
       throw new Error(`Codecov must remain non-blocking and quiet: ${fragment}`);
     }
@@ -229,23 +233,15 @@ const oidcViolation = replaceFixture(
 );
 assertViolationBlocked('Codecov OIDC', () => assertCoverageWorkflowContract(oidcViolation));
 
-const packageUploadRoot = `          flags: packages
-          root_dir: .
-          use_oidc: true`;
 const dashboardUploadRoot = `          flags: dashboard
           root_dir: packages/dashboard
           use_oidc: true`;
 const misplacedRootDirViolation = replaceFixture(
-  replaceFixture(
-    workflow,
-    packageUploadRoot,
-    packageUploadRoot.replace('root_dir: .', 'root_dir: packages/dashboard'),
-  ),
+  workflow,
   dashboardUploadRoot,
   dashboardUploadRoot.replace(
     'root_dir: packages/dashboard',
-    `root_dir: packages/dashboard
-          root_dir: .`,
+    'root_dir: .',
   ),
 );
 assertViolationBlocked('Codecov upload step boundary', () =>
@@ -254,11 +250,11 @@ assertViolationBlocked('Codecov upload step boundary', () =>
 
 const coverageExportViolation = new Map(coverageExportContents);
 coverageExportViolation.set(
-  'scripts/run-package-coverage.mjs',
+  'packages/dashboard/vitest.config.ts',
   replaceFixture(
-    coverageExportContents.get('scripts/run-package-coverage.mjs'),
-    "'--reporter=lcovonly'",
-    "'--reporter=json'",
+    coverageExportContents.get('packages/dashboard/vitest.config.ts'),
+    "reporter: ['text', 'json', 'json-summary', 'lcovonly']",
+    "reporter: ['text', 'json', 'json-summary']",
   ),
 );
 assertViolationBlocked('Codecov report generation', () =>

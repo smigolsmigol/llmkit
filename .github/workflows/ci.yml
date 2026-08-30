@@ -88,7 +88,6 @@ jobs:
           name: codecov-reports-${{ github.sha }}
           path: |
             .cache/python-coverage.xml
-            coverage/package-libraries/lcov.info
             packages/dashboard/coverage/dashboard/lcov.info
             packages/proxy/coverage/budget-falsifier/lcov.info
           include-hidden-files: true
@@ -113,17 +112,6 @@ jobs:
         with:
           name: codecov-reports-${{ github.sha }}
           path: coverage-reports
-
-      - name: upload package coverage
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
-        with:
-          disable_search: true
-          fail_ci_if_error: false
-          files: coverage-reports/coverage/package-libraries/lcov.info
-          flags: packages
-          root_dir: .
-          use_oidc: true
-          version: v11.3.1
 
       - name: upload dashboard coverage
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0

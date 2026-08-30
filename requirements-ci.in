@@ -9,10 +9,12 @@ hatchling==1.31.0
 httpx==0.28.1
 mypy==1.19.1
 openai==2.45.0
+openai-agents==0.20.0
 pydantic-ai-slim[openai]==2.31.0
 pip==26.2.1
 pip-audit==2.10.0
 pre-commit==4.6.0
 pytest==9.1.1
+pywin32==312; sys_platform == "win32"
 ruff==0.15.20
 ty==0.0.75

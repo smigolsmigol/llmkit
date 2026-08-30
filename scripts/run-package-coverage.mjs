@@ -96,7 +96,6 @@ const c8Args = [
   '--clean',
   '--reporter=text',
   '--reporter=json-summary',
-  '--reporter=lcovonly',
   `--reports-dir=${coverageDirectory}`,
   `--temp-directory=${resolve(coverageDirectory, 'tmp')}`,
   ...includes.flatMap((pattern) => ['--include', pattern]),

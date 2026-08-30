@@ -106,6 +106,40 @@ closed when the gateway cannot prove a pre-dispatch cost ceiling.
 Transparent OpenAI SDK transport retries are disabled in gateway mode. Retry transient failures
 explicitly at the run boundary so every dispatch has a distinct budget reservation and receipt.
 
+## OpenAI Agents function-tool boundary (experimental)
+
+Use the opt-in boundary when an OpenAI Agents `FunctionTool` can create an external side effect.
+The wrapper requires a signed grant for the exact tool, call ID, arguments, identity, policy,
+expiry, and budget scope before invoking the tool. `admit()` returns policy rejections as signed
+`denied` receipts; malformed inputs or a missing boundary context fail before admission and may not
+produce one. Reservations proven not to dispatch produce `released`. An invoked tool records
+`reserved`, `dispatched`, and a terminal `settled` or `uncertain` receipt without storing raw
+arguments. `settled` requires an application acknowledgement with a stable effect ID, source, and
+version. It is not independent proof from the remote system.
+
+```bash
+pip install "llmkit-sdk[openai-agents]"
+```
+
+The [local PR-review example][openai-boundary-example] calls the SDK guardrail and tool primitives
+directly. It runs one poisoned request with no grant and one granted request without calling a
+Runner, model, or GitHub.
+
+Wrap each Agents run in `try` / `finally` and call
+`await release_pending_admissions(boundary_context)` in the finalizer. This closes reservations
+when a run ends after the guardrail allows a tool but before the SDK invokes it. The context is
+single-run and rejects admissions after finalization.
+
+[openai-boundary-example]: https://github.com/smigolsmigol/llmkit/blob/main/examples/openai_agents_boundary_review.py
+
+Only function tools passed through `protect_function_tool()` are enforced. The coverage report is
+a declared list, not runtime inventory. Approval-required function tools are rejected because
+OpenAI Agents 0.20 does not expose a rejection hook that can release a reserved grant. Unwrapped
+function tools, hosted tools, hosted or local MCP, computer, shell, apply-patch, handoffs,
+agent-as-tool calls, realtime, direct clients, and background retries remain uncovered. The
+included HMAC authority and replay/lifecycle stores are local proof components, not a production
+key service or durable coordination layer.
+
 ## Sessions and gateway mode
 
 Use the hosted or self-hosted LLMKit gateway when you need shared budgets, request receipts,
