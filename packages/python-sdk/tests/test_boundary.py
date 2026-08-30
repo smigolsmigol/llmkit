@@ -289,6 +289,10 @@ def test_canonical_arguments_reject_ambiguous_or_non_object_json():
         canonical_arguments('{"value":NaN}')
     with pytest.raises(ValueError, match="loses precision"):
         canonical_arguments('{"value":0.10000000000000001}')
+    with pytest.raises(ValueError, match="loses precision"):
+        canonical_arguments('{"value":1e-9999999999999999999}')
+    with pytest.raises(ValueError, match="loses precision"):
+        canonical_arguments('{"value":1e9999999999999999999}')
 
 
 def test_boundary_inputs_reject_malformed_values_and_duplicate_inventory():

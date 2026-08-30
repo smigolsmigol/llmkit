@@ -10,7 +10,7 @@ import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import asdict, dataclass, replace
 from datetime import UTC, datetime
-from decimal import Decimal
+from decimal import Decimal, DecimalException
 from enum import StrEnum
 from typing import Any
 
@@ -48,7 +48,13 @@ def _strict_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _parse_lossless_float(value: str) -> float:
     parsed = float(value)
-    if not math.isfinite(parsed) or Decimal(value) != Decimal(str(parsed)):
+    if not math.isfinite(parsed):
+        raise ValueError("JSON number loses precision")
+    try:
+        lossless = Decimal(value) == Decimal(str(parsed))
+    except DecimalException as error:
+        raise ValueError("JSON number loses precision") from error
+    if not lossless:
         raise ValueError("JSON number loses precision")
     return parsed
 
