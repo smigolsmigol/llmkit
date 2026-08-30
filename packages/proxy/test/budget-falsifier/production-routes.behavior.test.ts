@@ -427,7 +427,7 @@ describe('production inference routes', () => {
             model: 'gpt-4o',
             choices: [{
               index: 0,
-              delta: { tool_calls: [{ index: 0, function: { arguments: '{"q":"llm' } }] },
+              delta: { tool_calls: [{ function: { arguments: '{"q":"llm' } }] },
               finish_reason: null,
             }],
           },
@@ -463,41 +463,42 @@ describe('production inference routes', () => {
       return undefined;
     });
 
+    const requestPayload = {
+      model: 'gpt-4o',
+      messages: [
+        { role: 'developer', content: 'Answer with the schema.' },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'inspect this image' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,aGVsbG8=', detail: 'low' } },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: null,
+          tool_calls: [{
+            id: 'call-previous',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{"q":"before"}' },
+          }],
+        },
+        { role: 'tool', tool_call_id: 'call-previous', name: 'lookup', content: 'found' },
+      ],
+      tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object' } } }],
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'answer', strict: true, schema: { type: 'object' } },
+      },
+      stream: true,
+    };
     const response = await requestApp('/v1/chat/completions', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
         'x-llmkit-provider-key': 'direct-openai-secret',
       },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'developer', content: 'Answer with the schema.' },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: 'inspect this image' },
-              { type: 'image_url', image_url: { url: 'data:image/png;base64,aGVsbG8=', detail: 'low' } },
-            ],
-          },
-          {
-            role: 'assistant',
-            content: null,
-            tool_calls: [{
-              id: 'call-previous',
-              type: 'function',
-              function: { name: 'lookup', arguments: '{"q":"before"}' },
-            }],
-          },
-          { role: 'tool', tool_call_id: 'call-previous', name: 'lookup', content: 'found' },
-        ],
-        tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object' } } }],
-        response_format: {
-          type: 'json_schema',
-          json_schema: { name: 'answer', strict: true, schema: { type: 'object' } },
-        },
-        stream: true,
-      }),
+      body: JSON.stringify(requestPayload),
     });
     const data = (await response.text())
       .split('\n')
@@ -538,6 +539,40 @@ describe('production inference routes', () => {
     expect(data.at(-1)).toMatchObject({
       choices: [],
       usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 },
+    });
+
+    const llmkitResponse = await requestApp('/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-llmkit-provider-key': 'direct-openai-secret',
+        'x-llmkit-format': 'llmkit',
+      },
+      body: JSON.stringify(requestPayload),
+    });
+    const llmkitEvents = (await llmkitResponse.text())
+      .trim()
+      .split('\n\n')
+      .map((block) => {
+        const separator = block.indexOf('\n');
+        if (separator === -1) throw new Error(`malformed LLMKit stream event: ${block}`);
+        const eventLine = block.slice(0, separator);
+        const dataLine = block.slice(separator + 1);
+        return {
+          event: eventLine.slice('event: '.length),
+          data: JSON.parse(dataLine.slice('data: '.length)) as Record<string, unknown>,
+        };
+      });
+
+    expect(llmkitResponse.status).toBe(200);
+    expect(llmkitEvents.filter(event => event.event === 'tool')).toEqual([
+      { event: 'tool', data: { index: 0, id: 'call-1', name: 'lookup', arguments: '' } },
+      { event: 'tool', data: { index: 0, arguments: '{"q":"llm' } },
+      { event: 'tool', data: { index: 0, arguments: 'kit"}' } },
+    ]);
+    expect(llmkitEvents.at(-1)).toMatchObject({
+      event: 'done',
+      data: { finishReason: 'tool_calls' },
     });
 
     const rejected = await requestApp('/v1/chat/completions', {
