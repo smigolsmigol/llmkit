@@ -23,6 +23,7 @@ except ImportError as error:
 
 from llmkit.boundary import (
     Admission,
+    BoundaryDispatchError,
     BoundaryReceipt,
     BoundaryRuntime,
     CoverageEntry,
@@ -303,7 +304,11 @@ def protect_function_tool(
             )
             raise RuntimeError("LLMKit tool arguments changed after admission")
 
-        dispatched = runtime.dispatch(admission)
+        try:
+            dispatched = runtime.dispatch(admission)
+        except BoundaryDispatchError as error:
+            boundary_context.receipts.append(error.receipt)
+            raise RuntimeError("LLMKit grant expired before dispatch") from error
         boundary_context.receipts.append(dispatched)
         try:
             output = await original_invoke(context, arguments)

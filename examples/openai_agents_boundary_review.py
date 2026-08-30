@@ -178,7 +178,7 @@ async def main() -> None:
         raise RuntimeError("denied action reached the review sink")
     if len(sink.comments) != 1:
         raise RuntimeError("approved action did not reach the review sink exactly once")
-    if not all(
+    if approved["receipt_states"] != ["reserved", "dispatched", "settled"] or not all(
         authority.verify_receipt(receipt) for receipt in approved_context.receipts
     ):
         raise RuntimeError("approved receipt chain did not verify")

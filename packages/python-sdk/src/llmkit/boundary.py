@@ -206,6 +206,14 @@ class BoundaryReceipt:
         return content_sha256(self.as_dict())
 
 
+class BoundaryDispatchError(ValueError):
+    """A pre-dispatch failure that carries its terminal boundary receipt."""
+
+    def __init__(self, message: str, receipt: BoundaryReceipt) -> None:
+        super().__init__(message)
+        self.receipt = receipt
+
+
 @dataclass(frozen=True)
 class CoverageEntry:
     surface: str
@@ -555,7 +563,8 @@ class BoundaryRuntime:
         if grant is None:
             raise ValueError("reserved admission is missing its grant")
         if _parse_expiry(grant.expires_at) <= self._now():
-            raise ValueError("grant expired before dispatch")
+            released = self.release(admission, "grant_expired_before_dispatch")
+            raise BoundaryDispatchError("grant expired before dispatch", released)
         receipt = admission.receipt
         dispatched = self._receipt(
             state=BoundaryState.DISPATCHED,

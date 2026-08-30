@@ -110,26 +110,29 @@ explicitly at the run boundary so every dispatch has a distinct budget reservati
 
 Use the opt-in boundary when an OpenAI Agents `FunctionTool` can create an external side effect.
 The wrapper requires a signed grant for the exact tool, call ID, arguments, identity, policy,
-expiry, and budget scope before invoking the tool. It records `reserved`, `dispatched`, and a
-terminal `settled` or `uncertain` receipt without storing raw arguments. `settled` requires an
-application acknowledgement with a stable effect ID, source, and version. It is not independent
-proof from the remote system.
+expiry, and budget scope before invoking the tool. Rejected requests produce a signed `denied`
+receipt, while reservations proven not to dispatch produce `released`. An invoked tool records
+`reserved`, `dispatched`, and a terminal `settled` or `uncertain` receipt without storing raw
+arguments. `settled` requires an application acknowledgement with a stable effect ID, source, and
+version. It is not independent proof from the remote system.
 
 ```bash
 pip install "llmkit-sdk[openai-agents]"
 ```
 
-The [local PR-review example](../../examples/openai_agents_boundary_review.py) calls the SDK
-guardrail and tool primitives directly. It runs one poisoned request with no grant and one granted
-request without calling a Runner, model, or GitHub.
+The [local PR-review example][openai-boundary-example] calls the SDK guardrail and tool primitives
+directly. It runs one poisoned request with no grant and one granted request without calling a
+Runner, model, or GitHub.
+
+[openai-boundary-example]: https://github.com/smigolsmigol/llmkit/blob/main/examples/openai_agents_boundary_review.py
 
 Only function tools passed through `protect_function_tool()` are enforced. The coverage report is
 a declared list, not runtime inventory. Approval-required function tools are rejected because
 OpenAI Agents 0.20 does not expose a rejection hook that can release a reserved grant. Unwrapped
-function tools, hosted tools, hosted or local MCP, computer, shell, apply-patch, handoffs, realtime,
-direct clients, and background retries remain uncovered. The included HMAC authority and
-replay/lifecycle stores are local proof components, not a production key service or durable
-coordination layer.
+function tools, hosted tools, hosted or local MCP, computer, shell, apply-patch, handoffs,
+agent-as-tool calls, realtime, direct clients, and background retries remain uncovered. The
+included HMAC authority and replay/lifecycle stores are local proof components, not a production
+key service or durable coordination layer.
 
 ## Sessions and gateway mode
 

@@ -195,6 +195,65 @@ def test_real_openai_function_tool_settles_only_with_exact_grant_and_ack():
     assert all(authority.verify_receipt(receipt) for receipt in context.receipts)
 
 
+def test_expired_grant_releases_reservation_before_openai_tool_sink():
+    authority = HmacAuthority("test-key", b"test-only-openai-boundary-key-32-bytes")
+    now = [NOW]
+    runtime = BoundaryRuntime(
+        authority=authority,
+        policy_sha256=POLICY,
+        adapter="openai-agents-0.20",
+        clock=lambda: now[0],
+    )
+    sink_count = 0
+
+    def resolve(action, context):
+        del context
+        return authority.issue(
+            grant_id="grant-expiry-recheck",
+            principal="reviewer",
+            tenant="smigolsmigol",
+            workload="pr-review",
+            action=action,
+            policy_sha256=POLICY,
+            expires_at=NOW + timedelta(minutes=5),
+            budget_scope="review-budget",
+        )
+
+    async def sink(context, raw_arguments):
+        nonlocal sink_count
+        del context, raw_arguments
+        sink_count += 1
+
+    context = OpenAIBoundaryContext(
+        principal="reviewer",
+        tenant="smigolsmigol",
+        workload="pr-review",
+        budget_scope="review-budget",
+        grant_resolver=resolve,
+    )
+    protected = protect_function_tool(
+        function_tool(sink),
+        runtime=runtime,
+        tool_version="1",
+        effect_class="github.review",
+    )
+    sdk_context = tool_context(context, arguments())
+    result = run_guardrail(protected, sdk_context)
+    now[0] = NOW + timedelta(minutes=10)
+
+    assert result.behavior["type"] == "allow"
+    with pytest.raises(RuntimeError, match="grant expired before dispatch"):
+        asyncio.run(protected.on_invoke_tool(sdk_context, arguments()))
+
+    assert sink_count == 0
+    assert [receipt.state for receipt in context.receipts] == [
+        BoundaryState.RESERVED,
+        BoundaryState.RELEASED,
+    ]
+    assert context.receipts[-1].reason == "grant_expired_before_dispatch"
+    assert all(authority.verify_receipt(receipt) for receipt in context.receipts)
+
+
 @pytest.mark.parametrize(
     ("failure", "reason"),
     [

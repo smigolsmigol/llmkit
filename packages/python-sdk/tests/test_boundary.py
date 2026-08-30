@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from llmkit.boundary import (
+    BoundaryDispatchError,
     BoundaryRuntime,
     BoundaryState,
     CoverageEntry,
@@ -331,19 +332,28 @@ def test_authority_identity_and_time_checks_fail_closed():
 
 def test_grant_expiry_is_rechecked_before_dispatch():
     authority = HmacAuthority("test-key", SECRET)
-    times = iter((NOW, NOW, NOW + timedelta(minutes=10)))
+    now = [NOW]
     boundary = BoundaryRuntime(
         authority=authority,
         policy_sha256=POLICY,
         adapter="test",
-        clock=lambda: next(times),
+        clock=lambda: now[0],
         receipt_id_factory=lambda: "receipt-expiry-recheck",
     )
     target = action()
     admission = admit(boundary, target, grant(authority, target))
+    now[0] = NOW + timedelta(minutes=10)
 
-    with pytest.raises(ValueError, match="expired before dispatch"):
+    with pytest.raises(BoundaryDispatchError, match="expired before dispatch") as caught:
         boundary.dispatch(admission)
+
+    released = caught.value.receipt
+    assert released.state is BoundaryState.RELEASED
+    assert released.reason == "grant_expired_before_dispatch"
+    assert released.previous_receipt_sha256 == admission.receipt.sha256
+    assert authority.verify_receipt(released)
+    with pytest.raises(ValueError, match="expected reserved, found released"):
+        boundary.release(admission, "duplicate_release")
 
 
 def test_receipt_identifiers_cannot_be_reused():

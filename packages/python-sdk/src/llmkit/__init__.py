@@ -4,6 +4,7 @@ from ._transport import tracked, tracked_async
 from ._types import CostInfo, SessionStats
 from ._version import __version__
 from .boundary import (
+    BoundaryDispatchError,
     BoundaryReceipt,
     BoundaryRuntime,
     BoundaryState,
@@ -20,6 +21,7 @@ from .boundary import (
 __all__ = [
     "AsyncCostStream",
     "AsyncLLMKit",
+    "BoundaryDispatchError",
     "BoundaryReceipt",
     "BoundaryRuntime",
     "BoundaryState",
