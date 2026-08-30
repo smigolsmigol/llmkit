@@ -138,6 +138,11 @@ describe('bounded provider SSE frames', () => {
   it('maps OpenAI multimodal, function calling, JSON, and usage contracts through production', async () => {
     const adapter = new OpenAIAdapter();
     let providerResponse: Awaited<ReturnType<typeof adapter.chat>> | undefined;
+    const priorToolCalls = [{
+      id: 'call-1',
+      type: 'function',
+      function: { name: 'lookup', arguments: '{"q":"llmkit"}' },
+    }];
     const providerRequest = {
       model: 'gpt-4.1',
       apiKey: 'openai-secret',
@@ -159,11 +164,7 @@ describe('bounded provider SSE frames', () => {
         {
           role: 'assistant',
           content: null,
-          tool_calls: [{
-            id: 'call-1',
-            type: 'function',
-            function: { name: 'lookup', arguments: '{"q":"llmkit"}' },
-          }],
+          tool_calls: priorToolCalls,
         },
         { role: 'tool', tool_call_id: 'call-1', name: 'lookup', content: 'found' },
       ],
@@ -212,7 +213,7 @@ describe('bounded provider SSE frames', () => {
       messages: [
         { role: 'developer', content: 'Answer with the schema.' },
         { role: 'user', content: providerRequest.messages[1]?.content },
-        { role: 'assistant', content: null, tool_calls: providerRequest.messages[2]?.tool_calls },
+        { role: 'assistant', content: null, tool_calls: priorToolCalls },
         { role: 'tool', content: 'found', tool_call_id: 'call-1', name: 'lookup' },
       ],
     });
