@@ -135,6 +135,103 @@ describe('bounded provider SSE frames', () => {
     expect(cancelled).toBe(true);
   });
 
+  it('maps OpenAI multimodal, function calling, JSON, and usage contracts through production', async () => {
+    const adapter = new OpenAIAdapter();
+    let providerResponse: Awaited<ReturnType<typeof adapter.chat>> | undefined;
+    const providerRequest = {
+      model: 'gpt-4.1',
+      apiKey: 'openai-secret',
+      maxTokens: 256,
+      temperature: 0,
+      responseFormat: {
+        type: 'json_schema',
+        json_schema: { name: 'answer', strict: true, schema: { type: 'object' } },
+      },
+      messages: [
+        { role: 'developer', content: 'Answer with the schema.' },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: 'inspect this image' },
+            { type: 'image_url', image_url: { url: 'data:image/png;base64,aGVsbG8=', detail: 'low' } },
+          ],
+        },
+        {
+          role: 'assistant',
+          content: null,
+          tool_calls: [{
+            id: 'call-1',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{"q":"llmkit"}' },
+          }],
+        },
+        { role: 'tool', tool_call_id: 'call-1', name: 'lookup', content: 'found' },
+      ],
+      tools: [{ type: 'function', function: { name: 'lookup', parameters: { type: 'object' } } }],
+      toolChoice: { type: 'function', function: { name: 'lookup' } },
+      extra: { seed: 7 },
+    } as unknown as ProviderRequest;
+
+    const captured = await capturedJsonRequest({
+      id: 'chatcmpl-1',
+      model: 'gpt-4.1-2026-08-01',
+      choices: [{
+        index: 0,
+        message: {
+          role: 'assistant',
+          content: '{"answer":"done"}',
+          tool_calls: [{
+            id: 'call-2',
+            type: 'function',
+            function: { name: 'lookup', arguments: '{"q":"done"}' },
+          }],
+        },
+        finish_reason: 'tool_calls',
+      }],
+      usage: {
+        prompt_tokens: 100,
+        completion_tokens: 20,
+        total_tokens: 120,
+        prompt_tokens_details: { cached_tokens: 30 },
+        completion_tokens_details: { reasoning_tokens: 5 },
+      },
+    }, async () => {
+      providerResponse = await adapter.chat(providerRequest);
+    });
+
+    expect(captured.url).toBe('https://api.openai.com/v1/chat/completions');
+    expect(captured.headers.get('authorization')).toBe('Bearer openai-secret');
+    expect(captured.body).toMatchObject({
+      model: 'gpt-4.1',
+      max_tokens: 256,
+      temperature: 0,
+      response_format: providerRequest.responseFormat,
+      tool_choice: providerRequest.toolChoice,
+      tools: providerRequest.tools,
+      seed: 7,
+      messages: [
+        { role: 'developer', content: 'Answer with the schema.' },
+        { role: 'user', content: providerRequest.messages[1]?.content },
+        { role: 'assistant', content: null, tool_calls: providerRequest.messages[2]?.tool_calls },
+        { role: 'tool', content: 'found', tool_call_id: 'call-1', name: 'lookup' },
+      ],
+    });
+    expect(providerResponse).toMatchObject({
+      id: 'chatcmpl-1',
+      content: '{"answer":"done"}',
+      model: 'gpt-4.1-2026-08-01',
+      finishReason: 'tool_calls',
+      usage: {
+        inputTokens: 70,
+        outputTokens: 20,
+        totalTokens: 120,
+        cacheReadTokens: 30,
+        reasoningTokens: 5,
+      },
+      toolCalls: [{ id: 'call-2', name: 'lookup', arguments: '{"q":"done"}' }],
+    });
+  });
+
   it('maps a full Anthropic request and response through the production adapter', async () => {
     const adapter = new AnthropicAdapter();
     let providerResponse: Awaited<ReturnType<typeof adapter.chat>> | undefined;
