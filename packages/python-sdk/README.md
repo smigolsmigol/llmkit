@@ -110,8 +110,9 @@ explicitly at the run boundary so every dispatch has a distinct budget reservati
 
 Use the opt-in boundary when an OpenAI Agents `FunctionTool` can create an external side effect.
 The wrapper requires a signed grant for the exact tool, call ID, arguments, identity, policy,
-expiry, and budget scope before invoking the tool. Rejected requests produce a signed `denied`
-receipt, while reservations proven not to dispatch produce `released`. An invoked tool records
+expiry, and budget scope before invoking the tool. `admit()` returns policy rejections as signed
+`denied` receipts; malformed inputs or a missing boundary context fail before admission and may not
+produce one. Reservations proven not to dispatch produce `released`. An invoked tool records
 `reserved`, `dispatched`, and a terminal `settled` or `uncertain` receipt without storing raw
 arguments. `settled` requires an application acknowledgement with a stable effect ID, source, and
 version. It is not independent proof from the remote system.
