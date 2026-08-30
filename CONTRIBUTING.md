@@ -115,6 +115,13 @@ packages/
   dashboard/        Next.js 15 admin UI (private, deployed)
 ```
 
+## Brand assets
+
+`.github/logo-wordmark.svg` and `.github/logo-wordmark-animated.svg` are the canonical logo
+sources. The matching files under `packages/dashboard/public/` must remain byte-identical.
+Repository and website preview PNGs are reviewed raster exports from those sources; update and
+visually review both when the canonical logo changes.
+
 Project decisions, maintainer responsibilities, and dispute handling are documented in
 [`GOVERNANCE.md`](GOVERNANCE.md). The current product boundaries are documented in
 [`ARCHITECTURE.md`](ARCHITECTURE.md) and [`SECURITY.md`](SECURITY.md).

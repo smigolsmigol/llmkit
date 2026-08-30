@@ -8,6 +8,50 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const readDashboard = (relativePath) => readFileSync(`${packageRoot}/${relativePath}`, 'utf8');
 const readRepo = (relativePath) => readFileSync(`${repoRoot}/${relativePath}`, 'utf8');
 
+function readPngSize(relativePath) {
+  const png = readFileSync(`${repoRoot}/${relativePath}`);
+  assert.deepEqual(
+    png.subarray(0, 8),
+    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+    `${relativePath} must be a PNG`,
+  );
+  return { width: png.readUInt32BE(16), height: png.readUInt32BE(20) };
+}
+
+for (const [canonical, served] of [
+  ['.github/logo-wordmark.svg', 'packages/dashboard/public/logo-wordmark.svg'],
+  ['.github/logo-wordmark-animated.svg', 'packages/dashboard/public/logo-animated.svg'],
+]) {
+  assert.deepEqual(
+    readFileSync(`${repoRoot}/${served}`),
+    readFileSync(`${repoRoot}/${canonical}`),
+    `${served} must remain byte-identical to ${canonical}`,
+  );
+}
+
+assert.deepEqual(readPngSize('.github/social/github-social-preview.png'), {
+  width: 1280,
+  height: 640,
+});
+assert.deepEqual(readPngSize('packages/dashboard/src/app/opengraph-image.png'), {
+  width: 1200,
+  height: 630,
+});
+assert.deepEqual(
+  readFileSync(`${repoRoot}/packages/dashboard/src/app/twitter-image.png`),
+  readFileSync(`${repoRoot}/packages/dashboard/src/app/opengraph-image.png`),
+  'Open Graph and Twitter previews must use the same reviewed export',
+);
+assert.equal(
+  readDashboard('src/app/opengraph-image.alt.txt').trim(),
+  'LLMKit logo',
+);
+assert.equal(readDashboard('src/app/twitter-image.alt.txt').trim(), 'LLMKit logo');
+assert.ok(
+  !existsSync(`${repoRoot}/packages/dashboard/src/app/opengraph-image.tsx`),
+  'the website preview must use the reviewed static brand export',
+);
+
 const evidenceFiles = [
   'GOVERNANCE.md',
   'ROADMAP.md',
@@ -178,7 +222,6 @@ const publicFiles = [
   'src/app/(public)/service-restoring/page.tsx',
   'src/components/public/developer-quickstart.tsx',
   'src/app/layout.tsx',
-  'src/app/opengraph-image.tsx',
 ].map(readDashboard);
 const publicDocumentPaths = [
   'README.md',
@@ -210,12 +253,12 @@ for (const relativePath of [
   );
 }
 const rootLayout = readDashboard('src/app/layout.tsx');
-assert.match(rootLayout, /openGraph:[\s\S]*images:\s*\[[\s\S]*url: '\/opengraph-image'/);
 assert.match(
   rootLayout,
-  /twitter:[\s\S]*images:\s*\['\/opengraph-image'\]/,
+  /openGraph:[\s\S]*images:\s*\[[\s\S]*url: '\/opengraph-image\.png'/,
   'root metadata must retain explicit Open Graph and Twitter images',
 );
+assert.match(rootLayout, /twitter:[\s\S]*images:\s*\['\/twitter-image\.png'\]/);
 const authenticatedSurface = readDashboard('src/app/(auth)/dashboard/settings/page.tsx');
 const publicSource = [...publicFiles, ...publicDocs, authenticatedSurface].join('\n');
 
