@@ -18,6 +18,7 @@ from llmkit.boundary import (
     EffectAction,
     HmacAuthority,
     canonical_arguments,
+    canonical_json,
     content_sha256,
     coverage_report,
 )
@@ -276,6 +277,90 @@ def test_canonical_arguments_reject_ambiguous_or_non_object_json():
         canonical_arguments("[]")
     with pytest.raises(ValueError, match="non-finite"):
         canonical_arguments('{"value":NaN}')
+
+
+def test_boundary_inputs_reject_malformed_values_and_duplicate_inventory():
+    with pytest.raises(ValueError, match="JSON object"):
+        canonical_arguments(42)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="canonical JSON"):
+        canonical_json(object())
+    with pytest.raises(ValueError, match="effect_class"):
+        EffectAction(
+            effect_class="",
+            target="github.post_review_comment",
+            version="1",
+            call_id="call-1",
+            arguments_sha256=content_sha256({}),
+        )
+    with pytest.raises(ValueError, match="arguments digest"):
+        EffectAction(
+            effect_class="github.review",
+            target="github.post_review_comment",
+            version="1",
+            call_id="call-1",
+            arguments_sha256="invalid",
+        )
+    with pytest.raises(ValueError, match="at least 32 bytes"):
+        HmacAuthority("test-key", b"short")
+
+    entry = CoverageEntry("enrolled_function_tool", CoverageStatus.ENFORCED, "wrapped")
+    with pytest.raises(ValueError, match="unique"):
+        coverage_report("openai-agents", [entry, entry])
+
+
+def test_authority_identity_and_time_checks_fail_closed():
+    boundary, authority = runtime()
+    target = action()
+    with pytest.raises(ValueError, match="timezone"):
+        grant(authority, target, expires_at=NOW.replace(tzinfo=None))
+
+    signed = grant(authority, target)
+    assert not authority.verify_grant(replace(signed, key_id="other-key"))
+    admission = admit(boundary, target, signed)
+    assert not authority.verify_receipt(replace(admission.receipt, key_id="other-key"))
+
+    naive_clock = BoundaryRuntime(
+        authority=authority,
+        policy_sha256=POLICY,
+        adapter="test",
+        clock=lambda: NOW.replace(tzinfo=None),
+    )
+    with pytest.raises(ValueError, match="clock must include a timezone"):
+        admit(naive_clock, target, grant(authority, target, grant_id="grant-naive-clock"))
+
+
+def test_grant_expiry_is_rechecked_before_dispatch():
+    authority = HmacAuthority("test-key", SECRET)
+    times = iter((NOW, NOW, NOW + timedelta(minutes=10)))
+    boundary = BoundaryRuntime(
+        authority=authority,
+        policy_sha256=POLICY,
+        adapter="test",
+        clock=lambda: next(times),
+        receipt_id_factory=lambda: "receipt-expiry-recheck",
+    )
+    target = action()
+    admission = admit(boundary, target, grant(authority, target))
+
+    with pytest.raises(ValueError, match="expired before dispatch"):
+        boundary.dispatch(admission)
+
+
+def test_receipt_identifiers_cannot_be_reused():
+    authority = HmacAuthority("test-key", SECRET)
+    boundary = BoundaryRuntime(
+        authority=authority,
+        policy_sha256=POLICY,
+        adapter="test",
+        clock=lambda: NOW,
+        receipt_id_factory=lambda: "receipt-duplicate",
+    )
+    first = action(body="first")
+    assert admit(boundary, first, grant(authority, first)).allowed
+
+    second = action(body="second")
+    with pytest.raises(ValueError, match="already has lifecycle state"):
+        admit(boundary, second, grant(authority, second, grant_id="grant-2"))
 
 
 def test_coverage_is_explicit_and_unknown_surfaces_are_uncovered():
