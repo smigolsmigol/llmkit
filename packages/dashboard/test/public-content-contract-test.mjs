@@ -253,9 +253,12 @@ for (const relativePath of [
   );
 }
 const rootLayout = readDashboard('src/app/layout.tsx');
-assert.match(rootLayout, /openGraph:/);
-assert.match(rootLayout, /twitter:/);
-assert.doesNotMatch(rootLayout, /\/opengraph-image/);
+assert.match(
+  rootLayout,
+  /openGraph:[\s\S]*images:\s*\[[\s\S]*url: '\/opengraph-image\.png'/,
+  'root metadata must retain explicit Open Graph and Twitter images',
+);
+assert.match(rootLayout, /twitter:[\s\S]*images:\s*\['\/twitter-image\.png'\]/);
 const authenticatedSurface = readDashboard('src/app/(auth)/dashboard/settings/page.tsx');
 const publicSource = [...publicFiles, ...publicDocs, authenticatedSurface].join('\n');
 

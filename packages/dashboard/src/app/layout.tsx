@@ -30,11 +30,20 @@ export const metadata: Metadata = {
     url: 'https://llmkit.sh',
     siteName: 'LLMKit',
     type: 'website',
+    images: [
+      {
+        url: '/opengraph-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'LLMKit logo',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'LLMKit - Cost control for AI systems',
     description: 'Open-source cost attribution, request evidence, and pre-dispatch budget enforcement.',
+    images: ['/twitter-image.png'],
   },
   metadataBase: new URL('https://llmkit.sh'),
 };
