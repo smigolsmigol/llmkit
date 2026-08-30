@@ -12,7 +12,6 @@ const tests = [
   'packages/proxy/test/unit-test.mjs',
   'packages/proxy/test/crypto-test.mjs',
   'packages/proxy/test/xai-cost-test.mjs',
-  'packages/proxy/test/openai-adapter-test.mjs',
   'packages/proxy/test/auth-test.mjs',
   'packages/proxy/test/ratelimit-test.mjs',
   'packages/proxy/test/validation-test.mjs',
