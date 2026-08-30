@@ -18,6 +18,7 @@ from llmkit.boundary import (
     EffectAcknowledgement,
     EffectAction,
     HmacAuthority,
+    MemoryReplayStore,
     canonical_arguments,
     canonical_json,
     content_sha256,
@@ -192,6 +193,13 @@ def test_only_one_concurrent_admission_consumes_a_grant():
 
     assert sum(result.allowed for result in results) == 1
     assert sum(result.receipt.reason == "replayed_grant" for result in results) == 19
+
+
+def test_memory_replay_store_keeps_standalone_consume_compatibility():
+    store = MemoryReplayStore()
+
+    assert store.consume("grant-standalone")
+    assert not store.consume("grant-standalone")
 
 
 def test_post_dispatch_failure_is_uncertain_and_predispatch_can_release():

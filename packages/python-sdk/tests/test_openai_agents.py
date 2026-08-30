@@ -247,6 +247,39 @@ def test_run_finalizer_releases_admission_not_invoked():
     assert asyncio.run(release_pending_admissions(context)) == ()
 
 
+def test_finalized_context_denies_before_grant_resolution():
+    runtime, authority = setup_boundary()
+
+    def resolve(action, context):
+        del action, context
+        raise AssertionError("a finalized context must not resolve another grant")
+
+    async def sink(context, raw_arguments):
+        del context, raw_arguments
+
+    context = OpenAIBoundaryContext(
+        principal="reviewer",
+        tenant="smigolsmigol",
+        workload="pr-review",
+        budget_scope="review-budget",
+        grant_resolver=resolve,
+    )
+    asyncio.run(release_pending_admissions(context))
+    protected = protect_function_tool(
+        function_tool(sink),
+        runtime=runtime,
+        tool_version="1",
+        effect_class="github.review",
+    )
+
+    result = run_guardrail(protected, tool_context(context, arguments()))
+
+    assert result.behavior["type"] == "raise_exception"
+    assert result.output_info["reason"] == "boundary_context_finalized"
+    assert [receipt.state for receipt in context.receipts] == [BoundaryState.DENIED]
+    assert authority.verify_receipt(context.receipts[0])
+
+
 def test_async_grant_resolution_does_not_serialize_other_calls():
     runtime, authority = setup_boundary()
 
