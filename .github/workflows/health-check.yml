@@ -66,7 +66,11 @@ jobs:
                 status="000"
               fi
               case "$status" in
-                000|408|429|500|502|503|504) ;;
+                000|408|429|500|502|503|504)
+                  if [ "$attempt" -lt 3 ]; then
+                    sleep "$attempt"
+                  fi
+                  ;;
                 *) break ;;
               esac
             done

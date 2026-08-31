@@ -47,13 +47,21 @@ def _infer_provider(model: str) -> str | None:
     return None
 
 
-def _lookup_table(table: dict[str, TokenRates], model: str) -> TokenRates | None:
+def _lookup_exact(table: dict[str, TokenRates], model: str) -> TokenRates | None:
     if model in table:
         return table[model]
 
     stripped = _strip_date_suffix(model)
     if stripped != model and stripped in table:
         return table[stripped]
+
+    return None
+
+
+def _lookup_table(table: dict[str, TokenRates], model: str) -> TokenRates | None:
+    exact = _lookup_exact(table, model)
+    if exact is not None:
+        return exact
 
     best: TokenRates | None = None
     best_len = 0
@@ -91,6 +99,10 @@ def lookup_pricing(model: str) -> TokenRates | None:
     provider = provider.lower()
     if separator and provider in _PRICING:
         return _lookup_table(_PRICING[provider], provider_model)
+
+    pricing = _lookup_exact(_FLAT, model)
+    if pricing is not None:
+        return pricing
 
     inferred = _infer_provider(model)
     if inferred and inferred in _PRICING:

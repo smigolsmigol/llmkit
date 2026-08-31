@@ -13,17 +13,33 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function extractWorkflowFunction(contents, name) {
+  const lines = contents.split('\n');
+  const declaration = /^\s*[A-Za-z_][A-Za-z0-9_]*\(\)\s*\{\s*$/;
+  const closingBrace = /^\s*\}\s*$/;
+  const start = lines.findIndex((line) => line.trim() === `${name}() {`);
+  assert(start >= 0, `${name} must remain defined`);
+
+  let depth = 0;
+  for (let index = start; index < lines.length; index += 1) {
+    if (declaration.test(lines[index])) depth += 1;
+    if (!closingBrace.test(lines[index])) continue;
+    depth -= 1;
+    if (depth === 0) return lines.slice(start, index + 1).join('\n');
+  }
+  throw new Error(`${name} must have a balanced function body`);
+}
+
 function assertRetryBodyCapture(contents) {
-  const helperStart = contents.indexOf('request_with_retries()');
-  const helperEnd = contents.indexOf('\n          }', helperStart);
-  assert(helperStart >= 0 && helperEnd > helperStart, 'HTTP retries need one bounded body-capture helper');
-  const helper = contents.slice(helperStart, helperEnd);
+  const helper = extractWorkflowFunction(contents, 'request_with_retries');
   assert(
     helper.includes('for (( attempt = 1; attempt <= 3; attempt++ )); do'),
     'HTTP body retries must remain bounded',
   );
   assert(helper.includes(': > "$RESPONSE_BODY"'), 'each HTTP attempt must clear the prior body');
   assert(helper.includes('-o "$RESPONSE_BODY"'), 'HTTP bodies must be captured outside command substitution');
+  assert(helper.includes('if [ "$attempt" -lt 3 ]; then'), 'HTTP retries must delay only between attempts');
+  assert(helper.includes('sleep "$attempt"'), 'HTTP retries must back off before another request');
   assert(!contents.includes('response=$(curl'), 'retrying curl output must not concatenate response bodies');
 
   for (const name of [
@@ -32,10 +48,7 @@ function assertRetryBodyCapture(contents) {
     'check_pypi',
     'check_pricing_contract',
   ]) {
-    const start = contents.indexOf(`${name}()`);
-    const end = contents.indexOf('\n          }', start);
-    const block = contents.slice(start, end);
-    assert(start >= 0 && end > start, `${name} must remain defined`);
+    const block = extractWorkflowFunction(contents, name);
     assert(block.includes('status=$(request_with_retries'), `${name} must use isolated retry capture`);
     assert(block.includes('body=$(<"$RESPONSE_BODY")'), `${name} must parse only the final response body`);
   }
@@ -128,9 +141,11 @@ assert(
 assert(workflow.includes('concurrency:'), 'overlapping health runs must be collapsed');
 assert(workflow.includes('timeout-minutes: 20'), 'the health job needs enough bounded time to report retries');
 assertRetryBodyCapture(workflow);
+assertRetryBodyCapture(workflow.replaceAll('\n          }', '\n            }'));
 for (const mutation of [
   workflow.replace(': > "$RESPONSE_BODY"', ''),
   workflow.replace('-o "$RESPONSE_BODY"', ''),
+  workflow.replace('sleep "$attempt"', ''),
 ]) {
   let rejected = false;
   try {
@@ -240,35 +255,46 @@ for (const [label, fixture] of [
 
 const expectedPricingModels = ['anthropic/claude-sonnet-4-6', 'openai/gpt-4o'];
 const expectedPricingUsage = { input: 1000, output: 500, cacheRead: 0, cacheWrite: 0 };
-function pricingModelFixture(key) {
-  const separator = key.indexOf('/');
-  const provider = key.slice(0, separator);
-  const model = key.slice(separator + 1);
-  const pricing = pricingCatalog.providers[provider][model];
-  const rawInput = (expectedPricingUsage.input / 1_000_000) * pricing.input;
-  const rawOutput = (expectedPricingUsage.output / 1_000_000) * pricing.output;
-  const rawCacheRead = (expectedPricingUsage.cacheRead / 1_000_000) * (pricing.cacheRead ?? 0);
-  const rawCacheWrite = (expectedPricingUsage.cacheWrite / 1_000_000) * (pricing.cacheWrite ?? 0);
-  return {
-    key,
-    provider,
-    model,
+const expectedPricingResponses = [
+  {
+    key: 'anthropic/claude-sonnet-4-6',
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-6',
     rates: {
-      inputPerMillion: pricing.input,
-      outputPerMillion: pricing.output,
-      cacheReadPerMillion: pricing.cacheRead ?? null,
-      cacheWritePerMillion: pricing.cacheWrite ?? null,
+      inputPerMillion: 3,
+      outputPerMillion: 15,
+      cacheReadPerMillion: 0.3,
+      cacheWritePerMillion: 3.75,
     },
     costs: {
-      input: +rawInput.toFixed(8),
-      output: +rawOutput.toFixed(8),
-      cacheRead: +rawCacheRead.toFixed(8),
-      cacheWrite: +rawCacheWrite.toFixed(8),
-      total: +(rawInput + rawOutput + rawCacheRead + rawCacheWrite).toFixed(8),
+      input: 0.003,
+      output: 0.0075,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0.0105,
       currency: 'USD',
     },
-  };
-}
+  },
+  {
+    key: 'openai/gpt-4o',
+    provider: 'openai',
+    model: 'gpt-4o',
+    rates: {
+      inputPerMillion: 2.5,
+      outputPerMillion: 10,
+      cacheReadPerMillion: 1.25,
+      cacheWritePerMillion: null,
+    },
+    costs: {
+      input: 0.0025,
+      output: 0.005,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0.0075,
+      currency: 'USD',
+    },
+  },
+];
 
 function pricingMutation(mutator) {
   const fixture = structuredClone(pricingFixture);
@@ -291,7 +317,7 @@ const pricingFixture = {
   },
   usage: expectedPricingUsage,
   count: 2,
-  models: expectedPricingModels.map(pricingModelFixture),
+  models: expectedPricingResponses,
 };
 
 assertPricingComparison(pricingFixture, expectedPricingModels, expectedPricingUsage);

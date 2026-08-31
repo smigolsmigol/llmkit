@@ -47,6 +47,16 @@ def test_provider_qualified_model_selects_collision():
     assert p.cache_read_per_m == 0.07
 
 
+def test_exact_hosted_model_wins_before_provider_prefix():
+    p = lookup_pricing("deepseek-v3p2")
+    dated = lookup_pricing("deepseek-v3p2-2026-08-31")
+    assert p is not None
+    assert dated is not None
+    assert p.input_per_m == 0.56
+    assert p.output_per_m == 1.68
+    assert dated == p
+
+
 def test_ambiguous_unqualified_model_is_rejected():
     assert lookup_pricing("gemma-4-31b-it") is None
 
