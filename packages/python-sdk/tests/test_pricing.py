@@ -32,6 +32,34 @@ def test_unknown_model():
     assert lookup_pricing("totally-unknown-model") is None
 
 
+def test_provider_prefix_selects_openai_collision():
+    p = lookup_pricing("gpt-oss-120b")
+    assert p is not None
+    assert p.input_per_m == 0.039
+    assert p.output_per_m == 0.18
+
+
+def test_provider_qualified_model_selects_collision():
+    p = lookup_pricing("fireworks/gpt-oss-120b")
+    assert p is not None
+    assert p.input_per_m == 0.15
+    assert p.output_per_m == 0.6
+    assert p.cache_read_per_m == 0.07
+
+
+def test_ambiguous_unqualified_model_is_rejected():
+    assert lookup_pricing("gemma-4-31b-it") is None
+
+
+def test_provider_qualified_ambiguous_model_is_exact():
+    gemini = lookup_pricing("gemini/gemma-4-31b-it")
+    together = lookup_pricing("together/gemma-4-31b-it")
+    assert gemini is not None
+    assert together is not None
+    assert gemini.input_per_m == 0.12
+    assert together.input_per_m == 0.28
+
+
 def test_calculate_cost_gpt4o():
     cost = calculate_cost("gpt-4o", input_tokens=1000, output_tokens=500)
     assert cost is not None

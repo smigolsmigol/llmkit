@@ -5,7 +5,7 @@ Shared types, constants, and pricing data for [LLMKit](https://github.com/smigol
 ## What's in it
 
 - **TypeScript types**: `LLMRequest`, `LLMResponse`, `CostBreakdown`, `TokenUsage`, `ProviderName`, `Budget`, and more
-- **Pricing snapshot**: 731 model entries across 9 populated provider tables, dated 2026-03-25,
+- **Pricing snapshot**: 886 model entries across 9 populated provider tables, dated 2026-08-31,
   with cache read/write rates where available. The snapshot does not encode model modality. Values
   are token rates only for models independently verified as token-billed. `ProviderName` reserves
   Ollama and OpenRouter identifiers, but the snapshot contains no priced entries for them.

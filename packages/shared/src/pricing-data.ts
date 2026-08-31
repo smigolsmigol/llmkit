@@ -1,7 +1,7 @@
 // AUTO-GENERATED from packages/shared/pricing.json
 // Do not edit manually. Run: node scripts/generate-pricing.mjs
 
-export const UPDATED_AT = "2026-08-30";
+export const UPDATED_AT = "2026-08-31";
 
 export const PRICING_DATA: Record<string, Record<string, { input: number; output: number; cacheRead?: number; cacheWrite?: number; extraRates?: Record<string, { rate: number; per: number }> }>> = {
   "anthropic": {
@@ -193,9 +193,9 @@ export const PRICING_DATA: Record<string, Record<string, { input: number; output
     "gpt-5.4-image-2": { input: 8, output: 15, cacheRead: 2 },
     "gpt-5.5": { input: 5, output: 30, cacheRead: 0.5 },
     "gpt-5.5-pro": { input: 30, output: 180 },
-    "gpt-5.6-luna": { input: 1, output: 6, cacheRead: 0.1, cacheWrite: 1.25 },
-    "gpt-5.6-sol": { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
-    "gpt-5.6-terra": { input: 2.5, output: 15, cacheRead: 0.25, cacheWrite: 3.125 },
+    "gpt-5.6-luna": { input: 0.2, output: 1.2, cacheRead: 0.02, cacheWrite: 0.25 },
+    "gpt-5.6-sol": { input: 4, output: 20, cacheRead: 0.4, cacheWrite: 5 },
+    "gpt-5.6-terra": { input: 2, output: 12, cacheRead: 0.2, cacheWrite: 2.5 },
     "gpt-chat-latest": { input: 5, output: 30, cacheRead: 0.5 },
     "gpt-oss-120b": { input: 0.039, output: 0.18 },
     "gpt-oss-20b": { input: 0.029, output: 0.14 },

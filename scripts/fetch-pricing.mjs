@@ -20,6 +20,26 @@ const dryRun = process.argv.includes('--dry-run');
 const GENAI_URL = 'https://raw.githubusercontent.com/pydantic/genai-prices/main/prices/data_slim.json';
 const LITELLM_URL = 'https://raw.githubusercontent.com/BerriAI/litellm/main/model_prices_and_context_window.json';
 
+const VERIFIED_RATE_OVERRIDES = {
+  openai: {
+    'gpt-5.6-luna': {
+      source: 'https://developers.openai.com/api/docs/models/gpt-5.6-luna',
+      stale: { input: 1, output: 6, cacheRead: 0.1, cacheWrite: 1.25 },
+      verified: { input: 0.2, output: 1.2, cacheRead: 0.02, cacheWrite: 0.25 },
+    },
+    'gpt-5.6-terra': {
+      source: 'https://developers.openai.com/api/docs/models/gpt-5.6-terra',
+      stale: { input: 2.5, output: 15, cacheRead: 0.25, cacheWrite: 3.125 },
+      verified: { input: 2, output: 12, cacheRead: 0.2, cacheWrite: 2.5 },
+    },
+    'gpt-5.6-sol': {
+      source: 'https://developers.openai.com/api/docs/models/gpt-5.6-sol',
+      stale: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
+      verified: { input: 4, output: 20, cacheRead: 0.4, cacheWrite: 5 },
+    },
+  },
+};
+
 const PROVIDER_MAP = {
   'openai': 'openai',
   'anthropic': 'anthropic',
@@ -140,10 +160,40 @@ function mergeSource(source, merged, current, onlyMissing) {
   }
 }
 
+function tokenRates(pricing) {
+  const rates = { input: pricing.input, output: pricing.output };
+  if (pricing.cacheRead !== undefined) rates.cacheRead = pricing.cacheRead;
+  if (pricing.cacheWrite !== undefined) rates.cacheWrite = pricing.cacheWrite;
+  return rates;
+}
+
+function applyVerifiedRateOverrides(merged) {
+  for (const [provider, models] of Object.entries(VERIFIED_RATE_OVERRIDES)) {
+    for (const [model, override] of Object.entries(models)) {
+      const pricing = merged.providers[provider]?.[model];
+      if (!pricing) continue;
+      const rates = tokenRates(pricing);
+      if (
+        !isDeepStrictEqual(rates, override.stale)
+        && !isDeepStrictEqual(rates, override.verified)
+      ) {
+        throw new Error(
+          `${provider}/${model}: upstream rates changed outside the verified override; review ${override.source}`,
+        );
+      }
+      merged.providers[provider][model] = {
+        ...pricing,
+        ...structuredClone(override.verified),
+      };
+    }
+  }
+}
+
 export function merge(genai, litellm, current) {
   const merged = JSON.parse(JSON.stringify(current));
   mergeSource(genai, merged, current, false);
   mergeSource(litellm, merged, current, true);
+  applyVerifiedRateOverrides(merged);
 
   return merged;
 }

@@ -36,6 +36,7 @@ const tests = [
   'scripts/build-mcpb.mjs',
   'test/contract-test.mjs',
   'test/health-check-workflow-test.mjs',
+  'test/pricing-source-test.mjs',
   'test/notification-signal-workflow-test.mjs',
   'test/package-build-clean-test.mjs',
   'test/quality-gate-contract-test.mjs',

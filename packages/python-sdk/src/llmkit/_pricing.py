@@ -5,6 +5,7 @@ from typing import NamedTuple
 
 from ._pricing_data import PREFIXES as _RAW_PREFIXES
 from ._pricing_data import PRICING as _RAW_PRICING
+from ._pricing_data import PricingEntry as _RawPricingEntry
 
 
 class TokenRates(NamedTuple):
@@ -15,42 +16,89 @@ class TokenRates(NamedTuple):
     extra_rates: dict[str, tuple[float, float]] | None = None
 
 
-def _build_flat() -> dict[str, TokenRates]:
-    flat: dict[str, TokenRates] = {}
-    for models in _RAW_PRICING.values():
-        for model, rates in models.items():
-            if len(rates) == 5:
-                flat[model] = TokenRates(rates[0], rates[1], rates[2], rates[3], rates[4])
-            else:
-                flat[model] = TokenRates(*rates)
-    return flat
-
-
 _PREFIXES: list[tuple[str, str]] = _RAW_PREFIXES
-_FLAT: dict[str, TokenRates] = _build_flat()
+
+
+def _token_rates(rates: _RawPricingEntry) -> TokenRates:
+    return TokenRates(*rates)
+
+
+def _build_pricing() -> dict[str, dict[str, TokenRates]]:
+    pricing: dict[str, dict[str, TokenRates]] = {}
+    for provider, models in _RAW_PRICING.items():
+        pricing[provider] = {}
+        for model, rates in models.items():
+            pricing[provider][model] = _token_rates(rates)
+    return pricing
+
+
+_PRICING: dict[str, dict[str, TokenRates]] = _build_pricing()
 
 
 def _strip_date_suffix(model: str) -> str:
     return re.sub(r"-\d{4}-?\d{2}-?\d{2}$", "", model)
 
 
-def lookup_pricing(model: str) -> TokenRates | None:
-    """Look up pricing for a model. Returns None for unknown models."""
-    if model in _FLAT:
-        return _FLAT[model]
+def _infer_provider(model: str) -> str | None:
+    lower = model.lower()
+    for prefix, provider in _PREFIXES:
+        if lower.startswith(prefix):
+            return provider
+    return None
+
+
+def _lookup_table(table: dict[str, TokenRates], model: str) -> TokenRates | None:
+    if model in table:
+        return table[model]
 
     stripped = _strip_date_suffix(model)
-    if stripped != model and stripped in _FLAT:
-        return _FLAT[stripped]
+    if stripped != model and stripped in table:
+        return table[stripped]
 
     best: TokenRates | None = None
     best_len = 0
-    for key, pricing in _FLAT.items():
+    for key, pricing in table.items():
         if model.startswith(key) and len(key) > best_len:
             best_len = len(key)
             best = pricing
-
     return best
+
+
+def _build_flat() -> dict[str, TokenRates]:
+    candidates: dict[str, list[tuple[str, TokenRates]]] = {}
+    for provider, models in _PRICING.items():
+        for model, rates in models.items():
+            candidates.setdefault(model, []).append((provider, rates))
+
+    flat: dict[str, TokenRates] = {}
+    for model, matches in candidates.items():
+        if len(matches) == 1:
+            flat[model] = matches[0][1]
+            continue
+        inferred = _infer_provider(model)
+        provider_matches = [rates for provider, rates in matches if provider == inferred]
+        if len(provider_matches) == 1:
+            flat[model] = provider_matches[0]
+    return flat
+
+
+_FLAT: dict[str, TokenRates] = _build_flat()
+
+
+def lookup_pricing(model: str) -> TokenRates | None:
+    """Look up pricing, using provider/model when a bare model ID is ambiguous."""
+    provider, separator, provider_model = model.partition("/")
+    provider = provider.lower()
+    if separator and provider in _PRICING:
+        return _lookup_table(_PRICING[provider], provider_model)
+
+    inferred = _infer_provider(model)
+    if inferred and inferred in _PRICING:
+        pricing = _lookup_table(_PRICING[inferred], model)
+        if pricing is not None:
+            return pricing
+
+    return _lookup_table(_FLAT, model)
 
 
 def calculate_cost(

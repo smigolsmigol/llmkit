@@ -18,6 +18,7 @@ const serverJson = JSON.parse(readFileSync('packages/mcp-server/server.json', 'u
 const mcpPkg = JSON.parse(readFileSync('packages/mcp-server/package.json', 'utf8'));
 const mcpIndex = readFileSync('packages/mcp-server/src/index.ts', 'utf8');
 const readme = readFileSync('README.md', 'utf8');
+const sharedReadme = readFileSync('packages/shared/README.md', 'utf8');
 const budgetPathDiagram = readFileSync('.github/budget-path.svg', 'utf8');
 const pyPricingData = readFileSync('packages/python-sdk/src/llmkit/_pricing_data.py', 'utf8');
 const pricingJson = JSON.parse(readFileSync('packages/shared/pricing.json', 'utf8'));
@@ -56,6 +57,20 @@ test('pricing.json is the source of truth for shared PRICING', () => {
   const sharedProviders = Object.keys(PRICING).length;
   assert(jsonProviders === sharedProviders,
     `pricing.json has ${jsonProviders} providers but shared has ${sharedProviders}`);
+});
+
+test('shared README pricing summary matches pricing.json', () => {
+  const modelCount = Object.values(pricingJson.providers)
+    .reduce((count, models) => count + Object.keys(models).length, 0);
+  const populatedProviders = Object.values(pricingJson.providers)
+    .filter((models) => Object.keys(models).length > 0)
+    .length;
+  assert(
+    sharedReadme.includes(
+      `**Pricing snapshot**: ${modelCount} model entries across ${populatedProviders} populated provider tables, dated ${pricingJson.updatedAt},`,
+    ),
+    'shared README pricing count and date must match pricing.json',
+  );
 });
 
 // version sync

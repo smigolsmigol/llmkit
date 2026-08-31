@@ -7,9 +7,35 @@ import {
 } from '../scripts/check-public-pricing-contract.mjs';
 
 const workflow = readFileSync('.github/workflows/health-check.yml', 'utf8');
+const pricingCatalog = JSON.parse(readFileSync('packages/shared/pricing.json', 'utf8'));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function assertRetryBodyCapture(contents) {
+  const helperStart = contents.indexOf('request_with_retries()');
+  const helperEnd = contents.indexOf('\n          }', helperStart);
+  assert(helperStart >= 0 && helperEnd > helperStart, 'HTTP retries need one bounded body-capture helper');
+  const helper = contents.slice(helperStart, helperEnd);
+  assert(helper.includes('for attempt in 1 2 3; do'), 'HTTP body retries must remain bounded');
+  assert(helper.includes(': > "$RESPONSE_BODY"'), 'each HTTP attempt must clear the prior body');
+  assert(helper.includes('-o "$RESPONSE_BODY"'), 'HTTP bodies must be captured outside command substitution');
+  assert(!contents.includes('response=$(curl'), 'retrying curl output must not concatenate response bodies');
+
+  for (const name of [
+    'check_http_contains',
+    'check_mcp_registry_version',
+    'check_pypi',
+    'check_pricing_contract',
+  ]) {
+    const start = contents.indexOf(`${name}()`);
+    const end = contents.indexOf('\n          }', start);
+    const block = contents.slice(start, end);
+    assert(start >= 0 && end > start, `${name} must remain defined`);
+    assert(block.includes('status=$(request_with_retries'), `${name} must use isolated retry capture`);
+    assert(block.includes('body=$(<"$RESPONSE_BODY")'), `${name} must parse only the final response body`);
+  }
 }
 
 const runtimeTruthCalls = [
@@ -97,7 +123,20 @@ assert(
 );
 
 assert(workflow.includes('concurrency:'), 'overlapping health runs must be collapsed');
-assert(workflow.includes('timeout-minutes: 10'), 'the health job needs a bounded runtime');
+assert(workflow.includes('timeout-minutes: 20'), 'the health job needs enough bounded time to report retries');
+assertRetryBodyCapture(workflow);
+for (const mutation of [
+  workflow.replace(': > "$RESPONSE_BODY"', ''),
+  workflow.replace('-o "$RESPONSE_BODY"', ''),
+]) {
+  let rejected = false;
+  try {
+    assertRetryBodyCapture(mutation);
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, 'health workflow accepted a retry path that can concatenate bodies');
+}
 assert(
   workflow.includes('if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then'),
   'Telegram delivery must require both configured secrets',
@@ -198,9 +237,50 @@ for (const [label, fixture] of [
 
 const expectedPricingModels = ['anthropic/claude-sonnet-4-6', 'openai/gpt-4o'];
 const expectedPricingUsage = { input: 1000, output: 500, cacheRead: 0, cacheWrite: 0 };
+function pricingModelFixture(key) {
+  const separator = key.indexOf('/');
+  const provider = key.slice(0, separator);
+  const model = key.slice(separator + 1);
+  const pricing = pricingCatalog.providers[provider][model];
+  const rawInput = (expectedPricingUsage.input / 1_000_000) * pricing.input;
+  const rawOutput = (expectedPricingUsage.output / 1_000_000) * pricing.output;
+  const rawCacheRead = (expectedPricingUsage.cacheRead / 1_000_000) * (pricing.cacheRead ?? 0);
+  const rawCacheWrite = (expectedPricingUsage.cacheWrite / 1_000_000) * (pricing.cacheWrite ?? 0);
+  return {
+    key,
+    provider,
+    model,
+    rates: {
+      inputPerMillion: pricing.input,
+      outputPerMillion: pricing.output,
+      cacheReadPerMillion: pricing.cacheRead ?? null,
+      cacheWritePerMillion: pricing.cacheWrite ?? null,
+    },
+    costs: {
+      input: +rawInput.toFixed(8),
+      output: +rawOutput.toFixed(8),
+      cacheRead: +rawCacheRead.toFixed(8),
+      cacheWrite: +rawCacheWrite.toFixed(8),
+      total: +(rawInput + rawOutput + rawCacheRead + rawCacheWrite).toFixed(8),
+      currency: 'USD',
+    },
+  };
+}
+
+function pricingMutation(mutator) {
+  const fixture = structuredClone(pricingFixture);
+  mutator(fixture);
+  return fixture;
+}
+
 const pricingFixture = {
   schemaVersion: 2,
-  snapshot: { liveQuote: false, rateUnit: 'USD_PER_MILLION_TOKENS' },
+  snapshot: {
+    date: pricingCatalog.updatedAt,
+    liveQuote: false,
+    sourceModalityEncoded: false,
+    rateUnit: 'USD_PER_MILLION_TOKENS',
+  },
   selection: {
     mode: 'text-token',
     basis: 'explicit-model-keys',
@@ -208,7 +288,7 @@ const pricingFixture = {
   },
   usage: expectedPricingUsage,
   count: 2,
-  models: expectedPricingModels.map((key, index) => ({ key, costs: { total: index / 1000 } })),
+  models: expectedPricingModels.map(pricingModelFixture),
 };
 
 assertPricingComparison(pricingFixture, expectedPricingModels, expectedPricingUsage);
@@ -216,13 +296,17 @@ for (const [label, fixture] of [
   ['stale bulk response', { ...pricingFixture, count: 731 }],
   ['unexpected model', {
     ...pricingFixture,
-    models: [pricingFixture.models[0], { key: 'openai/unrequested', costs: { total: 0 } }],
+    models: [pricingFixture.models[0], { ...pricingFixture.models[1], key: 'openai/unrequested' }],
   }],
   ['recommendation drift', {
     ...pricingFixture,
     selection: { ...pricingFixture.selection, recommendation: true },
   }],
   ['usage drift', { ...pricingFixture, usage: { ...expectedPricingUsage, input: 999 } }],
+  ['snapshot date drift', pricingMutation((fixture) => { fixture.snapshot.date = '2000-01-01'; })],
+  ['rate drift', pricingMutation((fixture) => { fixture.models[0].rates.inputPerMillion += 1; })],
+  ['component cost drift', pricingMutation((fixture) => { fixture.models[0].costs.input += 1; })],
+  ['total cost drift', pricingMutation((fixture) => { fixture.models[0].costs.total += 1; })],
 ]) {
   let rejected = false;
   try {
@@ -290,5 +374,18 @@ const rejectionCli = spawnSync(
   },
 );
 assert(rejectionCli.status === 0, `pricing rejection CLI failed: ${rejectionCli.stderr}`);
+for (const args of [
+  ['scripts/check-public-pricing-contract.mjs', 'error'],
+  ['scripts/check-public-pricing-contract.mjs', 'error', 'INVALID_PRICING_QUERY'],
+]) {
+  const missingExpectationCli = spawnSync(process.execPath, args, {
+    input: JSON.stringify({ error: {} }),
+    encoding: 'utf8',
+  });
+  assert(
+    missingExpectationCli.status !== 0,
+    'pricing rejection CLI accepted a missing expected code or field',
+  );
+}
 
 console.log('health-check workflow contract passed');

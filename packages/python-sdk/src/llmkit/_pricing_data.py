@@ -1,7 +1,7 @@
 # AUTO-GENERATED from packages/shared/pricing.json
 # Do not edit manually. Run: node scripts/generate-pricing.mjs
 
-UPDATED_AT = "2026-08-30"
+UPDATED_AT = "2026-08-31"
 
 # 5-tuple: (input, output, cacheRead, cacheWrite, extraRates)
 # extraRates is dict[str, tuple[rate, per]] or None
@@ -196,9 +196,9 @@ PRICING: dict[str, dict[str, PricingEntry]] = {
         "gpt-5.4-image-2": (8, 15, 2, 0, None),
         "gpt-5.5": (5, 30, 0.5, 0, None),
         "gpt-5.5-pro": (30, 180, 0, 0, None),
-        "gpt-5.6-luna": (1, 6, 0.1, 1.25, None),
-        "gpt-5.6-sol": (5, 30, 0.5, 6.25, None),
-        "gpt-5.6-terra": (2.5, 15, 0.25, 3.125, None),
+        "gpt-5.6-luna": (0.2, 1.2, 0.02, 0.25, None),
+        "gpt-5.6-sol": (4, 20, 0.4, 5, None),
+        "gpt-5.6-terra": (2, 12, 0.2, 2.5, None),
         "gpt-chat-latest": (5, 30, 0.5, 0, None),
         "gpt-oss-120b": (0.039, 0.18, 0, 0, None),
         "gpt-oss-20b": (0.029, 0.14, 0, 0, None),
