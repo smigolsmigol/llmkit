@@ -1,13 +1,70 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { assertRegistryMatches } from '../scripts/check-mcp-registry-version.mjs';
+import {
+  assertPricingComparison,
+  assertPricingError,
+} from '../scripts/check-public-pricing-contract.mjs';
 
 const workflow = readFileSync('.github/workflows/health-check.yml', 'utf8');
+const pricingCatalog = JSON.parse(readFileSync('packages/shared/pricing.json', 'utf8'));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function extractWorkflowFunction(contents, name) {
+  const lines = contents.split('\n');
+  const declaration = /^\s*[A-Za-z_][A-Za-z0-9_]*\(\)\s*\{\s*$/;
+  const closingBrace = /^\s*\}\s*$/;
+  const start = lines.findIndex((line) => line.trim() === `${name}() {`);
+  assert(start >= 0, `${name} must remain defined`);
+
+  let depth = 0;
+  for (let index = start; index < lines.length; index += 1) {
+    if (declaration.test(lines[index])) depth += 1;
+    if (!closingBrace.test(lines[index])) continue;
+    depth -= 1;
+    if (depth === 0) return lines.slice(start, index + 1).join('\n');
+  }
+  throw new Error(`${name} must have a balanced function body`);
+}
+
+function assertRetryBodyCapture(contents) {
+  const helper = extractWorkflowFunction(contents, 'request_with_retries');
+  assert(
+    helper.includes('for (( attempt = 1; attempt <= 3; attempt++ )); do'),
+    'HTTP body retries must remain bounded',
+  );
+  assert(helper.includes(': > "$RESPONSE_BODY"'), 'each HTTP attempt must clear the prior body');
+  assert(helper.includes('-o "$RESPONSE_BODY"'), 'HTTP bodies must be captured outside command substitution');
+  assert(helper.includes('if [ "$attempt" -lt 3 ]; then'), 'HTTP retries must delay only between attempts');
+  assert(helper.includes('sleep "$attempt"'), 'HTTP retries must back off before another request');
+  assert(!contents.includes('response=$(curl'), 'retrying curl output must not concatenate response bodies');
+
+  for (const name of [
+    'check_http_contains',
+    'check_mcp_registry_version',
+    'check_pypi',
+    'check_pricing_contract',
+  ]) {
+    const block = extractWorkflowFunction(contents, name);
+    assert(block.includes('status=$(request_with_retries'), `${name} must use isolated retry capture`);
+    assert(block.includes('body=$(<"$RESPONSE_BODY")'), `${name} must parse only the final response body`);
+  }
+}
+
 const runtimeTruthCalls = [
+  {
+    label: 'pricing comparison',
+    pattern: /check_pricing_contract "Proxy pricing comparison"[\s\S]+"200" comparison "anthropic\/claude-sonnet-4-6,openai\/gpt-4o" 1000 500 0 0/,
+    violation: '"200" comparison "anthropic/claude-sonnet-4-6,openai/gpt-4o" 1000 500 0 0',
+  },
+  {
+    label: 'pricing rejection',
+    pattern: /check_pricing_contract "Proxy pricing rejection"[\s\S]+"400" error "INVALID_PRICING_QUERY" "mode"/,
+    violation: '"400" error "INVALID_PRICING_QUERY" "mode"',
+  },
   {
     label: 'homepage',
     pattern: /check_http_contains "Homepage recovery disclosure"\s+\\\s+"https:\/\/llmkit\.sh\/" "Hosted accounts are temporarily unavailable"/,
@@ -82,7 +139,22 @@ assert(
 );
 
 assert(workflow.includes('concurrency:'), 'overlapping health runs must be collapsed');
-assert(workflow.includes('timeout-minutes: 10'), 'the health job needs a bounded runtime');
+assert(workflow.includes('timeout-minutes: 20'), 'the health job needs enough bounded time to report retries');
+assertRetryBodyCapture(workflow);
+assertRetryBodyCapture(workflow.replaceAll('\n          }', '\n            }'));
+for (const mutation of [
+  workflow.replace(': > "$RESPONSE_BODY"', ''),
+  workflow.replace('-o "$RESPONSE_BODY"', ''),
+  workflow.replace('sleep "$attempt"', ''),
+]) {
+  let rejected = false;
+  try {
+    assertRetryBodyCapture(mutation);
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, 'health workflow accepted a retry path that can concatenate bodies');
+}
 assert(
   workflow.includes('if [ -n "$TG_TOKEN" ] && [ -n "$TG_CHAT" ]; then'),
   'Telegram delivery must require both configured secrets',
@@ -108,6 +180,18 @@ assert(
   workflow.includes('node scripts/check-mcp-registry-version.mjs'),
   'MCP Registry health must validate semantic version equality',
 );
+assert(
+  workflow.includes('node scripts/check-public-pricing-contract.mjs "$@"'),
+  'proxy runtime health must validate the pricing response semantics',
+);
+for (const fragment of [
+  'npm $' + '{pkg}: registry $' + '{ver} != repo $' + '{expected}',
+  'PyPI $' + '{pkg}: registry $' + '{actual} != repo $' + '{expected}',
+  'check_npm "@f3d1/llmkit-ai-sdk-provider" "packages/ai-sdk-provider/package.json"',
+  'check_pypi "llmkit-sdk" "packages/python-sdk/pyproject.toml"',
+]) {
+  assert(workflow.includes(fragment), `published version parity is missing: ${fragment}`);
+}
 assert(
   workflow.includes(
     'https://registry.modelcontextprotocol.io/v0.1/servers/io.github.smigolsmigol%2Fllmkit/versions/latest',
@@ -167,6 +251,170 @@ for (const [label, fixture] of [
     rejected = true;
   }
   assert(rejected, `registry contract accepted ${label}`);
+}
+
+const expectedPricingModels = ['anthropic/claude-sonnet-4-6', 'openai/gpt-4o'];
+const expectedPricingUsage = { input: 1000, output: 500, cacheRead: 0, cacheWrite: 0 };
+const expectedPricingResponses = [
+  {
+    key: 'anthropic/claude-sonnet-4-6',
+    provider: 'anthropic',
+    model: 'claude-sonnet-4-6',
+    rates: {
+      inputPerMillion: 3,
+      outputPerMillion: 15,
+      cacheReadPerMillion: 0.3,
+      cacheWritePerMillion: 3.75,
+    },
+    costs: {
+      input: 0.003,
+      output: 0.0075,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0.0105,
+      currency: 'USD',
+    },
+  },
+  {
+    key: 'openai/gpt-4o',
+    provider: 'openai',
+    model: 'gpt-4o',
+    rates: {
+      inputPerMillion: 2.5,
+      outputPerMillion: 10,
+      cacheReadPerMillion: 1.25,
+      cacheWritePerMillion: null,
+    },
+    costs: {
+      input: 0.0025,
+      output: 0.005,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0.0075,
+      currency: 'USD',
+    },
+  },
+];
+
+function pricingMutation(mutator) {
+  const fixture = structuredClone(pricingFixture);
+  mutator(fixture);
+  return fixture;
+}
+
+const pricingFixture = {
+  schemaVersion: 2,
+  snapshot: {
+    date: pricingCatalog.updatedAt,
+    liveQuote: false,
+    sourceModalityEncoded: false,
+    rateUnit: 'USD_PER_MILLION_TOKENS',
+  },
+  selection: {
+    mode: 'text-token',
+    basis: 'explicit-model-keys',
+    recommendation: false,
+  },
+  usage: expectedPricingUsage,
+  count: 2,
+  models: expectedPricingResponses,
+};
+
+assertPricingComparison(pricingFixture, expectedPricingModels, expectedPricingUsage);
+for (const [label, fixture] of [
+  ['stale bulk response', { ...pricingFixture, count: 731 }],
+  ['unexpected model', {
+    ...pricingFixture,
+    models: [pricingFixture.models[0], { ...pricingFixture.models[1], key: 'openai/unrequested' }],
+  }],
+  ['recommendation drift', {
+    ...pricingFixture,
+    selection: { ...pricingFixture.selection, recommendation: true },
+  }],
+  ['usage drift', { ...pricingFixture, usage: { ...expectedPricingUsage, input: 999 } }],
+  ['snapshot date drift', pricingMutation((fixture) => { fixture.snapshot.date = '2000-01-01'; })],
+  ['rate drift', pricingMutation((fixture) => { fixture.models[0].rates.inputPerMillion += 1; })],
+  ['component cost drift', pricingMutation((fixture) => { fixture.models[0].costs.input += 1; })],
+  ['total cost drift', pricingMutation((fixture) => { fixture.models[0].costs.total += 1; })],
+]) {
+  let rejected = false;
+  try {
+    assertPricingComparison(fixture, expectedPricingModels, expectedPricingUsage);
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, `pricing comparison contract accepted ${label}`);
+}
+
+const comparisonCli = spawnSync(
+  process.execPath,
+  [
+    'scripts/check-public-pricing-contract.mjs',
+    'comparison',
+    expectedPricingModels.join(','),
+    '1000',
+    '500',
+    '0',
+    '0',
+  ],
+  { input: JSON.stringify(pricingFixture), encoding: 'utf8' },
+);
+assert(comparisonCli.status === 0, `pricing comparison CLI failed: ${comparisonCli.stderr}`);
+const staleComparisonCli = spawnSync(
+  process.execPath,
+  [
+    'scripts/check-public-pricing-contract.mjs',
+    'comparison',
+    expectedPricingModels.join(','),
+    '1000',
+    '500',
+    '0',
+    '0',
+  ],
+  { input: JSON.stringify({ ...pricingFixture, count: 731 }), encoding: 'utf8' },
+);
+assert(staleComparisonCli.status !== 0, 'pricing comparison CLI accepted a stale bulk response');
+
+assertPricingError(
+  { error: { code: 'INVALID_PRICING_QUERY', field: 'mode' } },
+  'INVALID_PRICING_QUERY',
+  'mode',
+);
+for (const fixture of [
+  { error: { code: 'UNKNOWN_PRICING_MODEL', field: 'mode' } },
+  { error: { code: 'INVALID_PRICING_QUERY', field: 'input' } },
+  { count: 731, models: [] },
+]) {
+  let rejected = false;
+  try {
+    assertPricingError(fixture, 'INVALID_PRICING_QUERY', 'mode');
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, 'pricing rejection contract accepted an invalid response');
+}
+
+const rejectionCli = spawnSync(
+  process.execPath,
+  ['scripts/check-public-pricing-contract.mjs', 'error', 'INVALID_PRICING_QUERY', 'mode'],
+  {
+    input: JSON.stringify({ error: { code: 'INVALID_PRICING_QUERY', field: 'mode' } }),
+    encoding: 'utf8',
+  },
+);
+assert(rejectionCli.status === 0, `pricing rejection CLI failed: ${rejectionCli.stderr}`);
+for (const args of [
+  ['scripts/check-public-pricing-contract.mjs', 'error'],
+  ['scripts/check-public-pricing-contract.mjs', 'error', 'INVALID_PRICING_QUERY'],
+]) {
+  const missingExpectationCli = spawnSync(process.execPath, args, {
+    input: JSON.stringify({ error: {} }),
+    encoding: 'utf8',
+  });
+  assert(
+    missingExpectationCli.status !== 0,
+    'pricing rejection CLI accepted a missing expected code or field',
+  );
 }
 
 console.log('health-check workflow contract passed');

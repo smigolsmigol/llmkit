@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "llmkit",
   "display_name": "LLMKit",
-  "version": "0.4.10",
+  "version": "0.4.11",
   "description": "Inspect Claude Code and Cline costs locally, with optional read-only LLMKit account queries.",
   "long_description": "Five local tools inspect supported Claude Code sessions and Cline tasks without an account. Six optional gateway tools query spend, budgets, keys, sessions, and health when an existing LLMKit API key is provided.",
   "author": {

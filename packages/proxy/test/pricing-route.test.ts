@@ -1,3 +1,4 @@
+import { PRICING_UPDATED_AT } from '@f3d1/llmkit-shared';
 import { describe, expect, it } from 'vitest';
 import type { Env } from '../src/env';
 import { pricingRouter } from '../src/routes/pricing';
@@ -69,7 +70,7 @@ describe('GET /pricing/compare', () => {
     expect(response.status).toBe(200);
     expect(body.schemaVersion).toBe(2);
     expect(body.snapshot).toMatchObject({
-      date: '2026-03-25',
+      date: PRICING_UPDATED_AT,
       liveQuote: false,
       sourceModalityEncoded: false,
       rateUnit: 'USD_PER_MILLION_TOKENS',

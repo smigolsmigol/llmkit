@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import pricingSource from '../../shared/pricing.json';
 import ComparePage, { generateMetadata as generateCompareMetadata } from '../src/app/(public)/compare/page';
 import DocsPage from '../src/app/(public)/docs/page';
 import McpPage from '../src/app/(public)/mcp/page';
@@ -26,6 +27,9 @@ function render(component: React.ReactNode): string {
   return renderToStaticMarkup(component);
 }
 
+const pricingModelCount = Object.values(pricingSource.providers)
+  .flatMap((models) => Object.keys(models)).length;
+
 describe('public dashboard render contracts', () => {
   it('renders the public product, docs, MCP, pricing, calculator, and recovery surfaces', () => {
     const surfaces = [
@@ -45,8 +49,8 @@ describe('public dashboard render contracts', () => {
   });
 
   it('derives pricing metadata, provider routes, robots, and sitemap from canonical data', async () => {
-    expect(generatePricingMetadata().description).toContain('731 model entries');
-    expect(generateCompareMetadata().description).toContain('731 snapshot entries');
+    expect(generatePricingMetadata().description).toContain(`${pricingModelCount} model entries`);
+    expect(generateCompareMetadata().description).toContain(`${pricingModelCount} snapshot entries`);
     expect(generateStaticParams()).toHaveLength(9);
 
     const providerMetadata = await generateProviderMetadata({

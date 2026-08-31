@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 const scripts = [
   'scripts/run-biome-policy.mjs',
   'scripts/run-artifact-reproducibility.mjs',
+  'scripts/run-actionlint-hook.mjs',
   'scripts/run-dashboard-reproducibility.mjs',
   'scripts/run-package-coverage.mjs',
   'scripts/run-project-coverage.mjs',
@@ -217,6 +218,23 @@ function assertViolationBlocked(label, assertion) {
     throw new Error(`${label} violation fixture was accepted.`);
   }
 }
+
+function assertActionlintHookContract(contents) {
+  if (!contents.includes('entry: node scripts/run-actionlint-hook.mjs')) {
+    throw new Error('The actionlint hook must use the platform-safe repository runner.');
+  }
+}
+
+const preCommitConfig = readFileSync('.pre-commit-config.yaml', 'utf8');
+assertActionlintHookContract(preCommitConfig);
+const directActionlintViolation = replaceFixture(
+  preCommitConfig,
+  'entry: node scripts/run-actionlint-hook.mjs',
+  'entry: actionlint',
+);
+assertViolationBlocked('Windows actionlint runner', () =>
+  assertActionlintHookContract(directActionlintViolation),
+);
 
 const coverageExportContents = new Map(
   [...coverageExportContracts.keys()].map((path) => [path, readFileSync(path, 'utf8')]),
