@@ -14,6 +14,41 @@ assert(
 );
 
 const pricing = readFileSync('.github/workflows/update-pricing.yml', 'utf8');
+
+function assertPricingPrContract(contents) {
+  const create = contents.indexOf('PR_URL=$(gh pr create');
+  const label = contents.indexOf('if ! gh pr edit "$PR_URL" --add-label "distribution"; then');
+  assert(create >= 0 && label > create, 'pricing must create the PR before optional labeling');
+  assert(
+    contents.includes('::warning::Pricing PR created without the optional distribution label'),
+    'an optional pricing label failure must remain visible without losing the PR',
+  );
+  assert(
+    contents.includes('affected package patch versions') && contents.includes('--draft)'),
+    'generated pricing changes must stay draft-only until their release versions are prepared',
+  );
+  assert(!contents.includes('--label "automated"'), 'pricing PR creation must not require a label');
+}
+
+assertPricingPrContract(pricing);
+let hardLabelFailureBlocked = false;
+try {
+  assertPricingPrContract(pricing.replace(
+    'if ! gh pr edit "$PR_URL" --add-label "distribution"; then',
+    'gh pr edit "$PR_URL" --add-label "distribution"',
+  ));
+} catch {
+  hardLabelFailureBlocked = true;
+}
+assert(hardLabelFailureBlocked, 'pricing accepted a required post-creation label mutation');
+let readyPricingPrBlocked = false;
+try {
+  assertPricingPrContract(pricing.replace('            --draft)', ')'));
+} catch {
+  readyPricingPrBlocked = true;
+}
+assert(readyPricingPrBlocked, 'pricing accepted a release-unprepared ready-for-review PR');
+
 assert(pricing.includes("cron: '17 6 * * 0'"), 'pricing refresh must run once weekly');
 assert(!pricing.includes("cron: '0 6 * * *'"), 'the daily pricing schedule must stay retired');
 const install = pricing.indexOf('pnpm install --frozen-lockfile');

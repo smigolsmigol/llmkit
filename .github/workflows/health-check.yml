@@ -73,11 +73,18 @@ jobs:
           }
 
           check_npm() {
-            local pkg="$1"
-            local ver
-            ver=$(npm view "$pkg" version --fetch-retries=2 --fetch-timeout=15000 2>&1 || true)
-            if [ -z "$ver" ] || echo "$ver" | grep -qiE '(^npm error|E404|not found)'; then
+            local pkg="$1" manifest="$2"
+            local ver expected
+            expected=$(node -p "require('./${manifest}').version" 2>/dev/null || true)
+            if [ -z "$expected" ]; then
+              record_failure "npm ${pkg}: unable to read repository version"
+              return
+            fi
+            ver=$(npm view "$pkg" version --fetch-retries=2 --fetch-timeout=15000 2>/dev/null || true)
+            if [ -z "$ver" ]; then
               record_failure "npm ${pkg}: not found on registry"
+            elif [ "$ver" != "$expected" ]; then
+              record_failure "npm ${pkg}: registry ${ver} != repo ${expected}"
             fi
           }
 
@@ -112,23 +119,56 @@ jobs:
           }
 
           check_pypi() {
-            local pkg="$1"
-            local status
-            status=$(curl -sS -o /dev/null -w '%{http_code}' \
+            local pkg="$1" pyproject="$2"
+            local expected response status body actual
+            expected=$(node -e "const fs=require('fs');const s=fs.readFileSync(process.argv[1],'utf8');const m=s.match(/^version = \"([^\"]+)\"$/m);if(m)process.stdout.write(m[1]);" "$pyproject" 2>/dev/null || true)
+            if [ -z "$expected" ]; then
+              record_failure "PyPI ${pkg}: unable to read repository version"
+              return
+            fi
+            response=$(curl -sS -w '\n%{http_code}' \
               --max-time 10 --retry 2 --retry-all-errors \
               "https://pypi.org/pypi/${pkg}/json" || true)
+            status="${response##*$'\n'}"
+            body="${response%$'\n'*}"
             if [ "$status" != "200" ]; then
               record_failure "PyPI ${pkg}: got ${status:-no response}, expected 200"
+              return
+            fi
+            actual=$(printf '%s' "$body" | node -e "const fs=require('fs');try{const p=JSON.parse(fs.readFileSync(0,'utf8'));process.stdout.write(p.info?.version??'')}catch{}" 2>/dev/null || true)
+            if [ -z "$actual" ]; then
+              record_failure "PyPI ${pkg}: response did not contain a version"
+            elif [ "$actual" != "$expected" ]; then
+              record_failure "PyPI ${pkg}: registry ${actual} != repo ${expected}"
+            fi
+          }
+
+          check_pricing_contract() {
+            local name="$1" url="$2" expected_status="$3"
+            shift 3
+            local response status body result
+            response=$(curl -sS -w '\n%{http_code}' \
+              --max-time 15 --retry 2 --retry-all-errors "$url" || true)
+            status="${response##*$'\n'}"
+            body="${response%$'\n'*}"
+            if [ "$status" = "000" ] || [ -z "$status" ]; then
+              record_failure "${name}: connection failed"
+            elif [ "$status" != "$expected_status" ]; then
+              record_failure "${name}: got ${status}, expected ${expected_status}"
+            elif ! result=$(printf '%s' "$body" | node scripts/check-public-pricing-contract.mjs "$@" 2>&1); then
+              record_failure "${name}: ${result}"
+            else
+              echo "$result"
             fi
           }
 
           # Stable distribution surfaces remain scheduled.
-          check_npm "@f3d1/llmkit-sdk"
-          check_npm "@f3d1/llmkit-cli"
-          check_npm "@f3d1/llmkit-mcp-server"
-          check_npm "@f3d1/llmkit-ai-sdk-provider"
-          check_npm "@f3d1/llmkit-shared"
-          check_pypi "llmkit-sdk"
+          check_npm "@f3d1/llmkit-sdk" "packages/sdk/package.json"
+          check_npm "@f3d1/llmkit-cli" "packages/cli/package.json"
+          check_npm "@f3d1/llmkit-mcp-server" "packages/mcp-server/package.json"
+          check_npm "@f3d1/llmkit-ai-sdk-provider" "packages/ai-sdk-provider/package.json"
+          check_npm "@f3d1/llmkit-shared" "packages/shared/package.json"
+          check_pypi "llmkit-sdk" "packages/python-sdk/pyproject.toml"
           check_http "Glama" "https://glama.ai/mcp/servers/smigolsmigol-llmkit"
           check_mcp_registry_version "io.github.smigolsmigol/llmkit" \
             "@f3d1/llmkit-mcp-server" \
@@ -137,6 +177,12 @@ jobs:
           # Parked or private runtime surfaces are checked only on an explicit manual run.
           if [ "$CHECK_RUNTIME" = "true" ]; then
             check_http "Proxy" "https://api.llmkit.sh/health"
+            check_pricing_contract "Proxy pricing comparison" \
+              "https://api.llmkit.sh/v1/pricing/compare?mode=text-token&models=anthropic%2Fclaude-sonnet-4-6%2Copenai%2Fgpt-4o&input=1000&output=500&cacheRead=0&cacheWrite=0" \
+              "200" comparison "anthropic/claude-sonnet-4-6,openai/gpt-4o" 1000 500 0 0
+            check_pricing_contract "Proxy pricing rejection" \
+              "https://api.llmkit.sh/v1/pricing/compare?mode=garbage&models=openai%2Fgpt-4o&input=1&output=0&cacheRead=0&cacheWrite=0" \
+              "400" error "INVALID_PRICING_QUERY" "mode"
             check_http_contains "Dashboard recovery" \
               "https://llmkit.sh/service-restoring" "Controlled restoration"
             check_http_contains "Homepage recovery disclosure" \

@@ -1,5 +1,10 @@
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { assertRegistryMatches } from '../scripts/check-mcp-registry-version.mjs';
+import {
+  assertPricingComparison,
+  assertPricingError,
+} from '../scripts/check-public-pricing-contract.mjs';
 
 const workflow = readFileSync('.github/workflows/health-check.yml', 'utf8');
 
@@ -8,6 +13,16 @@ function assert(condition, message) {
 }
 
 const runtimeTruthCalls = [
+  {
+    label: 'pricing comparison',
+    pattern: /check_pricing_contract "Proxy pricing comparison"[\s\S]+"200" comparison "anthropic\/claude-sonnet-4-6,openai\/gpt-4o" 1000 500 0 0/,
+    violation: '"200" comparison "anthropic/claude-sonnet-4-6,openai/gpt-4o" 1000 500 0 0',
+  },
+  {
+    label: 'pricing rejection',
+    pattern: /check_pricing_contract "Proxy pricing rejection"[\s\S]+"400" error "INVALID_PRICING_QUERY" "mode"/,
+    violation: '"400" error "INVALID_PRICING_QUERY" "mode"',
+  },
   {
     label: 'homepage',
     pattern: /check_http_contains "Homepage recovery disclosure"\s+\\\s+"https:\/\/llmkit\.sh\/" "Hosted accounts are temporarily unavailable"/,
@@ -109,6 +124,18 @@ assert(
   'MCP Registry health must validate semantic version equality',
 );
 assert(
+  workflow.includes('node scripts/check-public-pricing-contract.mjs "$@"'),
+  'proxy runtime health must validate the pricing response semantics',
+);
+for (const fragment of [
+  'npm $' + '{pkg}: registry $' + '{ver} != repo $' + '{expected}',
+  'PyPI $' + '{pkg}: registry $' + '{actual} != repo $' + '{expected}',
+  'check_npm "@f3d1/llmkit-ai-sdk-provider" "packages/ai-sdk-provider/package.json"',
+  'check_pypi "llmkit-sdk" "packages/python-sdk/pyproject.toml"',
+]) {
+  assert(workflow.includes(fragment), `published version parity is missing: ${fragment}`);
+}
+assert(
   workflow.includes(
     'https://registry.modelcontextprotocol.io/v0.1/servers/io.github.smigolsmigol%2Fllmkit/versions/latest',
   ),
@@ -168,5 +195,100 @@ for (const [label, fixture] of [
   }
   assert(rejected, `registry contract accepted ${label}`);
 }
+
+const expectedPricingModels = ['anthropic/claude-sonnet-4-6', 'openai/gpt-4o'];
+const expectedPricingUsage = { input: 1000, output: 500, cacheRead: 0, cacheWrite: 0 };
+const pricingFixture = {
+  schemaVersion: 2,
+  snapshot: { liveQuote: false, rateUnit: 'USD_PER_MILLION_TOKENS' },
+  selection: {
+    mode: 'text-token',
+    basis: 'explicit-model-keys',
+    recommendation: false,
+  },
+  usage: expectedPricingUsage,
+  count: 2,
+  models: expectedPricingModels.map((key, index) => ({ key, costs: { total: index / 1000 } })),
+};
+
+assertPricingComparison(pricingFixture, expectedPricingModels, expectedPricingUsage);
+for (const [label, fixture] of [
+  ['stale bulk response', { ...pricingFixture, count: 731 }],
+  ['unexpected model', {
+    ...pricingFixture,
+    models: [pricingFixture.models[0], { key: 'openai/unrequested', costs: { total: 0 } }],
+  }],
+  ['recommendation drift', {
+    ...pricingFixture,
+    selection: { ...pricingFixture.selection, recommendation: true },
+  }],
+  ['usage drift', { ...pricingFixture, usage: { ...expectedPricingUsage, input: 999 } }],
+]) {
+  let rejected = false;
+  try {
+    assertPricingComparison(fixture, expectedPricingModels, expectedPricingUsage);
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, `pricing comparison contract accepted ${label}`);
+}
+
+const comparisonCli = spawnSync(
+  process.execPath,
+  [
+    'scripts/check-public-pricing-contract.mjs',
+    'comparison',
+    expectedPricingModels.join(','),
+    '1000',
+    '500',
+    '0',
+    '0',
+  ],
+  { input: JSON.stringify(pricingFixture), encoding: 'utf8' },
+);
+assert(comparisonCli.status === 0, `pricing comparison CLI failed: ${comparisonCli.stderr}`);
+const staleComparisonCli = spawnSync(
+  process.execPath,
+  [
+    'scripts/check-public-pricing-contract.mjs',
+    'comparison',
+    expectedPricingModels.join(','),
+    '1000',
+    '500',
+    '0',
+    '0',
+  ],
+  { input: JSON.stringify({ ...pricingFixture, count: 731 }), encoding: 'utf8' },
+);
+assert(staleComparisonCli.status !== 0, 'pricing comparison CLI accepted a stale bulk response');
+
+assertPricingError(
+  { error: { code: 'INVALID_PRICING_QUERY', field: 'mode' } },
+  'INVALID_PRICING_QUERY',
+  'mode',
+);
+for (const fixture of [
+  { error: { code: 'UNKNOWN_PRICING_MODEL', field: 'mode' } },
+  { error: { code: 'INVALID_PRICING_QUERY', field: 'input' } },
+  { count: 731, models: [] },
+]) {
+  let rejected = false;
+  try {
+    assertPricingError(fixture, 'INVALID_PRICING_QUERY', 'mode');
+  } catch {
+    rejected = true;
+  }
+  assert(rejected, 'pricing rejection contract accepted an invalid response');
+}
+
+const rejectionCli = spawnSync(
+  process.execPath,
+  ['scripts/check-public-pricing-contract.mjs', 'error', 'INVALID_PRICING_QUERY', 'mode'],
+  {
+    input: JSON.stringify({ error: { code: 'INVALID_PRICING_QUERY', field: 'mode' } }),
+    encoding: 'utf8',
+  },
+);
+assert(rejectionCli.status === 0, `pricing rejection CLI failed: ${rejectionCli.stderr}`);
 
 console.log('health-check workflow contract passed');

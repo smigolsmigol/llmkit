@@ -31,6 +31,7 @@ repos:
     rev: v1.7.12
     hooks:
       - id: actionlint
+        entry: node scripts/run-actionlint-hook.mjs
 
   - repo: local
     hooks:

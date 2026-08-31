@@ -12,6 +12,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `/compare` cost calculator page on the dashboard
 
 ### Fixed
+- Prevented an optional GitHub label from blocking scheduled pricing PR creation
 - Made MCP client help non-interactive with `npx -y` and added official Registry/npm version drift detection
 - Restricted the public pricing comparison API to explicit exact model keys, rejected invalid token counts, and removed global cross-modality ranking behavior
 - 15 adapter fixes from cross-reference audit
@@ -20,6 +21,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - CSP header for Vercel analytics
 
 ### Changed
+- Refreshed the bundled pricing snapshot from 731 to 886 models and made automated catalog updates draft-only until release versions are prepared
+- Extended health checks from reachability to package-version parity and valid/invalid pricing API behavior
 - Canonicalized hosted package and API examples on `https://api.llmkit.sh` while preserving explicit self-hosted overrides
 - Prepared patch releases for the active npm packages and Python SDK so registry versions match their packed bytes and declared Python 3.11 floor
 - Made WSL session discovery opt-in and removed unpriced Cline cache-dollar estimates
