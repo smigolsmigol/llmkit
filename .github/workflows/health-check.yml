@@ -54,7 +54,7 @@ jobs:
               redirect_args=(-L)
             fi
 
-            for attempt in 1 2 3; do
+            for (( attempt = 1; attempt <= 3; attempt++ )); do
               : > "$RESPONSE_BODY"
               if status=$(curl -sS "${redirect_args[@]}" -o "$RESPONSE_BODY" -w '%{http_code}' \
                 --max-time "$max_time" "$url"); then

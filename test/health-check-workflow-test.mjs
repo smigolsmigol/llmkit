@@ -18,7 +18,10 @@ function assertRetryBodyCapture(contents) {
   const helperEnd = contents.indexOf('\n          }', helperStart);
   assert(helperStart >= 0 && helperEnd > helperStart, 'HTTP retries need one bounded body-capture helper');
   const helper = contents.slice(helperStart, helperEnd);
-  assert(helper.includes('for attempt in 1 2 3; do'), 'HTTP body retries must remain bounded');
+  assert(
+    helper.includes('for (( attempt = 1; attempt <= 3; attempt++ )); do'),
+    'HTTP body retries must remain bounded',
+  );
   assert(helper.includes(': > "$RESPONSE_BODY"'), 'each HTTP attempt must clear the prior body');
   assert(helper.includes('-o "$RESPONSE_BODY"'), 'HTTP bodies must be captured outside command substitution');
   assert(!contents.includes('response=$(curl'), 'retrying curl output must not concatenate response bodies');
