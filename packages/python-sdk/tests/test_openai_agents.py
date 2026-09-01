@@ -851,6 +851,7 @@ def test_openai_adapter_reports_every_uncontrolled_surface():
     for surface in (
         "unenrolled_function_tool",
         "model_dispatch",
+        "model_streaming",
         "hosted_tool",
         "hosted_mcp",
         "local_mcp",

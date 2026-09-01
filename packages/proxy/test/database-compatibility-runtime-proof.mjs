@@ -182,6 +182,12 @@ async function seedFixture(url, serviceKey) {
       reserved_cost_cents: 13,
       idempotency_key_hash: 'a'.repeat(64),
       response_sha256: 'b'.repeat(64),
+      requested_provider: 'openai',
+      requested_model: 'foundation-model-a',
+      last_dispatched_provider: 'openai',
+      last_dispatched_model: 'foundation-model-a',
+      provider_response_id: 'chatcmpl-runtime-a',
+      dispatch_status: 'dispatched',
       provider: 'openai',
       model: 'foundation-model-a',
       input_tokens: 100,
@@ -208,6 +214,12 @@ async function seedFixture(url, serviceKey) {
       reserved_cost_cents: null,
       idempotency_key_hash: null,
       response_sha256: null,
+      requested_provider: null,
+      requested_model: null,
+      last_dispatched_provider: null,
+      last_dispatched_model: null,
+      provider_response_id: null,
+      dispatch_status: null,
       provider: 'openai',
       model: 'foundation-model-a-unknown-cost',
       input_tokens: 20,
@@ -234,6 +246,12 @@ async function seedFixture(url, serviceKey) {
       reserved_cost_cents: null,
       idempotency_key_hash: null,
       response_sha256: null,
+      requested_provider: null,
+      requested_model: null,
+      last_dispatched_provider: null,
+      last_dispatched_model: null,
+      provider_response_id: null,
+      dispatch_status: null,
       provider: 'anthropic',
       model: 'tenant-b-private-model',
       input_tokens: 999,
@@ -362,8 +380,14 @@ async function main() {
         && settledReceipt.body.receipt?.session_id === 'session-runtime-a'
         && settledReceipt.body.receipt?.settlement_status === 'settled_actual'
         && settledReceipt.body.receipt?.idempotency_key_hash === 'a'.repeat(64)
-        && settledReceipt.body.receipt?.response_sha256 === 'b'.repeat(64),
-      'Settled receipt detail lost replay or attribution evidence.',
+        && settledReceipt.body.receipt?.response_sha256 === 'b'.repeat(64)
+        && settledReceipt.body.receipt?.requested_provider === 'openai'
+        && settledReceipt.body.receipt?.requested_model === 'foundation-model-a'
+        && settledReceipt.body.receipt?.last_dispatched_provider === 'openai'
+        && settledReceipt.body.receipt?.last_dispatched_model === 'foundation-model-a'
+        && settledReceipt.body.receipt?.provider_response_id === 'chatcmpl-runtime-a'
+        && settledReceipt.body.receipt?.dispatch_status === 'dispatched',
+      'Settled receipt detail lost dispatch, replay, or attribution evidence.',
     );
     const unknownReceipt = await fetchReceipt(baseUrl, keyA, receiptAUnknownId);
     assert(

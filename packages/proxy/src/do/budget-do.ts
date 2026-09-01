@@ -244,17 +244,31 @@ export class BudgetDO extends DurableObject<BudgetDOEnv> {
     this.kickOutbox();
   }
 
-  async markDispatched(reservationId: string): Promise<boolean> {
+  async markDispatched(
+    reservationId: string,
+    evidence?: { provider: string; model: string },
+  ): Promise<boolean> {
     if (!reservationId) return false;
-    return this.ctx.storage.transaction(async (storage) => {
+    const marked = await this.ctx.storage.transaction(async (storage) => {
       const reservation = await storage.get<ReservationState>(`r:${reservationId}`);
       if (!reservation) return false;
+      if (evidence) {
+        if (!reservation.requestId) return false;
+        const recorded = await this.updateEvidence(storage, reservation.requestId, {
+          last_dispatched_provider: evidence.provider,
+          last_dispatched_model: evidence.model,
+          dispatch_status: 'dispatched',
+        });
+        if (!recorded) return false;
+      }
       if (reservation.dispatchedAt === undefined) {
         reservation.dispatchedAt = Date.now();
         await storage.put(`r:${reservationId}`, reservation);
       }
       return true;
     });
+    if (marked && evidence) this.kickOutbox();
+    return marked;
   }
 
   async finalizeFailure(reservationId: string, receipt?: RequestInsert): Promise<FailureFinalizationResult> {
@@ -664,6 +678,12 @@ export class BudgetDO extends DurableObject<BudgetDOEnv> {
       reserved_cost_cents: incoming.reserved_cost_cents ?? current?.row.reserved_cost_cents ?? null,
       idempotency_key_hash: incoming.idempotency_key_hash ?? current?.row.idempotency_key_hash ?? null,
       response_sha256: incoming.response_sha256 ?? current?.row.response_sha256 ?? null,
+      requested_provider: incoming.requested_provider ?? current?.row.requested_provider ?? null,
+      requested_model: incoming.requested_model ?? current?.row.requested_model ?? null,
+      last_dispatched_provider: incoming.last_dispatched_provider ?? current?.row.last_dispatched_provider ?? null,
+      last_dispatched_model: incoming.last_dispatched_model ?? current?.row.last_dispatched_model ?? null,
+      provider_response_id: incoming.provider_response_id ?? current?.row.provider_response_id ?? null,
+      dispatch_status: incoming.dispatch_status ?? current?.row.dispatch_status ?? null,
     };
     await storage.put(key, {
       row,

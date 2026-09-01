@@ -165,6 +165,8 @@ export async function admitBudgetForDispatch(
   if (!requestId || !apiKeyId || !userId || !customerId) {
     throw new Error('hard budget admission requires a durable request evidence identity');
   }
+  const requestedProvider = providers[0] || 'unknown';
+  const requestedModel = typeof body.model === 'string' ? body.model : 'unknown';
   const receipt: RequestInsert = {
     id: requestId,
     user_id: userId,
@@ -180,8 +182,14 @@ export async function admitBudgetForDispatch(
     settlement_status: 'pending',
     idempotency_key_hash: c.get('idempotencyKeyHash') || null,
     response_sha256: null,
-    provider: providers[0] || 'unknown',
-    model: typeof body.model === 'string' ? body.model : 'unknown',
+    requested_provider: requestedProvider,
+    requested_model: requestedModel,
+    last_dispatched_provider: null,
+    last_dispatched_model: null,
+    provider_response_id: null,
+    dispatch_status: 'admitted',
+    provider: requestedProvider,
+    model: requestedModel,
     input_tokens: 0,
     output_tokens: 0,
     cache_read_tokens: 0,
@@ -198,7 +206,6 @@ export async function admitBudgetForDispatch(
     sessionId,
     estimatedCents: estimated,
     budgetConfig: c.get('budgetConfig'),
-    dispatching: true,
     receipt,
   });
 
@@ -212,6 +219,22 @@ export async function admitBudgetForDispatch(
   c.set('budgetScope', result.scope);
   c.set('budgetReservationId', result.reservationId);
   c.set('budgetReservedCostCents', estimated);
+}
+
+export async function markProviderDispatch(
+  c: Context<Env>,
+  provider: string,
+  model: string,
+): Promise<void> {
+  const budgetId = c.get('budgetId');
+  const reservationId = c.get('budgetReservationId');
+  if (budgetId && reservationId) {
+    const stub = c.env.BUDGET_DO.get(c.env.BUDGET_DO.idFromName(budgetId));
+    const marked = await stub.markDispatched(reservationId, { provider, model });
+    if (!marked) throw new Error('hard budget dispatch evidence could not be recorded');
+  }
+  c.set('lastDispatchedProvider', provider);
+  c.set('lastDispatchedModel', model);
 }
 
 export async function recordUsage(

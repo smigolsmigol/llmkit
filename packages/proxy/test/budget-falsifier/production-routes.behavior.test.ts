@@ -39,6 +39,12 @@ const REQUEST_ROWS = [
     settlement_status: 'not_applicable',
     idempotency_key_hash: null,
     response_sha256: 'hash-1',
+    requested_provider: 'openai',
+    requested_model: 'gpt-4o',
+    last_dispatched_provider: 'openai',
+    last_dispatched_model: 'gpt-4o',
+    provider_response_id: 'chatcmpl-contract-1',
+    dispatch_status: 'dispatched',
     provider: 'openai',
     model: 'gpt-4o',
     input_tokens: 100,
@@ -66,6 +72,12 @@ const REQUEST_ROWS = [
     settlement_status: 'not_applicable',
     idempotency_key_hash: null,
     response_sha256: null,
+    requested_provider: null,
+    requested_model: null,
+    last_dispatched_provider: null,
+    last_dispatched_model: null,
+    provider_response_id: null,
+    dispatch_status: null,
     provider: 'anthropic',
     model: 'claude-sonnet-4-6',
     input_tokens: 200,
@@ -716,7 +728,17 @@ describe('production analytics routes', () => {
 
     const receipt = await requestApp(`/v1/analytics/receipts/${PRIMARY_RECEIPT_ID}`);
     expect(receipt.status).toBe(200);
-    expect(await body(receipt)).toMatchObject({ receipt: { id: PRIMARY_RECEIPT_ID } });
+    expect(await body(receipt)).toMatchObject({
+      receipt: {
+        id: PRIMARY_RECEIPT_ID,
+        requested_provider: 'openai',
+        requested_model: 'gpt-4o',
+        last_dispatched_provider: 'openai',
+        last_dispatched_model: 'gpt-4o',
+        provider_response_id: 'chatcmpl-contract-1',
+        dispatch_status: 'dispatched',
+      },
+    });
 
     const usage = await requestApp('/v1/analytics/usage?period=week');
     expect(usage.status).toBe(200);

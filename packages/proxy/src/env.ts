@@ -5,6 +5,7 @@ import type { RateLimitDO } from './do/ratelimit-do';
 
 export interface ResponseMeta {
   provider: string;
+  providerResponseId?: string;
   cost: CostBreakdown;
   usage: TokenUsage;
   model?: string;
@@ -53,6 +54,8 @@ export type Env = {
     endUserId?: string;
     idempotencyKeyHash?: string;
     providerDispatchStarted?: boolean;
+    lastDispatchedProvider?: string;
+    lastDispatchedModel?: string;
     responseSha256?: string;
     rpmLimit?: number;
     requestModel?: string;

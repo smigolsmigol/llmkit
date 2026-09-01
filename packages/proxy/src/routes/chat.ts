@@ -17,7 +17,7 @@ import { emitBeacon } from '../bench';
 import { decrypt } from '../crypto';
 import { findProviderKey } from '../db';
 import type { Env, ResponseMeta } from '../env';
-import { admitBudgetForDispatch, finalizeReservationFailure } from '../middleware/budget';
+import { admitBudgetForDispatch, finalizeReservationFailure, markProviderDispatch } from '../middleware/budget';
 import { trackRequest } from '../middleware/logger';
 import { resolveCost } from '../pricing';
 import type { ProviderRequest, ProviderResponse } from '../providers';
@@ -77,6 +77,8 @@ providerRouter.post('/chat/completions', async (c) => {
   const provider = (c.req.header('x-llmkit-provider') || body.provider || inferProvider(model) || 'openai') as ProviderName;
 
   const chain = resolveProviderChain(provider, c.req.header('x-llmkit-fallback'));
+  c.set('requestProvider', chain[0]);
+  c.set('requestModel', model);
   const directProviderKey = c.req.header('x-llmkit-provider-key') || '';
 
   const userMaxTokens = body.max_tokens ?? body.maxTokens;
@@ -184,6 +186,7 @@ async function handleChat(
       const adapter = getAdapter(providerName);
       const start = Date.now();
       await admitProviderDispatch(c, body, chain);
+      await markProviderDispatch(c, providerName, req.model);
       c.set('providerDispatchStarted', true);
       const result = await adapter.chat({ ...req, apiKey: providerKey });
       const latency = Date.now() - start;
@@ -192,6 +195,7 @@ async function handleChat(
 
       const meta: ResponseMeta = {
         provider: providerName,
+        providerResponseId: result.id,
         model: result.model,
         cost,
         usage: result.usage,
@@ -297,6 +301,7 @@ async function handleStream(
       // warm up: force the generator past the fetch() call so connection errors
       // are caught HERE (in the fallback loop), not inside the stream callback
       await admitProviderDispatch(c, body, chain);
+      await markProviderDispatch(c, providerName, req.model);
       c.set('providerDispatchStarted', true);
       const first = await gen.next();
 
@@ -334,6 +339,9 @@ async function handleStream(
             endUserId: c.get('endUserId'),
             idempotencyKeyHash: c.get('idempotencyKeyHash'),
             responseSha256: c.get('responseSha256'),
+            requestedProvider: c.get('requestProvider'),
+            requestedModel: c.get('requestModel'),
+            providerResponseId: usage.id,
             toolCalls: undefined,
             providerCostUsd: usage.providerCostUsd,
             apiKeyId: c.get('apiKeyId'),

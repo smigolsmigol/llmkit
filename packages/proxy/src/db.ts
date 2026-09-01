@@ -54,6 +54,12 @@ export interface RequestInsert {
     | 'not_applicable';
   idempotency_key_hash: string | null;
   response_sha256: string | null;
+  requested_provider: string | null;
+  requested_model: string | null;
+  last_dispatched_provider: string | null;
+  last_dispatched_model: string | null;
+  provider_response_id: string | null;
+  dispatch_status: 'admitted' | 'dispatched' | null;
   provider: string;
   model: string;
   input_tokens: number;
