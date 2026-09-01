@@ -28,10 +28,10 @@
     "hono": "^4.13.1"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.18.6",
-    "@cloudflare/workers-types": "^5.20260722.1",
-    "@vitest/coverage-istanbul": "4.1.10",
-    "vitest": "4.1.10",
-    "wrangler": "4.114.0"
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@cloudflare/workers-types": "^5.20260829.1",
+    "@vitest/coverage-istanbul": "4.1.11",
+    "vitest": "4.1.11",
+    "wrangler": "4.127.1"
   }
 }
