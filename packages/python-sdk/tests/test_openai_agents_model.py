@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import secrets
+import time
 import uuid
 from collections.abc import Callable
 from dataclasses import replace
@@ -95,7 +96,9 @@ class FakeGateway:
             "dispatch_status": "dispatched",
             "status": "success",
             "settlement_status": "settled_actual",
-            "idempotency_key_hash": "a" * 64,
+            "idempotency_key_hash": hashlib.sha256(
+                request.headers["idempotency-key"].encode()
+            ).hexdigest(),
         }
         receipt.update(self.receipt_overrides)
         self.receipts[receipt_id] = receipt
@@ -426,6 +429,7 @@ def test_replayed_model_grant_stops_second_dispatch() -> None:
         ({"provider_response_id": "wrong-response"}, "gateway_receipt_mismatch"),
         ({"budget_reservation_id": None}, "gateway_budget_reservation_missing"),
         ({"idempotency_key_hash": None}, "gateway_idempotency_evidence_missing"),
+        ({"idempotency_key_hash": "a" * 64}, "gateway_idempotency_evidence_mismatch"),
     ],
 )
 def test_invalid_terminal_receipt_is_uncertain_and_withheld(
@@ -618,6 +622,7 @@ def test_missing_output_limit_fails_before_admission() -> None:
         ("resolver", "model_grant_resolver is required"),
         ("budget", "budget_scope must identify"),
         ("polling", "receipt polling bounds must be positive"),
+        ("polling_nan", "receipt polling bounds must be positive"),
         ("api_key", "api_key required"),
         ("base_url", "base_url must be an HTTPS"),
     ],
@@ -645,6 +650,8 @@ def test_provider_rejects_incomplete_enrollment(
         context.budget_scope = None
     elif case == "polling":
         kwargs["receipt_timeout_seconds"] = 0
+    elif case == "polling_nan":
+        kwargs["receipt_timeout_seconds"] = float("nan")
     elif case == "api_key":
         monkeypatch.delenv("LLMKIT_API_KEY", raising=False)
         kwargs["api_key"] = None
@@ -809,6 +816,89 @@ def test_terminal_receipt_polling_fails_closed(case: str, reason: str) -> None:
         finally:
             await model_provider.aclose()
         assert raised.value.reason == reason
+
+    asyncio.run(exercise())
+
+
+def test_terminal_receipt_request_cannot_outlive_deadline() -> None:
+    async def exercise() -> None:
+        never = asyncio.Event()
+
+        async def stalled_receipt(_request: httpx.Request) -> httpx.Response:
+            await never.wait()
+            raise AssertionError("unreachable")
+
+        authority = HmacAuthority("test", secrets.token_bytes(32))
+        context = boundary_context(authority)
+        model_provider = GatewayBoundaryProvider(
+            context=context,
+            runtime=runtime(authority),
+            provider="openai",
+            api_key="llmk_test",
+            base_url="https://gateway.invalid/v1",
+            receipt_timeout_seconds=0.005,
+            receipt_poll_interval_seconds=0.001,
+            request_transport=httpx.MockTransport(FakeGateway([]).model_request),
+            receipt_transport=httpx.MockTransport(stalled_receipt),
+        )
+        try:
+            with pytest.raises(ModelDispatchBoundaryError) as raised:
+                await asyncio.wait_for(
+                    model_provider._poll_terminal_receipt(str(uuid.uuid4())),
+                    timeout=0.1,
+                )
+        finally:
+            await model_provider.aclose()
+        assert raised.value.reason == "gateway_receipt_timeout"
+
+    asyncio.run(exercise())
+
+
+@pytest.mark.parametrize("settlement_status", ["settled", "pending"])
+def test_terminal_receipt_polling_rejects_evidence_after_deadline(
+    settlement_status: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_json = httpx.Response.json
+
+    def delayed_json(response: httpx.Response) -> Any:
+        time.sleep(0.075)
+        return original_json(response)
+
+    monkeypatch.setattr(httpx.Response, "json", delayed_json)
+
+    async def exercise() -> None:
+        async def receipt_handler(_request: httpx.Request) -> httpx.Response:
+            return httpx.Response(
+                200,
+                json={
+                    "receipt": {
+                        "status": "completed",
+                        "settlement_status": settlement_status,
+                        "response_sha256": "ab" * 32,
+                    }
+                },
+            )
+
+        authority = HmacAuthority("test", secrets.token_bytes(32))
+        context = boundary_context(authority)
+        model_provider = GatewayBoundaryProvider(
+            context=context,
+            runtime=runtime(authority),
+            provider="openai",
+            api_key="llmk_test",
+            base_url="https://gateway.invalid/v1",
+            receipt_timeout_seconds=0.05,
+            receipt_poll_interval_seconds=0.001,
+            request_transport=httpx.MockTransport(FakeGateway([]).model_request),
+            receipt_transport=httpx.MockTransport(receipt_handler),
+        )
+        try:
+            with pytest.raises(ModelDispatchBoundaryError) as raised:
+                await model_provider._poll_terminal_receipt(str(uuid.uuid4()))
+        finally:
+            await model_provider.aclose()
+        assert raised.value.reason == "gateway_receipt_timeout"
 
     asyncio.run(exercise())
 

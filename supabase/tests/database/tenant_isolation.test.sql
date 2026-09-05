@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(67);
+select extensions.plan(71);
 
 insert into public.accounts (user_id, plan, stripe_customer_id)
 values
@@ -924,6 +924,69 @@ select extensions.throws_like(
   '%requests_dispatch_status_check%',
   'unproved provider-receipt status is rejected'
 ); -- 67
+
+select extensions.lives_ok(
+  $$update public.requests
+    set last_dispatched_provider = 'openai',
+        last_dispatched_model = 'gpt-receipt-pending',
+        provider_response_id = 'chatcmpl-receipt-pending',
+        dispatch_status = 'dispatched'
+    where id = '70000000-0000-4000-8000-000000000001'$$,
+  'service role revises existing request receipt evidence'
+); -- 68
+
+select extensions.is(
+  (
+    select count(*)
+    from public.requests
+    where id = '70000000-0000-4000-8000-000000000001'
+      and last_dispatched_provider = 'openai'
+      and last_dispatched_model = 'gpt-receipt-pending'
+      and provider_response_id = 'chatcmpl-receipt-pending'
+      and dispatch_status = 'dispatched'
+  ),
+  1::bigint,
+  'request receipt revisions persist dispatch evidence'
+); -- 69
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status,
+      budget_id, reserved_cost_cents,
+      requested_provider, requested_model, dispatch_status
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000004',
+      'openai',
+      'gpt-incomplete-admission',
+      'pending',
+      '10000000-0000-0000-0000-000000000001',
+      1,
+      'openai',
+      'gpt-incomplete-admission',
+      'admitted'
+    )$$,
+  '%requests_dispatch_evidence_check%',
+  'admitted receipts require reservation identity'
+); -- 70
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status,
+      requested_provider, requested_model, dispatch_status
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000004',
+      'openai',
+      'gpt-incomplete-dispatch',
+      'error',
+      'openai',
+      'gpt-incomplete-dispatch',
+      'dispatched'
+    )$$,
+  '%requests_dispatch_evidence_check%',
+  'dispatched receipts require provider-attempt identity'
+); -- 71
 
 select * from extensions.finish();
 rollback;

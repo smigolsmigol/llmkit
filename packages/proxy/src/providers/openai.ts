@@ -1,6 +1,6 @@
 import type { ProviderName, TokenUsage } from '@f3d1/llmkit-shared';
 import { readJsonResponseBounded, readProviderErrorDetail } from '../response-body';
-import { providerRequestSignal } from './request';
+import { providerFetch, providerRequestSignal } from './request';
 import { readSseLines } from './sse-lines';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
@@ -84,7 +84,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     if (req.responseFormat) body.response_format = req.responseFormat;
     if (req.extra) Object.assign(body, req.extra);
 
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+    const res = await providerFetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -92,7 +92,7 @@ export class OpenAIAdapter implements ProviderAdapter {
       },
       body: JSON.stringify(body),
       signal: providerRequestSignal(),
-    });
+    }, req.beforeDispatch);
 
     if (!res.ok) {
       const detail = await readProviderErrorDetail(res);
@@ -120,7 +120,7 @@ export class OpenAIAdapter implements ProviderAdapter {
     if (req.responseFormat) body.response_format = req.responseFormat;
     if (req.extra) Object.assign(body, req.extra);
 
-    const res = await fetch(`${this.baseUrl}/chat/completions`, {
+    const res = await providerFetch(`${this.baseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -128,7 +128,7 @@ export class OpenAIAdapter implements ProviderAdapter {
       },
       body: JSON.stringify(body),
       signal: providerRequestSignal(),
-    });
+    }, req.beforeDispatch);
 
     if (!res.ok) {
       const detail = await readProviderErrorDetail(res);

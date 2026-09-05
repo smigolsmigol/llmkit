@@ -34,6 +34,8 @@ export interface TrackParams {
   responseSha256: string | undefined;
   requestedProvider?: string;
   requestedModel?: string;
+  lastDispatchedProvider?: string;
+  lastDispatchedModel?: string;
   providerResponseId?: string;
   toolCalls: { name: string }[] | undefined;
   providerCostUsd: number | undefined;
@@ -124,8 +126,8 @@ function successfulDispatchReceiptFields(p: TrackParams): DispatchReceiptFields 
   return {
     requested_provider: p.requestedProvider || p.provider,
     requested_model: p.requestedModel || p.model,
-    last_dispatched_provider: p.provider,
-    last_dispatched_model: p.model,
+    last_dispatched_provider: p.lastDispatchedProvider || p.provider,
+    last_dispatched_model: p.lastDispatchedModel || p.model,
     provider_response_id: p.providerResponseId || null,
     dispatch_status: 'dispatched',
   };
@@ -379,6 +381,8 @@ export function costLogger() {
       responseSha256: c.get('responseSha256'),
       requestedProvider: c.get('requestProvider'),
       requestedModel: c.get('requestModel'),
+      lastDispatchedProvider: c.get('lastDispatchedProvider'),
+      lastDispatchedModel: c.get('lastDispatchedModel'),
       providerResponseId: meta.providerResponseId,
       toolCalls: meta.toolCalls,
       providerCostUsd: meta.providerCostUsd,

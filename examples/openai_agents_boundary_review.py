@@ -62,9 +62,7 @@ class FakeGateway:
             "end_user_id": request.headers["x-llmkit-user-id"],
             "budget_id": BUDGET_ID,
             "budget_reservation_id": str(uuid.uuid4()),
-            "idempotency_key_hash": hashlib.sha256(
-                f"fake-api-key\n{idempotency_key}".encode()
-            ).hexdigest(),
+            "idempotency_key_hash": hashlib.sha256(idempotency_key.encode()).hexdigest(),
             "requested_provider": "openai",
             "requested_model": request_body["model"],
             "last_dispatched_provider": "openai",
@@ -313,13 +311,15 @@ async def main() -> None:
         ]
     )
     async with model_provider(approved_gateway, approved_context, runtime) as provider:
-        approved = await run_review(
-            provider=provider,
-            context=approved_context,
-            tool=protected,
-        )
-        coverage = provider.coverage().as_dict()
-        await release_pending_admissions(approved_context)
+        try:
+            approved = await run_review(
+                provider=provider,
+                context=approved_context,
+                tool=protected,
+            )
+            coverage = provider.coverage().as_dict()
+        finally:
+            await release_pending_admissions(approved_context)
 
     if poisoned_error is None or sink_calls_after_denial != 0:
         raise RuntimeError("denied action reached the review sink")

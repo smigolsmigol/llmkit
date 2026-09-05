@@ -47,13 +47,38 @@ describe('bounded provider SSE frames', () => {
     ['Gemini', () => new GeminiAdapter(), [{ type: 'image_url' }], 'gemini image blocks require image_url.url'],
   ])('rejects malformed %s content before provider dispatch', async (_name, createAdapter, content, expected) => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('unexpected provider dispatch'));
+    const beforeDispatch = vi.fn(async () => {});
     const malformedRequest = {
       ...request,
       messages: [{ role: 'user', content }],
+      beforeDispatch,
     } as unknown as ProviderRequest;
 
     await expect(createAdapter().chat(malformedRequest)).rejects.toThrow(expected);
+    expect(beforeDispatch).not.toHaveBeenCalled();
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('runs the durable dispatch hook immediately before provider fetch', async () => {
+    const order: string[] = [];
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      order.push('fetch');
+      return Response.json({
+        id: 'chatcmpl-boundary',
+        model: 'fixture-model-canonical',
+        choices: [{ message: { role: 'assistant', content: 'ok' }, finish_reason: 'stop' }],
+        usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 },
+      });
+    });
+
+    await new OpenAIAdapter().chat({
+      ...request,
+      beforeDispatch: async () => {
+        order.push('dispatch');
+      },
+    });
+
+    expect(order).toEqual(['dispatch', 'fetch']);
   });
 
   it('reassembles a legitimate UTF-8 line across chunks and strips CRLF', async () => {

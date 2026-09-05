@@ -186,9 +186,11 @@ async function handleChat(
       const adapter = getAdapter(providerName);
       const start = Date.now();
       await admitProviderDispatch(c, body, chain);
-      await markProviderDispatch(c, providerName, req.model);
-      c.set('providerDispatchStarted', true);
-      const result = await adapter.chat({ ...req, apiKey: providerKey });
+      const beforeDispatch = async () => {
+        await markProviderDispatch(c, providerName, req.model);
+        c.set('providerDispatchStarted', true);
+      };
+      const result = await adapter.chat({ ...req, apiKey: providerKey, beforeDispatch });
       const latency = Date.now() - start;
 
       const cost = await resolveCost(providerName, result.model, result.usage);
@@ -264,7 +266,7 @@ async function handleChat(
       });
     } catch (err) {
       if (err instanceof LLMKitError) throw err;
-      if (c.get('budgetReservationId')) c.set('budgetSettlementMode', 'ceiling');
+      if (c.get('providerDispatchStarted')) c.set('budgetSettlementMode', 'ceiling');
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(new ProviderError(msg, providerName));
     }
@@ -296,13 +298,15 @@ async function handleStream(
     try {
       const adapter = getAdapter(providerName);
       const start = Date.now();
-      const gen = adapter.chatStream({ ...req, apiKey: providerKey });
+      const beforeDispatch = async () => {
+        await markProviderDispatch(c, providerName, req.model);
+        c.set('providerDispatchStarted', true);
+      };
+      const gen = adapter.chatStream({ ...req, apiKey: providerKey, beforeDispatch });
 
       // warm up: force the generator past the fetch() call so connection errors
       // are caught HERE (in the fallback loop), not inside the stream callback
       await admitProviderDispatch(c, body, chain);
-      await markProviderDispatch(c, providerName, req.model);
-      c.set('providerDispatchStarted', true);
       const first = await gen.next();
 
       c.header('Content-Type', 'text/event-stream');
@@ -341,6 +345,8 @@ async function handleStream(
             responseSha256: c.get('responseSha256'),
             requestedProvider: c.get('requestProvider'),
             requestedModel: c.get('requestModel'),
+            lastDispatchedProvider: c.get('lastDispatchedProvider'),
+            lastDispatchedModel: c.get('lastDispatchedModel'),
             providerResponseId: usage.id,
             toolCalls: undefined,
             providerCostUsd: usage.providerCostUsd,
@@ -368,7 +374,7 @@ async function handleStream(
       });
     } catch (err) {
       if (err instanceof LLMKitError) throw err;
-      if (c.get('budgetReservationId')) c.set('budgetSettlementMode', 'ceiling');
+      if (c.get('providerDispatchStarted')) c.set('budgetSettlementMode', 'ceiling');
       const msg = err instanceof Error ? err.message : String(err);
       errors.push(new ProviderError(msg, providerName));
     }

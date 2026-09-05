@@ -22,6 +22,7 @@ const docker = process.platform === 'win32'
   : 'docker';
 const tenantA = 'foundation-runtime-a';
 const tenantB = 'foundation-runtime-b';
+const budgetAId = '50000000-0000-4000-8000-0000000000a1';
 const keyAId = '60000000-0000-4000-8000-0000000000a1';
 const keyBId = '60000000-0000-4000-8000-0000000000b1';
 const receiptASettledId = '70000000-0000-4000-8000-0000000000a1';
@@ -88,6 +89,7 @@ function cleanupFixture() {
 begin;
 delete from public.requests where user_id in ('${tenantA}', '${tenantB}');
 delete from public.api_keys where user_id in ('${tenantA}', '${tenantB}');
+delete from public.budgets where user_id in ('${tenantA}', '${tenantB}');
 delete from public.accounts where user_id in ('${tenantA}', '${tenantB}');
 commit;
 `;
@@ -111,6 +113,7 @@ function assertFixtureRemoved() {
 select
   (select count(*) from public.requests where user_id in ('${tenantA}', '${tenantB}'))
   + (select count(*) from public.api_keys where user_id in ('${tenantA}', '${tenantB}'))
+  + (select count(*) from public.budgets where user_id in ('${tenantA}', '${tenantB}'))
   + (select count(*) from public.accounts where user_id in ('${tenantA}', '${tenantB}'));
 `;
   const result = run(docker, [
@@ -152,6 +155,16 @@ async function seedFixture(url, serviceKey) {
     { user_id: tenantA, plan: 'pro' },
     { user_id: tenantB, plan: 'pro' },
   ]);
+  await postgrest(url, serviceKey, 'budgets', [
+    {
+      id: budgetAId,
+      user_id: tenantA,
+      name: 'foundation runtime A',
+      limit_cents: 1_000,
+      period: 'monthly',
+      scope: 'key',
+    },
+  ]);
   await postgrest(url, serviceKey, 'api_keys', [
     {
       id: keyAId,
@@ -159,6 +172,7 @@ async function seedFixture(url, serviceKey) {
       key_hash: createHash('sha256').update(keyA).digest('hex'),
       key_prefix: 'llmk_foundation_a',
       name: 'foundation runtime A',
+      budget_id: budgetAId,
     },
     {
       id: keyBId,
@@ -166,6 +180,7 @@ async function seedFixture(url, serviceKey) {
       key_hash: createHash('sha256').update(keyB).digest('hex'),
       key_prefix: 'llmk_foundation_b',
       name: 'foundation runtime B',
+      budget_id: null,
     },
   ]);
   await postgrest(url, serviceKey, 'requests', [
@@ -178,6 +193,7 @@ async function seedFixture(url, serviceKey) {
       agent_id: 'agent-runtime-a',
       session_id: 'session-runtime-a',
       end_user_id: 'end-user-runtime-a',
+      budget_id: budgetAId,
       budget_reservation_id: '71000000-0000-4000-8000-0000000000a1',
       reserved_cost_cents: 13,
       idempotency_key_hash: 'a'.repeat(64),
@@ -210,6 +226,7 @@ async function seedFixture(url, serviceKey) {
       agent_id: 'agent-runtime-a',
       session_id: 'session-runtime-a',
       end_user_id: 'end-user-runtime-a',
+      budget_id: null,
       budget_reservation_id: null,
       reserved_cost_cents: null,
       idempotency_key_hash: null,
@@ -242,6 +259,7 @@ async function seedFixture(url, serviceKey) {
       agent_id: 'agent-runtime-b',
       session_id: 'session-runtime-b',
       end_user_id: 'end-user-runtime-b',
+      budget_id: null,
       budget_reservation_id: null,
       reserved_cost_cents: null,
       idempotency_key_hash: null,
@@ -378,6 +396,8 @@ async function main() {
         && settledReceipt.body.receipt?.workflow_id === 'workflow-runtime-a'
         && settledReceipt.body.receipt?.agent_id === 'agent-runtime-a'
         && settledReceipt.body.receipt?.session_id === 'session-runtime-a'
+        && settledReceipt.body.receipt?.budget_id === budgetAId
+        && settledReceipt.body.receipt?.budget_reservation_id === '71000000-0000-4000-8000-0000000000a1'
         && settledReceipt.body.receipt?.settlement_status === 'settled_actual'
         && settledReceipt.body.receipt?.idempotency_key_hash === 'a'.repeat(64)
         && settledReceipt.body.receipt?.response_sha256 === 'b'.repeat(64)

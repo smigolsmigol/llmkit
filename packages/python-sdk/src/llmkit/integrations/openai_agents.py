@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import math
 import os
 import time
 import uuid
@@ -308,7 +309,12 @@ class GatewayBoundaryProvider(ModelProvider):
             raise ValueError("model_grant_resolver is required")
         if not context.budget_scope:
             raise ValueError("budget_scope must identify the expected gateway budget")
-        if receipt_timeout_seconds <= 0 or receipt_poll_interval_seconds <= 0:
+        if (
+            not math.isfinite(receipt_timeout_seconds)
+            or not math.isfinite(receipt_poll_interval_seconds)
+            or receipt_timeout_seconds <= 0
+            or receipt_poll_interval_seconds <= 0
+        ):
             raise ValueError("receipt polling bounds must be positive")
 
         resolved_key = api_key or os.environ.get(ENV_API_KEY)
@@ -593,7 +599,16 @@ class GatewayBoundaryProvider(ModelProvider):
         deadline = time.monotonic() + self._receipt_timeout_seconds
         url = f"{str(self._gateway_url).rstrip('/')}/analytics/receipts/{receipt_id}"
         while True:
-            response = await self._receipt_client.get(url)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise ModelDispatchBoundaryError("gateway_receipt_timeout")
+            try:
+                async with asyncio.timeout(remaining):
+                    response = await self._receipt_client.get(url, timeout=remaining)
+            except (TimeoutError, httpx.TimeoutException) as error:
+                raise ModelDispatchBoundaryError("gateway_receipt_timeout") from error
+            if time.monotonic() >= deadline:
+                raise ModelDispatchBoundaryError("gateway_receipt_timeout")
             if response.status_code == 200:
                 payload = response.json()
                 receipt = payload.get("receipt") if isinstance(payload, dict) else None
@@ -604,6 +619,8 @@ class GatewayBoundaryProvider(ModelProvider):
                         and settlement != "pending"
                         and receipt.get("response_sha256") is not None
                     ):
+                        if time.monotonic() >= deadline:
+                            raise ModelDispatchBoundaryError("gateway_receipt_timeout")
                         return cast(dict[str, Any], receipt)
             elif response.status_code != 404:
                 raise ModelDispatchBoundaryError("gateway_receipt_lookup_failed")
@@ -668,6 +685,9 @@ class GatewayBoundaryProvider(ModelProvider):
             or any(character not in "0123456789abcdef" for character in idempotency_key_hash)
         ):
             raise ModelDispatchBoundaryError("gateway_idempotency_evidence_missing")
+        expected_idempotency_key_hash = hashlib.sha256(attempt.call_id.encode()).hexdigest()
+        if idempotency_key_hash != expected_idempotency_key_hash:
+            raise ModelDispatchBoundaryError("gateway_idempotency_evidence_mismatch")
         return EffectAcknowledgement(
             source="llmkit-gateway-receipt",
             effect_id=receipt_id,
