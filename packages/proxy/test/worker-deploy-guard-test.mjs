@@ -192,6 +192,8 @@ for (const contract of [
   '/ratelimit/',
   'x-llmkit-workflow-id',
   'response_sha256',
+  'const idempotencyKeyHash = sha256(idempotencyKey)',
+  'idempotency_key_hash === idempotencyKeyHash',
   '/crash-timeout',
   'HOSTED_COORDINATION_THRESHOLDS_MS',
 ]) {
