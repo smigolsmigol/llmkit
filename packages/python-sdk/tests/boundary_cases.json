@@ -47,7 +47,7 @@
   {
     "id": "openai-pydantic-portability",
     "oracle": "same_contract_or_explicitly_uncovered",
-    "owner": "coverage-contract"
+    "owner": "pydantic-ai-model-boundary"
   },
   {
     "id": "raw-content-disabled",

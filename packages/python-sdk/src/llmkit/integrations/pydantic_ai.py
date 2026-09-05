@@ -12,17 +12,23 @@ Requires: pip install "llmkit-sdk[pydantic-ai]"
 
 from __future__ import annotations
 
+import asyncio
 import os
-from collections.abc import Callable
-from typing import Any
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from typing import Any, Self, cast
 
+import httpx
 from openai import AsyncOpenAI
 
 try:
     from pydantic_ai import ModelRequestContext, ModelSettings, RunContext
     from pydantic_ai.capabilities import Hooks
-    from pydantic_ai.messages import ModelResponse
+    from pydantic_ai.messages import ModelMessage, ModelResponse
+    from pydantic_ai.models import ModelRequestParameters, StreamedResponse
     from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.models.wrapper import WrapperModel
     from pydantic_ai.providers.openai import OpenAIProvider
     from pydantic_ai.usage import RequestUsage
 except ImportError as e:
@@ -33,6 +39,80 @@ except ImportError as e:
 
 from llmkit._client import DEFAULT_BASE_URL, ENV_API_KEY, ENV_BASE_URL, _build_headers
 from llmkit._pricing import calculate_cost
+from llmkit.boundary import (
+    BoundaryReceipt,
+    BoundaryRuntime,
+    CoverageEntry,
+    CoverageReport,
+    CoverageStatus,
+    coverage_report,
+)
+from llmkit.integrations.model_dispatch import (
+    GatewayModelDispatch,
+    ModelGrantResolver,
+    UnsupportedModelStreamingError,
+)
+from llmkit.integrations.model_dispatch import (
+    ModelDispatchBoundaryError as ModelDispatchBoundaryError,
+)
+
+
+@dataclass
+class PydanticAIBoundaryContext:
+    """Identity, authority, and receipt state for enrolled Pydantic AI model calls."""
+
+    principal: str
+    tenant: str
+    workload: str
+    budget_scope: str | None
+    model_grant_resolver: ModelGrantResolver
+    provenance: str | None = None
+    receipts: list[BoundaryReceipt] = field(default_factory=list)
+    _receipt_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
+
+
+def pydantic_ai_coverage(*, model_dispatch_enrolled: bool = False) -> CoverageReport:
+    """Declare which Pydantic AI surfaces this integration actually controls."""
+    return coverage_report(
+        "pydantic-ai",
+        [
+            CoverageEntry(
+                "model_dispatch",
+                CoverageStatus.ENFORCED if model_dispatch_enrolled else CoverageStatus.UNCOVERED,
+                (
+                    "the enrolled model joins an exact serialized request to a terminal "
+                    "LLMKit gateway receipt"
+                    if model_dispatch_enrolled
+                    else "requires an enrolled PydanticAIGatewayBoundaryModel"
+                ),
+            ),
+            CoverageEntry(
+                "model_streaming",
+                CoverageStatus.UNCOVERED,
+                "stream finality requires a separate evidence contract",
+            ),
+            CoverageEntry(
+                "function_tool",
+                CoverageStatus.UNCOVERED,
+                "Pydantic AI tool execution requires a separate exact-effect adapter",
+            ),
+            CoverageEntry(
+                "provider_managed_tool",
+                CoverageStatus.UNCOVERED,
+                "provider-managed tools execute outside the local function-tool lifecycle",
+            ),
+            CoverageEntry(
+                "unenrolled_model",
+                CoverageStatus.UNCOVERED,
+                "gateway_model routes traffic but does not verify exact grants or receipts",
+            ),
+            CoverageEntry(
+                "direct_client",
+                CoverageStatus.UNCOVERED,
+                "only calls through the enrolled model request method are intercepted",
+            ),
+        ],
+    )
 
 
 def gateway_model(
@@ -50,7 +130,7 @@ def gateway_model(
     end_user_id: str | None = None,
     settings: ModelSettings | None = None,
 ) -> OpenAIChatModel:
-    """Build a Pydantic AI chat model routed through the LLMKit gateway."""
+    """Route Pydantic AI through LLMKit without local exact-receipt verification."""
     resolved_key = api_key or os.environ.get(ENV_API_KEY)
     if not resolved_key:
         raise ValueError(f"api_key required: pass it directly or set {ENV_API_KEY}")
@@ -76,6 +156,120 @@ def gateway_model(
         provider=OpenAIProvider(openai_client=client),
         settings=settings,
     )
+
+
+class PydanticAIGatewayBoundaryModel(WrapperModel):
+    """Opt-in non-streaming model with exact grant and receipt verification."""
+
+    def __init__(self, wrapped: OpenAIChatModel, owner: GatewayModelDispatch) -> None:
+        super().__init__(wrapped)
+        self._owner = owner
+
+    async def __aenter__(self) -> Self:
+        try:
+            await self.wrapped.__aenter__()
+        except BaseException:
+            await self._owner.aclose()
+            raise
+        return self
+
+    async def __aexit__(self, *args: Any) -> bool | None:
+        try:
+            return await self.wrapped.__aexit__(*args)
+        finally:
+            await self._owner.aclose()
+
+    async def aclose(self) -> None:
+        """Close the owned gateway request and receipt clients."""
+        await self._owner.aclose()
+
+    async def request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        async def dispatch(call_id: str) -> ModelResponse:
+            dispatched_settings = dict(model_settings or {})
+            configured_headers = cast(
+                dict[str, str] | None,
+                dispatched_settings.get("extra_headers"),
+            )
+            extra_headers = dict(configured_headers or {})
+            extra_headers["Idempotency-Key"] = call_id
+            dispatched_settings["extra_headers"] = extra_headers
+            return await self.wrapped.request(
+                messages,
+                cast(ModelSettings, dispatched_settings),
+                model_request_parameters,
+            )
+
+        return await self._owner.execute(dispatch)
+
+    @asynccontextmanager
+    async def request_stream(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+        run_context: RunContext[Any] | None = None,
+    ) -> AsyncGenerator[StreamedResponse]:
+        del messages, model_settings, model_request_parameters, run_context
+        if False:
+            yield cast(StreamedResponse, None)
+        raise UnsupportedModelStreamingError("model_streaming_uncovered")
+
+    def coverage(self) -> CoverageReport:
+        return pydantic_ai_coverage(model_dispatch_enrolled=True)
+
+
+def gateway_boundary_model(
+    model: str,
+    *,
+    context: PydanticAIBoundaryContext,
+    runtime: BoundaryRuntime,
+    provider: str,
+    api_key: str | None = None,
+    base_url: str | None = None,
+    provider_key: str | None = None,
+    agent_id: str | None = None,
+    session_id: str | None = None,
+    settings: ModelSettings | None = None,
+    receipt_timeout_seconds: float = 5.0,
+    receipt_poll_interval_seconds: float = 0.05,
+    request_transport: httpx.AsyncBaseTransport | None = None,
+    receipt_transport: httpx.AsyncBaseTransport | None = None,
+    call_id_factory: Callable[[], str] | None = None,
+) -> PydanticAIGatewayBoundaryModel:
+    """Build an enrolled Pydantic AI model with exact dispatch evidence."""
+    owner = GatewayModelDispatch(
+        runtime=runtime,
+        principal=context.principal,
+        tenant=context.tenant,
+        workload=context.workload,
+        budget_scope=context.budget_scope,
+        provenance=context.provenance,
+        model_grant_resolver=context.model_grant_resolver,
+        receipt_lock=context._receipt_lock,
+        append_receipt=context.receipts.append,
+        provider=provider,
+        api_key=api_key,
+        base_url=base_url,
+        provider_key=provider_key,
+        agent_id=agent_id,
+        session_id=session_id,
+        receipt_timeout_seconds=receipt_timeout_seconds,
+        receipt_poll_interval_seconds=receipt_poll_interval_seconds,
+        request_transport=request_transport,
+        receipt_transport=receipt_transport,
+        call_id_factory=call_id_factory,
+    )
+    wrapped = OpenAIChatModel(
+        model,
+        provider=OpenAIProvider(openai_client=owner.openai_client),
+        settings=settings,
+    )
+    return PydanticAIGatewayBoundaryModel(wrapped, owner)
 
 
 class LLMKitCostTracker:
