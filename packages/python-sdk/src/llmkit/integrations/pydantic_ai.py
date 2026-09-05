@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any, Self, cast
@@ -23,13 +23,14 @@ import httpx
 from openai import AsyncOpenAI
 
 try:
-    from pydantic_ai import ModelRequestContext, ModelSettings, RunContext
+    from pydantic_ai import FunctionToolset, ModelRequestContext, ModelSettings, RunContext, Tool
     from pydantic_ai.capabilities import Hooks
     from pydantic_ai.messages import ModelMessage, ModelResponse
     from pydantic_ai.models import ModelRequestParameters, StreamedResponse
     from pydantic_ai.models.openai import OpenAIChatModel
     from pydantic_ai.models.wrapper import WrapperModel
     from pydantic_ai.providers.openai import OpenAIProvider
+    from pydantic_ai.toolsets import ToolsetTool, WrapperToolset
     from pydantic_ai.usage import RequestUsage
 except ImportError as e:
     raise ImportError(
@@ -40,11 +41,15 @@ except ImportError as e:
 from llmkit._client import DEFAULT_BASE_URL, ENV_API_KEY, ENV_BASE_URL, _build_headers
 from llmkit._pricing import calculate_cost
 from llmkit.boundary import (
+    BoundaryDispatchError,
     BoundaryReceipt,
     BoundaryRuntime,
     CoverageEntry,
     CoverageReport,
     CoverageStatus,
+    EffectAcknowledgement,
+    EffectAction,
+    ExactEffectGrant,
     coverage_report,
 )
 from llmkit.integrations.model_dispatch import (
@@ -59,7 +64,7 @@ from llmkit.integrations.model_dispatch import (
 
 @dataclass
 class PydanticAIBoundaryContext:
-    """Identity, authority, and receipt state for enrolled Pydantic AI model calls."""
+    """Identity, authority, and receipt state for enrolled Pydantic AI calls."""
 
     principal: str
     tenant: str
@@ -71,7 +76,9 @@ class PydanticAIBoundaryContext:
     _receipt_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
 
 
-def pydantic_ai_coverage(*, model_dispatch_enrolled: bool = False) -> CoverageReport:
+def pydantic_ai_coverage(
+    *, model_dispatch_enrolled: bool = False, function_tool_enrolled: bool = False
+) -> CoverageReport:
     """Declare which Pydantic AI surfaces this integration actually controls."""
     return coverage_report(
         "pydantic-ai",
@@ -94,7 +101,17 @@ def pydantic_ai_coverage(*, model_dispatch_enrolled: bool = False) -> CoverageRe
             CoverageEntry(
                 "function_tool",
                 CoverageStatus.UNCOVERED,
-                "Pydantic AI tool execution requires a separate exact-effect adapter",
+                "unwrapped function tools are not intercepted",
+            ),
+            CoverageEntry(
+                "enrolled_function_tool",
+                CoverageStatus.ENFORCED if function_tool_enrolled else CoverageStatus.UNCOVERED,
+                "only the explicitly wrapped JSON-argument function tool is controlled",
+            ),
+            CoverageEntry(
+                "non_json_tool_arguments",
+                CoverageStatus.UNCOVERED,
+                "validated Python objects cannot be bound to this JSON effect contract",
             ),
             CoverageEntry(
                 "provider_managed_tool",
@@ -112,6 +129,170 @@ def pydantic_ai_coverage(*, model_dispatch_enrolled: bool = False) -> CoverageRe
                 "only calls through the enrolled model request method are intercepted",
             ),
         ],
+    )
+
+
+ToolGrantResolver = Callable[
+    [EffectAction, RunContext[Any]],
+    ExactEffectGrant | None | Awaitable[ExactEffectGrant | None],
+]
+ToolAcknowledgement = Callable[[Any], EffectAcknowledgement | None]
+
+
+def _snapshot_tool_arguments(value: Any) -> Any:
+    if value is None or type(value) in (str, bool, int, float):
+        return value
+    if type(value) is list:
+        return [_snapshot_tool_arguments(item) for item in value]
+    if type(value) is dict and all(type(key) is str for key in value):
+        return {key: _snapshot_tool_arguments(item) for key, item in value.items()}
+    raise ValueError("non_json_tool_arguments_uncovered")
+
+
+@dataclass(kw_only=True)
+class PydanticAIBoundaryToolset(WrapperToolset[Any]):
+    """Exact-effect lifecycle around one native function tool, not its entire agent."""
+
+    context: PydanticAIBoundaryContext
+    runtime: BoundaryRuntime
+    grant_resolver: ToolGrantResolver
+    tool_name: str
+    tool_version: str
+    effect_class: str
+    acknowledgement: ToolAcknowledgement | None = None
+
+    def __post_init__(self) -> None:
+        if type(self.wrapped) is not FunctionToolset:
+            raise ValueError("only a native FunctionToolset can be enrolled")
+        if set(self.wrapped.tools) != {self.tool_name}:
+            raise ValueError("exactly one named function tool must be enrolled")
+        if self.wrapped.tools[self.tool_name].requires_approval:
+            raise ValueError("approval-required tools remain uncovered")
+
+    async def get_tools(self, ctx: RunContext[Any]) -> dict[str, ToolsetTool[Any]]:
+        tools = await self.wrapped.get_tools(ctx)
+        if any(
+            name != self.tool_name or tool.tool_def.kind != "function"
+            for name, tool in tools.items()
+        ):
+            raise ValueError("renamed or deferred tools remain uncovered")
+        return tools
+
+    async def call_tool(
+        self, name: str, tool_args: dict[str, Any], ctx: RunContext[Any], tool: ToolsetTool[Any]
+    ) -> Any:
+        if name != self.tool_name or tool.tool_def.kind != "function" or not ctx.tool_call_id:
+            raise ValueError("unenrolled_tool_call")
+        arguments = _snapshot_tool_arguments(tool_args)
+        action = EffectAction.from_arguments(
+            effect_class=self.effect_class,
+            target=name,
+            version=self.tool_version,
+            call_id=ctx.tool_call_id,
+            arguments=arguments,
+        )
+        context = self.context
+        principal, tenant, workload = context.principal, context.tenant, context.workload
+        budget_scope, provenance = context.budget_scope, context.provenance
+        try:
+            grant = self.grant_resolver(action, ctx)
+            if isinstance(grant, Awaitable):
+                grant = await grant
+        except Exception:
+            admission = self.runtime.deny(
+                action=action,
+                reason="grant_resolution_failed",
+                principal=principal,
+                tenant=tenant,
+                workload=workload,
+            )
+        else:
+            if (
+                context.principal,
+                context.tenant,
+                context.workload,
+                context.budget_scope,
+                context.provenance,
+            ) != (principal, tenant, workload, budget_scope, provenance):
+                admission = self.runtime.deny(
+                    action=action,
+                    reason="boundary_context_changed",
+                    principal=principal,
+                    tenant=tenant,
+                    workload=workload,
+                )
+            else:
+                admission = self.runtime.admit(
+                    action=action,
+                    grant=grant,
+                    principal=principal,
+                    tenant=tenant,
+                    workload=workload,
+                    budget_scope=budget_scope,
+                    provenance=provenance,
+                )
+        context.receipts.append(admission.receipt)
+        if not admission.allowed:
+            raise PermissionError(f"LLMKit tool denied: {admission.receipt.reason}")
+        # No await between admission and dispatch: cancellation cannot strand a reservation.
+        try:
+            dispatched = self.runtime.dispatch(admission)
+        except BoundaryDispatchError as error:
+            context.receipts.append(error.receipt)
+            raise
+        context.receipts.append(dispatched)
+        try:
+            output = await self.wrapped.call_tool(name, arguments, ctx, tool)
+        except BaseException as error:
+            reason = (
+                "sink_canceled" if isinstance(error, asyncio.CancelledError) else "sink_exception"
+            )
+            context.receipts.append(self.runtime.uncertain(admission, dispatched, reason))
+            raise
+        try:
+            acknowledgement = self.acknowledgement(output) if self.acknowledgement else None
+        except Exception:
+            terminal = self.runtime.uncertain(
+                admission, dispatched, "acknowledgement_extraction_error"
+            )
+        else:
+            if acknowledgement is None:
+                terminal = self.runtime.uncertain(
+                    admission, dispatched, "missing_application_acknowledgement"
+                )
+            elif not isinstance(acknowledgement, EffectAcknowledgement):
+                terminal = self.runtime.uncertain(
+                    admission, dispatched, "invalid_application_acknowledgement"
+                )
+            else:
+                terminal = self.runtime.settle(admission, dispatched, acknowledgement)
+        context.receipts.append(terminal)
+        return output
+
+    def coverage(self) -> CoverageReport:
+        return pydantic_ai_coverage(function_tool_enrolled=True)
+
+
+def protect_function_tool(
+    tool: Tool[Any],
+    *,
+    context: PydanticAIBoundaryContext,
+    runtime: BoundaryRuntime,
+    grant_resolver: ToolGrantResolver,
+    tool_version: str,
+    effect_class: str,
+    acknowledgement: ToolAcknowledgement | None = None,
+) -> PydanticAIBoundaryToolset:
+    """Enroll one function tool; pass the returned toolset to Agent(toolsets=[...])."""
+    return PydanticAIBoundaryToolset(
+        wrapped=FunctionToolset([tool]),
+        context=context,
+        runtime=runtime,
+        grant_resolver=grant_resolver,
+        tool_name=tool.name,
+        tool_version=tool_version,
+        effect_class=effect_class,
+        acknowledgement=acknowledgement,
     )
 
 

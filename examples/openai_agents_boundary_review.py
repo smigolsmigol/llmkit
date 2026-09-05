@@ -3,162 +3,31 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import secrets
-import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
 from agents import Agent, FunctionTool, ModelSettings, RunConfig, Runner
 from agents.tool_context import ToolContext
-
-from llmkit import BoundaryRuntime, EffectAcknowledgement, HmacAuthority, content_sha256
-from llmkit.boundary import EffectAction, ExactEffectGrant, canonical_arguments
+from boundary_review_fixture import (
+    BUDGET_ID,
+    MODEL,
+    POLICY,
+    FakeGateway,
+    InMemoryReviewSink,
+    completion,
+    tool_completion,
+)
+from llmkit import BoundaryRuntime, EffectAcknowledgement, HmacAuthority
+from llmkit.boundary import EffectAction, ExactEffectGrant
 from llmkit.integrations.openai_agents import (
     GatewayBoundaryProvider,
     OpenAIBoundaryContext,
     protect_function_tool,
     release_pending_admissions,
 )
-
-REPOSITORY = "smigolsmigol/llmkit"
-HEAD = "a" * 40
-BUDGET_ID = "11111111-1111-4111-8111-111111111111"
-MODEL = "gpt-4.1-mini"
-POLICY = content_sha256(
-    {
-        "name": "local-pr-review",
-        "requires": ["exact-effect-grant", "trusted-reviewer-approval"],
-        "version": 1,
-    }
-)
-
-
-class FakeGateway:
-    """Minimal terminal-receipt fixture; it does not prove hosted behavior."""
-
-    def __init__(self, responses: list[dict[str, Any]]) -> None:
-        self.responses = list(responses)
-        self.requests: list[httpx.Request] = []
-        self.receipts: dict[str, dict[str, Any]] = {}
-
-    async def model_request(self, request: httpx.Request) -> httpx.Response:
-        self.requests.append(request)
-        if not self.responses:
-            raise RuntimeError("unexpected model request")
-        payload = self.responses.pop(0)
-        content = json.dumps(payload, separators=(",", ":")).encode()
-        request_body = json.loads(request.content)
-        receipt_id = str(uuid.uuid4())
-        idempotency_key = request.headers["idempotency-key"]
-        self.receipts[receipt_id] = {
-            "id": receipt_id,
-            "customer_id": request.headers["x-llmkit-customer-id"],
-            "workflow_id": request.headers["x-llmkit-workflow-id"],
-            "agent_id": request.headers["x-llmkit-agent-id"],
-            "session_id": request.headers["x-llmkit-session-id"],
-            "end_user_id": request.headers["x-llmkit-user-id"],
-            "budget_id": BUDGET_ID,
-            "budget_reservation_id": str(uuid.uuid4()),
-            "idempotency_key_hash": hashlib.sha256(idempotency_key.encode()).hexdigest(),
-            "requested_provider": "openai",
-            "requested_model": request_body["model"],
-            "last_dispatched_provider": "openai",
-            "last_dispatched_model": request_body["model"],
-            "provider_response_id": payload["id"],
-            "response_sha256": hashlib.sha256(content).hexdigest(),
-            "provider": "openai",
-            "model": payload["model"],
-            "dispatch_status": "dispatched",
-            "status": "success",
-            "settlement_status": "settled_actual",
-        }
-        return httpx.Response(
-            200,
-            headers={
-                "content-type": "application/json",
-                "x-llmkit-request-id": receipt_id,
-                "x-llmkit-settlement-status": "pending",
-            },
-            content=content,
-        )
-
-    async def receipt_request(self, request: httpx.Request) -> httpx.Response:
-        receipt_id = request.url.path.rsplit("/", 1)[-1]
-        receipt = self.receipts.get(receipt_id)
-        if receipt is None:
-            return httpx.Response(404, json={"error": "receipt not found"})
-        return httpx.Response(200, json={"receipt": receipt})
-
-
-def completion(content: str) -> dict[str, Any]:
-    return {
-        "id": f"chatcmpl-{uuid.uuid4()}",
-        "object": "chat.completion",
-        "created": 1_700_000_000,
-        "model": MODEL,
-        "choices": [
-            {
-                "index": 0,
-                "message": {"role": "assistant", "content": content},
-                "finish_reason": "stop",
-            }
-        ],
-        "usage": {"prompt_tokens": 8, "completion_tokens": 3, "total_tokens": 11},
-    }
-
-
-def tool_completion(*, call_id: str, body: str) -> dict[str, Any]:
-    return {
-        "id": f"chatcmpl-{uuid.uuid4()}",
-        "object": "chat.completion",
-        "created": 1_700_000_000,
-        "model": MODEL,
-        "choices": [
-            {
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [
-                        {
-                            "id": call_id,
-                            "type": "function",
-                            "function": {
-                                "name": "post_review_comment",
-                                "arguments": json.dumps(
-                                    {
-                                        "repository": REPOSITORY,
-                                        "head": HEAD,
-                                        "body": body,
-                                    },
-                                    separators=(",", ":"),
-                                ),
-                            },
-                        }
-                    ],
-                },
-                "finish_reason": "tool_calls",
-            }
-        ],
-        "usage": {"prompt_tokens": 8, "completion_tokens": 3, "total_tokens": 11},
-    }
-
-
-class InMemoryReviewSink:
-    def __init__(self) -> None:
-        self.comments: list[dict[str, Any]] = []
-
-    async def __call__(
-        self, context: ToolContext[Any], raw_arguments: str
-    ) -> dict[str, Any]:
-        del context
-        payload = canonical_arguments(raw_arguments)
-        review_id = len(self.comments) + 1
-        self.comments.append(payload)
-        return {"review_id": review_id, "head": payload["head"]}
 
 
 def review_tool(sink: InMemoryReviewSink) -> FunctionTool:
@@ -196,9 +65,7 @@ def boundary_context(
             budget_scope=BUDGET_ID,
         )
 
-    def resolve_tool(
-        action: EffectAction, context: ToolContext[Any]
-    ) -> ExactEffectGrant | None:
+    def resolve_tool(action: EffectAction, context: ToolContext[Any]) -> ExactEffectGrant | None:
         del context
         if not allow_tool:
             return None
@@ -291,9 +158,7 @@ async def main() -> None:
     poisoned_error: str | None = None
     async with model_provider(poisoned_gateway, poisoned_context, runtime) as provider:
         try:
-            await run_review(
-                provider=provider, context=poisoned_context, tool=protected
-            )
+            await run_review(provider=provider, context=poisoned_context, tool=protected)
         except Exception as error:
             poisoned_error = type(error).__name__
         finally:
@@ -337,9 +202,7 @@ async def main() -> None:
         * 3
     ):
         raise RuntimeError("Runner did not join both model calls and the review effect")
-    if not all(
-        authority.verify_receipt(receipt) for receipt in approved_context.receipts
-    ):
+    if not all(authority.verify_receipt(receipt) for receipt in approved_context.receipts):
         raise RuntimeError("approved receipt chain did not verify")
 
     print(
