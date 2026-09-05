@@ -364,6 +364,74 @@ describe('production provider-key routes', () => {
 });
 
 describe('production inference routes', () => {
+  it.each([
+    ['/v1/chat/completions', { model: 'gpt-4o', messages: [{ role: 'user', content: 'hello' }], max_tokens: 10 }, 503, 'ALL_PROVIDERS_FAILED'],
+    ['/v1/responses', { model: 'gpt-4o', input: 'hello', max_output_tokens: 10 }, 500, 'INTERNAL_ERROR'],
+  ] as const)('stops %s before provider fetch when dispatch evidence is rejected', async (path, payload, status, errorCode) => {
+    const budget = {
+      check: vi.fn(async () => ({
+        allowed: true,
+        reservationId: 'reservation-1',
+        scope: 'key',
+        remaining: 99,
+        limitCents: 100,
+        usedCents: 0,
+      })),
+      markDispatched: vi.fn(async () => false),
+      attachResponseHash: vi.fn(async () => true),
+      finalizeFailure: vi.fn(async () => ({
+        disposition: 'released',
+        committedCents: 0,
+        usedCents: 0,
+        limitCents: 100,
+      })),
+    };
+    const providerRequests: string[] = [];
+    installDatabaseMock((_request, url) => {
+      providerRequests.push(url.href);
+      return jsonResponse({});
+    }, () => jsonResponse([{
+      ...AUTH_ROW,
+      budget_id: 'budget-1',
+      budgets: { limit_cents: 100, period: 'total', scope: 'key' },
+    }]));
+    const bindings = {
+      ...makeBindings(),
+      BUDGET_DO: { idFromName: (name: string) => name, get: () => budget },
+    } as unknown as Env['Bindings'];
+
+    const response = await requestApp(path, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-llmkit-provider-key': 'direct-openai-secret',
+        'x-llmkit-customer-id': 'customer-1',
+      },
+      body: JSON.stringify(payload),
+      bindings,
+    });
+
+    expect(response.status).toBe(status);
+    expect(await body(response)).toMatchObject({ error: { code: errorCode } });
+    expect(budget.check).toHaveBeenCalledOnce();
+    expect(budget.markDispatched).toHaveBeenCalledExactlyOnceWith('reservation-1', {
+      provider: 'openai', model: 'gpt-4o',
+    });
+    expect(providerRequests).toEqual([]);
+    expect(budget.finalizeFailure).toHaveBeenCalledExactlyOnceWith('reservation-1', expect.objectContaining({
+      id: response.headers.get('x-llmkit-request-id'),
+      budget_id: 'budget-1',
+      budget_reservation_id: 'reservation-1',
+      requested_provider: 'openai',
+      requested_model: 'gpt-4o',
+      last_dispatched_provider: null,
+      last_dispatched_model: null,
+      provider_response_id: null,
+      dispatch_status: 'admitted',
+      error_code: errorCode,
+    }));
+  });
+
   it('reports valid chat margin and rejects negative or non-finite revenue', async () => {
     installDatabaseMock((_request, url) => {
       if (url.origin === 'https://api.openai.com' && url.pathname === '/v1/chat/completions') {
@@ -641,6 +709,45 @@ describe('production inference routes', () => {
     expect(responseBody).toMatchObject({ id: 'response-1', model: 'gpt-4o' });
     expect(providerAuthorizations).toEqual(['Bearer stored-openai-secret']);
     expect(JSON.stringify(responseBody)).not.toContain('stored-openai-secret');
+  });
+
+  it.each(['response-1', undefined, 42])('records Responses identity without inventing an id for %s', async (id) => {
+    const receipts: Record<string, unknown>[] = [];
+    const upstream = {
+      id,
+      model: 'gpt-4o',
+      output: [{ type: 'message', id: 'message-1' }],
+      usage: { input_tokens: 100, output_tokens: 20, total_tokens: 120 },
+    };
+    installDatabaseMock(async (request, url) => {
+      if (url.origin === 'https://api.openai.com' && url.pathname === '/v1/responses') {
+        return jsonResponse(upstream);
+      }
+      if (url.origin === DATABASE_ORIGIN && url.pathname === '/rest/v1/requests') {
+        receipts.push(await request.json() as Record<string, unknown>);
+        return new Response(null, { status: 201 });
+      }
+      return undefined;
+    });
+
+    const response = await requestApp('/v1/responses', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-llmkit-provider-key': 'direct-openai-secret' },
+      body: JSON.stringify({ model: 'gpt-4o', input: 'hello' }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(await body(response)).toEqual(JSON.parse(JSON.stringify(upstream)));
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]).toMatchObject({
+      id: response.headers.get('x-llmkit-request-id'),
+      requested_provider: 'openai',
+      requested_model: 'gpt-4o',
+      last_dispatched_provider: 'openai',
+      last_dispatched_model: 'gpt-4o',
+      provider_response_id: typeof id === 'string' ? id : null,
+      dispatch_status: 'dispatched',
+    });
   });
 
   it('rejects an unsupported Responses provider before sending its direct credential', async () => {
