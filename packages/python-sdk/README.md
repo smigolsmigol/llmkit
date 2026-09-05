@@ -74,8 +74,8 @@ other integrations require their framework package separately.
 
 ## PydanticAI gateway model
 
-Use the native PydanticAI model interface when requests need shared budget admission, stable
-attribution, and gateway receipts:
+Use the native PydanticAI model interface to route requests through LLMKit for server-side budget
+admission, stable attribution, and gateway receipts:
 
 ```bash
 pip install "llmkit-sdk[pydantic-ai]"
@@ -101,10 +101,50 @@ result = await agent.run(
 
 `UsageLimits` remains the in-run token and request guard. LLMKit gateway mode adds the shared,
 multi-run spend boundary and receipt. Hard budgets require an explicit positive output-token limit.
-Client-side function tools are supported; provider-managed tools, images, and file attachments fail
-closed when the gateway cannot prove a pre-dispatch cost ceiling.
+Gateway-routed client-side function tools are supported but are not exact-effect-enforced;
+provider-managed tools, images, and file attachments fail closed when the gateway cannot prove a
+pre-dispatch cost ceiling.
 Transparent OpenAI SDK transport retries are disabled in gateway mode. Retry transient failures
 explicitly at the run boundary so every dispatch has a distinct budget reservation and receipt.
+
+`gateway_model()` does not locally verify that a grant and terminal receipt match the exact request.
+Use the opt-in boundary model when the caller must withhold the model result until that proof is
+complete:
+
+```python
+from pydantic_ai import Agent, ModelSettings
+from llmkit.integrations.pydantic_ai import (
+    PydanticAIBoundaryContext,
+    gateway_boundary_model,
+)
+
+boundary_context = PydanticAIBoundaryContext(
+    principal="reviewer@example.com",
+    tenant="acme",
+    workload="release-review",
+    budget_scope="approved-budget-id",
+    model_grant_resolver=resolve_model_grant,
+    provenance="trusted",
+)
+model = gateway_boundary_model(
+    "gpt-4.1-mini",
+    context=boundary_context,
+    runtime=boundary_runtime,
+    provider="openai",
+    settings=ModelSettings(max_tokens=512),
+)
+
+async with model:
+    result = await Agent(model).run("Review this release candidate.")
+```
+
+Here, `boundary_runtime` and `resolve_model_grant` are application-owned. The resolver receives the
+exact serialized request action and must return its signed grant. The result is released only after
+the authenticated terminal receipt matches the request identity, budget, provider and model,
+response ID and body hash, and idempotency key. A denial stops before network dispatch; missing or
+mismatched evidence after dispatch produces `uncertain`. This boundary enforces non-streaming model
+calls only. PydanticAI streaming, function tools, and provider-managed tools remain explicitly
+uncovered, as do calls made directly through the wrapped model or OpenAI client.
 
 ## OpenAI Agents exact-effect boundary (experimental)
 
