@@ -643,6 +643,81 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
     expect(run.invariantBeforeProviderCompletion).toBe(true);
   });
 
+  it.each([
+    ['Anthropic', 'anthropic', 'claude-sonnet-4-6'],
+    ['Gemini', 'gemini', 'gemini-2.5-pro'],
+  ])('releases a reservation when %s adapter preparation fails before fetch', async (_name, providerName, model) => {
+    const provider = new ProviderBarrier();
+    provider.release();
+    activeProvider = provider;
+    const budgetId = `adapter-predispatch-${providerName}-${crypto.randomUUID()}`;
+    const response = await exports.default.fetch('https://proof.invalid/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-proof-variant': 'hard',
+        'x-proof-budget-id': budgetId,
+        'x-proof-request-id': `adapter-predispatch-${providerName}`,
+        'x-proof-limit-cents': '100',
+        'x-llmkit-provider': providerName,
+        'x-llmkit-provider-key': 'captured-not-secret',
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'assistant', content: null, tool_calls: [{}] }],
+        max_tokens: 1,
+      }),
+    });
+    const ledger = await waitForHardSettlement(budgetId);
+    const terminal = await waitForTerminalReceipt(
+      provider,
+      budgetId,
+      response.headers.get('x-llmkit-request-id'),
+    );
+
+    expect(response.status).toBe(503);
+    expect(provider.crossings).toEqual([]);
+    expect(ledger.root?.usedCents).toBe(0);
+    expect(ledger.root?.reservedCents).toBe(0);
+    expect(terminal).toMatchObject({
+      requested_provider: providerName,
+      requested_model: model,
+      last_dispatched_provider: null,
+      last_dispatched_model: null,
+      dispatch_status: 'admitted',
+      settlement_status: 'released',
+    });
+  });
+
+  it('persists the OpenAI fallback for validation failures before provider selection', async () => {
+    const provider = new ProviderBarrier();
+    provider.release();
+    activeProvider = provider;
+    const response = await exports.default.fetch('https://proof.invalid/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-proof-variant': 'hard',
+        'x-proof-budget-id': `validation-provider-${crypto.randomUUID()}`,
+        'x-proof-request-id': 'validation-provider-fallback',
+        'x-proof-limit-cents': '100',
+        'x-proof-no-budget': 'true',
+      },
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages: [] }),
+    });
+    await response.text();
+    await vi.waitFor(() => expect(provider.persistedRequests).toHaveLength(1));
+
+    expect(response.status).toBe(400);
+    expect(provider.persistedRequests[0]).toMatchObject({
+      requested_provider: 'openai',
+      requested_model: 'gpt-4o-mini',
+      last_dispatched_provider: null,
+      last_dispatched_model: null,
+      dispatch_status: null,
+    });
+  });
+
   it('persists an unbudgeted request without inventing a settlement while retaining tool attribution', async () => {
     const provider = new ProviderBarrier();
     provider.release();
@@ -658,6 +733,11 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
       endUserId: 'end-user-proof',
       idempotencyKeyHash: undefined,
       responseSha256: 'a'.repeat(64),
+      requestedProvider: 'requested-provider',
+      requestedModel: 'requested-model',
+      lastDispatchedProvider: 'openai',
+      lastDispatchedModel: 'requested-model',
+      providerResponseId: 'response-proof',
       toolCalls: [{ name: 'local_lookup' }],
       providerCostUsd: undefined,
       apiKeyId: 'api-key-proof',
@@ -667,7 +747,7 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
       budgetReservedCostCents: undefined,
       budgetSettlementMode: undefined,
       provider: 'openai',
-      model: 'gpt-4o-mini',
+      model: 'dispatched-model',
       usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
       cost,
       latencyMs: 1,
@@ -675,12 +755,53 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
       ctx,
     });
     await waitOnExecutionContext(ctx);
+    const fallbackCtx = createExecutionContext();
+    const fallbackStatus = await trackRequest({
+      requestId: 'unbudgeted-fallback-receipt-proof',
+      customerId: 'customer-proof',
+      workflowId: undefined,
+      agentId: undefined,
+      sessionId: 'session-proof',
+      endUserId: 'end-user-proof',
+      idempotencyKeyHash: undefined,
+      responseSha256: 'b'.repeat(64),
+      toolCalls: undefined,
+      providerCostUsd: undefined,
+      apiKeyId: 'api-key-proof',
+      userId: 'user-proof',
+      budgetId: undefined,
+      budgetReservationId: undefined,
+      budgetReservedCostCents: undefined,
+      budgetSettlementMode: undefined,
+      provider: 'openai',
+      model: 'fallback-model',
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      cost,
+      latencyMs: 1,
+      env,
+      ctx: fallbackCtx,
+    });
+    await waitOnExecutionContext(fallbackCtx);
     const row = provider.persistedRequests.find((candidate) => candidate.id === 'unbudgeted-receipt-proof');
+    const fallbackRow = provider.persistedRequests.find((candidate) => (
+      candidate.id === 'unbudgeted-fallback-receipt-proof'
+    ));
     const passed = status === 'not-applicable'
+      && fallbackStatus === 'not-applicable'
       && row?.settlement_status === 'not_applicable'
       && row?.budget_id === null
       && row?.budget_reservation_id === null
       && row?.reserved_cost_cents === null
+      && row?.requested_provider === 'requested-provider'
+      && row?.requested_model === 'requested-model'
+      && row?.last_dispatched_provider === 'openai'
+      && row?.last_dispatched_model === 'requested-model'
+      && row?.model === 'dispatched-model'
+      && row?.provider_response_id === 'response-proof'
+      && row?.dispatch_status === 'dispatched'
+      && fallbackRow?.requested_provider === 'openai'
+      && fallbackRow?.requested_model === 'fallback-model'
+      && fallbackRow?.provider_response_id === null
       && Array.isArray(row?.tool_calls)
       && row.tool_calls.length === 1;
     receipt.integrationChecks.push({ scenario: 'unbudgeted-request-receipt', passed });
@@ -1119,7 +1240,7 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
     });
     const replayBody = await replay.text();
     const expectedResponseSha256 = await sha256Hex(responseBody);
-    const expectedIdempotencyHash = await sha256Hex(`proof-api-key\n${idempotencyKey}`);
+    const expectedIdempotencyHash = await sha256Hex(idempotencyKey);
     const passed = recovered.outbox === 0
       && recovered.evidence === 1
       && provider.crossings.length === 1
@@ -1137,6 +1258,12 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
       && finalReceipt?.status === 'success'
       && finalReceipt?.idempotency_key_hash === expectedIdempotencyHash
       && finalReceipt?.response_sha256 === expectedResponseSha256
+      && finalReceipt?.requested_provider === 'openai'
+      && finalReceipt?.requested_model === 'gpt-4o-mini'
+      && finalReceipt?.last_dispatched_provider === 'openai'
+      && finalReceipt?.last_dispatched_model === 'gpt-4o-mini'
+      && finalReceipt?.provider_response_id === 'captured-durable-receipt-request'
+      && finalReceipt?.dispatch_status === 'dispatched'
       && replay.status === 200
       && replay.headers.get('x-llmkit-request-id') === requestId
       && replay.headers.get('x-llmkit-idempotency-status') === 'replayed'
@@ -1149,6 +1276,8 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
       outboxAfterRecovery: recovered.outbox,
       evidenceAfterRecovery: recovered.evidence,
       settlementStatus: finalReceipt?.settlement_status,
+      dispatchStatus: finalReceipt?.dispatch_status,
+      providerResponseId: finalReceipt?.provider_response_id,
       responseHashMatches: finalReceipt?.response_sha256 === expectedResponseSha256,
       replayReceiptMatches: replay.headers.get('x-llmkit-request-id') === requestId,
       passed,
@@ -1180,20 +1309,42 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
     });
     const replayBody = await replay.text();
     const ledger = await waitForHardSettlement(budgetId);
+    const requestId = first.headers.get('x-llmkit-request-id');
+    await vi.waitFor(() => expect(provider.persistedRequests.some((row) => (
+      row.id === requestId && row.settlement_status === 'settled_actual'
+    ))).toBe(true), { timeout: 60_000, interval: 10 });
+    const finalReceipt = provider.persistedRequests.filter((row) => row.id === requestId).at(-1);
+    const expectedResponseSha256 = await sha256Hex(firstBody);
     const passed = first.status === 200
       && first.headers.get('x-llmkit-idempotency-status') === 'created'
+      && requestId !== null
       && replay.status === 200
       && replay.headers.get('x-llmkit-idempotency-status') === 'replayed'
+      && replay.headers.get('x-llmkit-request-id') === requestId
       && replayBody === firstBody
       && provider.crossings.length === 1
       && ledger.root?.usedCents === 10
-      && ledger.root.reservedCents === 0;
+      && ledger.root.reservedCents === 0
+      && finalReceipt?.id === requestId
+      && finalReceipt?.requested_provider === 'openai'
+      && finalReceipt?.requested_model === 'gpt-4o-mini'
+      && finalReceipt?.last_dispatched_provider === 'openai'
+      && finalReceipt?.last_dispatched_model === 'gpt-4o-mini'
+      && finalReceipt?.provider_response_id === 'captured-idempotent-responses'
+      && finalReceipt?.dispatch_status === 'dispatched'
+      && finalReceipt?.settlement_status === 'settled_actual'
+      && finalReceipt?.status === 'success'
+      && finalReceipt?.response_sha256 === expectedResponseSha256;
     receipt.integrationChecks.push({
       scenario: 'responses-request-idempotency',
       providerCrossings: provider.crossings.length,
       firstStatus: first.status,
       replayStatus: replay.status,
       replayMatches: replayBody === firstBody,
+      receiptId: requestId,
+      dispatchStatus: finalReceipt?.dispatch_status,
+      providerResponseId: finalReceipt?.provider_response_id,
+      responseHashMatches: finalReceipt?.response_sha256 === expectedResponseSha256,
       ledger,
       passed,
     });

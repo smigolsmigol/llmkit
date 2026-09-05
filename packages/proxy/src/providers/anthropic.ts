@@ -1,6 +1,6 @@
 import type { TokenUsage } from '@f3d1/llmkit-shared';
 import { readJsonResponseBounded, readProviderErrorDetail } from '../response-body';
-import { providerRequestSignal } from './request';
+import { providerFetch, providerRequestSignal } from './request';
 import { readSseLines } from './sse-lines';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
@@ -67,12 +67,12 @@ export class AnthropicAdapter implements ProviderAdapter {
     const { system, messages } = splitSystem(req.messages);
     const body = buildBody(req, system, messages, false);
 
-    const res = await fetch(`${BASE_URL}/messages`, {
+    const res = await providerFetch(`${BASE_URL}/messages`, {
       method: 'POST',
       headers: buildHeaders(req.apiKey, req.extra),
       body: JSON.stringify(body),
       signal: providerRequestSignal(),
-    });
+    }, req.beforeDispatch);
 
     if (!res.ok) {
       const detail = await readProviderErrorDetail(res);
@@ -88,12 +88,12 @@ export class AnthropicAdapter implements ProviderAdapter {
     const { system, messages } = splitSystem(req.messages);
     const body = buildBody(req, system, messages, true);
 
-    const res = await fetch(`${BASE_URL}/messages`, {
+    const res = await providerFetch(`${BASE_URL}/messages`, {
       method: 'POST',
       headers: buildHeaders(req.apiKey, req.extra),
       body: JSON.stringify(body),
       signal: providerRequestSignal(),
-    });
+    }, req.beforeDispatch);
 
     if (!res.ok) {
       const detail = await readProviderErrorDetail(res);

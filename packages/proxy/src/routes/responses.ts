@@ -3,7 +3,7 @@ import { Hono } from 'hono';
 import { decrypt } from '../crypto';
 import { findProviderKey } from '../db';
 import type { Env, ResponseMeta } from '../env';
-import { admitBudgetForDispatch } from '../middleware/budget';
+import { admitBudgetForDispatch, markProviderDispatch } from '../middleware/budget';
 import { resolveCost } from '../pricing';
 import { getProviderBaseUrl } from '../providers';
 import { providerRequestSignal } from '../providers/request';
@@ -65,6 +65,8 @@ responsesRouter.post('/responses', async (c) => {
 
   const model = body.model as string;
   const provider = (c.req.header('x-llmkit-provider') || body.provider || inferProvider(model) || 'openai') as ProviderName;
+  c.set('requestProvider', provider);
+  c.set('requestModel', model);
 
   let providerKey = c.req.header('x-llmkit-provider-key') || '';
 
@@ -89,6 +91,7 @@ responsesRouter.post('/responses', async (c) => {
 
   await admitBudgetForDispatch(c, body, [provider]);
 
+  await markProviderDispatch(c, provider, model);
   c.set('providerDispatchStarted', true);
   const res = await fetch(`${baseUrl}/responses`, {
     method: 'POST',
@@ -129,6 +132,7 @@ responsesRouter.post('/responses', async (c) => {
 
   const meta: ResponseMeta = {
     provider,
+    providerResponseId: typeof data.id === 'string' ? data.id : undefined,
     model: (data.model as string) || model,
     cost,
     usage,

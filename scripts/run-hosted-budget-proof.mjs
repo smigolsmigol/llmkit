@@ -467,6 +467,7 @@ async function runConcurrencyScenario(fixture) {
 async function runIdempotencyScenario(fixture) {
   const idempotencyKey = `hosted-proof-${randomBytes(12).toString('hex')}`;
   fixture.idempotencyObjectName = sha256(`${fixture.apiKeyId}\n${idempotencyKey}`);
+  const idempotencyKeyHash = sha256(idempotencyKey);
   await writeRecovery('idempotency-identity-allocated');
   const body = {
     model,
@@ -519,7 +520,7 @@ async function runIdempotencyScenario(fixture) {
   );
   assert(rows[0]?.id === created[0]?.requestId, 'Idempotency DB proof did not join to the HTTP receipt id.');
   assert(rows[0]?.response_sha256 === created[0]?.responseSha256, 'Idempotency DB proof response hash drifted.');
-  assert(rows[0]?.idempotency_key_hash === fixture.idempotencyObjectName, 'Idempotency DB proof key hash drifted.');
+  assert(rows[0]?.idempotency_key_hash === idempotencyKeyHash, 'Idempotency DB proof key hash drifted.');
   return {
     objectName: fixture.idempotencyObjectName,
     responses: { created: 1, inProgress: inProgress.length, concurrentReplayed: replayed.length, explicitReplay: true, receiptReplayStable: true },
