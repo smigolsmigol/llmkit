@@ -37,6 +37,12 @@ function receipt(id: string, budgetId: string): RequestInsert {
     settlement_status: 'pending',
     idempotency_key_hash: null,
     response_sha256: null,
+    requested_provider: 'openai',
+    requested_model: 'gpt-4o-mini',
+    last_dispatched_provider: null,
+    last_dispatched_model: null,
+    provider_response_id: null,
+    dispatch_status: 'admitted',
     provider: 'openai',
     model: 'gpt-4o-mini',
     input_tokens: 0,
@@ -165,6 +171,55 @@ describe('BudgetDO production ledger behavior', () => {
     await runInDurableObject(legacySessionStub, async (_instance, state) => {
       await expect(state.storage.get<BudgetState>('s:legacy')).resolves.toMatchObject({ reservedCents: 0 });
     });
+  });
+
+  it('refuses dispatch when reservation and durable evidence cannot be joined', async () => {
+    const database = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(null, { status: 201 }));
+    const budgetId = uniqueName('dispatch-evidence-join');
+    const stub = budgetStub(budgetId);
+    const dispatchEvidence = { provider: 'openai', model: 'gpt-4o-mini' };
+
+    try {
+      const missingRequest = await stub.check({
+        estimatedCents: 5,
+        budgetConfig: { limitCents: 100, period: 'total' },
+      });
+      await expect(stub.markDispatched(missingRequest.reservationId, dispatchEvidence)).resolves.toBe(false);
+
+      const linkedReceipt = receipt(crypto.randomUUID(), budgetId);
+      const missingEvidence = await stub.check({ estimatedCents: 5, receipt: linkedReceipt });
+      await runInDurableObject(stub, async (_instance, state) => {
+        await state.storage.delete(`e:${linkedReceipt.id}`);
+      });
+      await expect(stub.markDispatched(missingEvidence.reservationId, dispatchEvidence)).resolves.toBe(false);
+
+      const reservations = await runInDurableObject(stub, async (_instance, state) => Promise.all([
+        state.storage.get<Record<string, unknown>>(`r:${missingRequest.reservationId}`),
+        state.storage.get<Record<string, unknown>>(`r:${missingEvidence.reservationId}`),
+      ]));
+      expect(reservations).toEqual([
+        expect.not.objectContaining({ dispatchedAt: expect.anything() }),
+        expect.not.objectContaining({ dispatchedAt: expect.anything() }),
+      ]);
+
+      const legacyReceipt = {
+        ...receipt(crypto.randomUUID(), budgetId),
+        requested_provider: undefined,
+        requested_model: undefined,
+        dispatch_status: undefined,
+      } as unknown as RequestInsert;
+      await stub.check({ estimatedCents: 5, receipt: legacyReceipt });
+      const storedLegacyReceipt = await runInDurableObject(stub, async (_instance, state) => (
+        state.storage.get<{ row: RequestInsert }>(`e:${legacyReceipt.id}`)
+      ));
+      expect(storedLegacyReceipt?.row).toMatchObject({
+        requested_provider: null,
+        requested_model: null,
+        dispatch_status: null,
+      });
+    } finally {
+      database.mockRestore();
+    }
   });
 
   it('initializes and synchronizes inline budget configuration', async () => {
@@ -443,8 +498,30 @@ describe('BudgetDO production ledger behavior', () => {
     const dispatchedReceipt = receipt(crypto.randomUUID(), 'receipt-timeout');
     const dispatched = await timeout.check({
       estimatedCents: 5,
-      dispatching: true,
       receipt: dispatchedReceipt,
+    });
+    const admittedEvidence = await runInDurableObject(timeout, async (_instance, state) => (
+      state.storage.get<{ row: RequestInsert }>(`e:${dispatchedReceipt.id}`)
+    ));
+    expect(admittedEvidence?.row).toMatchObject({
+      requested_provider: 'openai',
+      requested_model: 'gpt-4o-mini',
+      last_dispatched_provider: null,
+      last_dispatched_model: null,
+      dispatch_status: 'admitted',
+    });
+    const dispatchEvidence = { provider: 'openai', model: 'gpt-4o-mini' };
+    await expect(timeout.markDispatched(dispatched.reservationId, dispatchEvidence)).resolves.toBe(true);
+    await expect(timeout.markDispatched(dispatched.reservationId, dispatchEvidence)).resolves.toBe(true);
+    const durableDispatch = await runInDurableObject(timeout, async (_instance, state) => (
+      state.storage.get<{ row: RequestInsert }>(`e:${dispatchedReceipt.id}`)
+    ));
+    expect(durableDispatch?.row).toMatchObject({
+      requested_provider: 'openai',
+      requested_model: 'gpt-4o-mini',
+      last_dispatched_provider: 'openai',
+      last_dispatched_model: 'gpt-4o-mini',
+      dispatch_status: 'dispatched',
     });
     const undispatchedReceipt = receipt(crypto.randomUUID(), 'receipt-timeout');
     const undispatched = await timeout.check({ estimatedCents: 5, receipt: undispatchedReceipt });

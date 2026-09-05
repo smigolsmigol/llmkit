@@ -96,9 +96,10 @@ ledger state. Non-budgeted requests use `not_applicable`. Rows written by an old
 `legacy_recorded` during rollout.
 
 For linked hard-budget non-streaming responses, `response_sha256` hashes the exact response body.
-When idempotency is used, `idempotency_key_hash` is the SHA-256 digest of the authenticated API key
-identity and raw idempotency key. The raw key is not stored. Streaming responses have no response
-hash because byte replay is not claimed.
+When idempotency is used, `idempotency_key_hash` is the SHA-256 digest of the raw idempotency key.
+The raw key is not stored, and the private Durable Object name separately scopes that key by the
+authenticated API key identity. Streaming responses have no response hash because byte replay is
+not claimed.
 
 A linked hard budget deliberately supports a narrower request contract: an explicit output-token
 maximum, an exact model entry in the bundled pricing snapshot, text input, and optional client-side

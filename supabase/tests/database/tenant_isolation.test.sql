@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(65);
+select extensions.plan(71);
 
 insert into public.accounts (user_id, plan, stripe_customer_id)
 values
@@ -605,6 +605,7 @@ select extensions.is(
     select count(*)
     from public.requests
     where settlement_status = 'legacy_recorded'
+      and dispatch_status is null
   ),
   4::bigint,
   'pre-receipt request writes retain an explicit legacy settlement state'
@@ -638,7 +639,8 @@ select extensions.lives_ok(
       id, user_id, api_key_id, provider, model, status,
       customer_id, workflow_id, agent_id, session_id, end_user_id,
       budget_id, budget_reservation_id, reserved_cost_cents,
-      idempotency_key_hash, settlement_status
+      idempotency_key_hash, settlement_status,
+      requested_provider, requested_model, dispatch_status
     ) values (
       '70000000-0000-4000-8000-000000000001',
       'user_a',
@@ -655,7 +657,10 @@ select extensions.lives_ok(
       '71000000-0000-4000-8000-000000000001',
       9.5,
       'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-      'pending'
+      'pending',
+      'openai',
+      'gpt-receipt-pending',
+      'admitted'
     )$$,
   'service role inserts a complete pending request receipt'
 ); -- 53
@@ -675,6 +680,12 @@ select extensions.is(
         'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
       and response_sha256 is null
       and settlement_status = 'pending'
+      and requested_provider = 'openai'
+      and requested_model = 'gpt-receipt-pending'
+      and last_dispatched_provider is null
+      and last_dispatched_model is null
+      and provider_response_id is null
+      and dispatch_status = 'admitted'
   ),
   1::bigint,
   'request receipt persists reservation and attribution fields together'
@@ -876,6 +887,106 @@ select extensions.throws_like(
   '%requests_budget_owner_fkey%',
   'durable receipt attribution prevents deleting a referenced budget'
 ); -- 65
+
+select extensions.lives_ok(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status,
+      requested_provider, requested_model,
+      last_dispatched_provider, last_dispatched_model,
+      provider_response_id, dispatch_status
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000004',
+      'openai',
+      'gpt-dispatch-evidence',
+      'success',
+      'openai',
+      'gpt-dispatch-evidence',
+      'openai',
+      'gpt-dispatch-evidence',
+      'chatcmpl-dispatch-evidence',
+      'dispatched'
+    )$$,
+  'service role records a dispatched provider-call boundary'
+); -- 66
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status, dispatch_status
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000004',
+      'openai',
+      'gpt-invalid-dispatch-status',
+      'success',
+      'provider_received'
+    )$$,
+  '%requests_dispatch_status_check%',
+  'unproved provider-receipt status is rejected'
+); -- 67
+
+select extensions.lives_ok(
+  $$update public.requests
+    set last_dispatched_provider = 'openai',
+        last_dispatched_model = 'gpt-receipt-pending',
+        provider_response_id = 'chatcmpl-receipt-pending',
+        dispatch_status = 'dispatched'
+    where id = '70000000-0000-4000-8000-000000000001'$$,
+  'service role revises existing request receipt evidence'
+); -- 68
+
+select extensions.is(
+  (
+    select count(*)
+    from public.requests
+    where id = '70000000-0000-4000-8000-000000000001'
+      and last_dispatched_provider = 'openai'
+      and last_dispatched_model = 'gpt-receipt-pending'
+      and provider_response_id = 'chatcmpl-receipt-pending'
+      and dispatch_status = 'dispatched'
+  ),
+  1::bigint,
+  'request receipt revisions persist dispatch evidence'
+); -- 69
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status,
+      budget_id, reserved_cost_cents,
+      requested_provider, requested_model, dispatch_status
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000004',
+      'openai',
+      'gpt-incomplete-admission',
+      'pending',
+      '10000000-0000-0000-0000-000000000001',
+      1,
+      'openai',
+      'gpt-incomplete-admission',
+      'admitted'
+    )$$,
+  '%requests_dispatch_evidence_check%',
+  'admitted receipts require reservation identity'
+); -- 70
+
+select extensions.throws_like(
+  $$insert into public.requests (
+      user_id, api_key_id, provider, model, status,
+      requested_provider, requested_model, dispatch_status
+    ) values (
+      'user_a',
+      '20000000-0000-0000-0000-000000000004',
+      'openai',
+      'gpt-incomplete-dispatch',
+      'error',
+      'openai',
+      'gpt-incomplete-dispatch',
+      'dispatched'
+    )$$,
+  '%requests_dispatch_evidence_check%',
+  'dispatched receipts require provider-attempt identity'
+); -- 71
 
 select * from extensions.finish();
 rollback;
