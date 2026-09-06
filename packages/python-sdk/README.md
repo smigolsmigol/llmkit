@@ -243,6 +243,12 @@ single-run and rejects admissions after finalization.
 
 [openai-boundary-example]: https://github.com/smigolsmigol/llmkit/blob/main/examples/openai_agents_boundary_review.py
 
+For an opt-in public-PR pilot, follow the [live review instructions][live-review-pilot]. Its default
+only reads GitHub. Model spend and an interactively approved exact comment are separate opt-ins;
+the pilot requires an existing gateway and does not change the adapter's enforcement scope.
+
+[live-review-pilot]: https://github.com/smigolsmigol/llmkit/blob/main/examples/LIVE_REVIEW.md
+
 Only function tools passed through `protect_function_tool()` and model calls routed through
 `GatewayBoundaryProvider` are enforced. Streaming model calls fail before dispatch because stream
 finality needs a separate evidence contract. The coverage report is declared scope, not runtime

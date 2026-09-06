@@ -1310,11 +1310,14 @@ describe('Gate 0 captured-provider dollar-boundary falsifier', () => {
     const replayBody = await replay.text();
     const ledger = await waitForHardSettlement(budgetId);
     const requestId = first.headers.get('x-llmkit-request-id');
+    const expectedResponseSha256 = await sha256Hex(firstBody);
+    // Settlement can be persisted before the response-hash revision reaches the outbox.
     await vi.waitFor(() => expect(provider.persistedRequests.some((row) => (
-      row.id === requestId && row.settlement_status === 'settled_actual'
+      row.id === requestId
+      && row.settlement_status === 'settled_actual'
+      && row.response_sha256 === expectedResponseSha256
     ))).toBe(true), { timeout: 60_000, interval: 10 });
     const finalReceipt = provider.persistedRequests.filter((row) => row.id === requestId).at(-1);
-    const expectedResponseSha256 = await sha256Hex(firstBody);
     const passed = first.status === 200
       && first.headers.get('x-llmkit-idempotency-status') === 'created'
       && requestId !== null
