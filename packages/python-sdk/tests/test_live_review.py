@@ -7,6 +7,7 @@ import runpy
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import httpx
 import pytest
@@ -110,9 +111,7 @@ async def call_tool(pilot, raw, call_id="review-1", invoke=True):
 
 def approve(monkeypatch):
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr(
-        "builtins.input", lambda prompt: "post " + prompt.split("post ")[1].split()[0]
-    )
+    monkeypatch.setattr(pilot_module, "confirm_review", AsyncMock(return_value=True))
 
 
 def test_freeze_uses_immutable_compare_and_rechecks(harness):
@@ -165,7 +164,7 @@ def test_missing_approval_has_zero_writes(harness, monkeypatch, mode):
     elif mode == "noninteractive":
         monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
     else:
-        monkeypatch.setattr("builtins.input", lambda _: "yes")
+        monkeypatch.setattr(pilot_module, "confirm_review", AsyncMock(return_value=False))
     asyncio.run(call_tool(pilot, arguments()))
     assert pilot.context.receipts[-1].state.value == "denied"
     assert github.post_attempts == 0
@@ -559,3 +558,136 @@ def test_approval_display_escapes_terminal_controls(harness, monkeypatch, capsys
     assert github.post_attempts == 0
     asyncio.run(release_pending_admissions(pilot.context))
     assert pilot.context.receipts[-1].state.value == "released"
+
+
+@pytest.mark.parametrize("path", [("base",), ("head",), ("base", "repo"), ("head", "repo")])
+@pytest.mark.parametrize("value", [None, [], "unavailable", 1, ...])
+def test_malformed_pr_shape_is_rejected_before_diff(path, value):
+    remote = GitHubFixture()
+
+    def malformed(request):
+        data = remote(request).json()
+        parent = data if len(path) == 1 else data[path[0]]
+        if value is ...:
+            del parent[path[-1]]
+        else:
+            parent[path[-1]] = value
+        return httpx.Response(200, json=data)
+
+    client = httpx.AsyncClient(transport=httpx.MockTransport(malformed))
+    github = github_module.GitHubReview(client, REPO, 7, HEAD)
+    with pytest.raises(github_module.PilotError, match="invalid_github_response"):
+        asyncio.run(github.freeze())
+    assert len(remote.requests) == 1
+    assert remote.requests[0].method == "GET"
+    assert github.post_attempts == 0
+
+
+@pytest.mark.parametrize("value", [None, 42, [], "short"])
+def test_invalid_base_sha_is_a_content_free_failure(harness, value):
+    remote, github, _ = harness
+    remote.base = value
+    with pytest.raises(github_module.PilotError, match="identity_changed"):
+        asyncio.run(github.freeze())
+    assert github.post_attempts == 0
+
+
+def test_terminal_entry_point_rejects_null_head_repo(monkeypatch, capsys):
+    remote = GitHubFixture()
+    client_type = httpx.AsyncClient
+
+    def missing_repo(request):
+        data = remote(request).json()
+        data["head"]["repo"] = None
+        return httpx.Response(200, json=data)
+
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda **kw: client_type(transport=httpx.MockTransport(missing_repo), **kw),
+    )
+    monkeypatch.setattr(sys, "argv", ["pilot", "--repo", REPO, "--pr", "7", "--head", HEAD])
+    with pytest.raises(SystemExit) as stopped:
+        runpy.run_path(str(EXAMPLES / "openai_agents_live_review.py"), run_name="__main__")
+    assert stopped.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert json.loads(captured.err) == {"error": "PilotError"}
+    assert len(remote.requests) == 1 and remote.requests[0].method == "GET"
+
+
+@pytest.mark.parametrize("answer", ["exact", "yes", "wrong-hash", "eof"])
+def test_prompt_process_requires_exact_answer(monkeypatch, answer):
+    start_process = asyncio.create_subprocess_exec
+    readers = []
+    action_hash = "e" * 64
+
+    async def with_pipe(*args, **kwargs):
+        reader = await start_process(
+            *args, **kwargs, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE
+        )
+        readers.append(reader)
+        if answer != "eof":
+            text = f"post {action_hash}" if answer == "exact" else answer
+            reader.stdin.write((text + "\n").encode())
+            await reader.stdin.drain()
+        reader.stdin.close()
+        return reader
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", with_pipe)
+
+    async def run():
+        async with asyncio.timeout(10):
+            result = await pilot_module.confirm_review(action_hash)
+        prompt = (await readers[0].stdout.read()).decode()
+        assert f"Type post {action_hash}" in prompt
+        assert result is (answer == "exact")
+        assert readers[0].returncode is not None
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("stop", ["timeout", "cancel"])
+def test_unanswered_prompt_is_reaped_without_post(harness, monkeypatch, stop):
+    _, github, pilot = harness
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    start_process = asyncio.create_subprocess_exec
+    readers = []
+
+    async def with_pipe(*args, **kwargs):
+        reader = await start_process(
+            *args, **kwargs, stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE
+        )
+        readers.append(reader)
+        return reader
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", with_pipe)
+
+    async def stop_at_prompt(task, deadline):
+        while not readers:
+            await asyncio.sleep(0)
+        await readers[0].stdout.readuntil(b"anything else denies): ")
+        if stop == "timeout":
+            deadline.reschedule(asyncio.get_running_loop().time())
+        else:
+            task.cancel()
+
+    async def run():
+        async with asyncio.timeout(10) as deadline:
+            stopper = asyncio.create_task(stop_at_prompt(asyncio.current_task(), deadline))
+            try:
+                await call_tool(pilot, arguments())
+            finally:
+                stopper.cancel()
+                await asyncio.gather(stopper, return_exceptions=True)
+                await release_pending_admissions(pilot.context)
+                for reader in readers:
+                    reader.stdin.close()
+                    await reader.stdin.wait_closed()
+
+    with pytest.raises(TimeoutError if stop == "timeout" else asyncio.CancelledError):
+        asyncio.run(run())
+    assert len(readers) == 1 and readers[0].returncode is not None
+    assert pilot.approved_action is None
+    assert github.post_attempts == 0
+    assert not (pilot.output / "post-attempt.json").exists()

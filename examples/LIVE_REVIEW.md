@@ -51,6 +51,8 @@ denial returns a nonzero exit status and a receipt; it is a useful negative pilo
 Posting additionally requires `--allow-comment --actor YOUR_GITHUB_LOGIN`, `GH_TOKEN` for that
 actor with Pull requests write permission on the one target repository, and an interactive terminal.
 Use a narrowly scoped token. The script offers at most one approval prompt per run.
+The agent run's 120-second timeout includes this approval wait. Timeout or cancellation stops the
+prompt reader without approving or posting the pending comment.
 
 The terminal displays JSON-escaped repository, PR, head, actor, and exact comment text. Inspect the
 text for correctness and private content. Type the displayed `post` plus full action hash only if

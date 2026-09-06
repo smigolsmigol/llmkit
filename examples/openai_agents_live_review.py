@@ -30,6 +30,28 @@ from llmkit.integrations.openai_agents import (
 POLICY = content_sha256({"pilot": "public-pr-review-v1", "effect": "COMMENT", "max_posts": 1})
 
 
+async def confirm_review(action_sha256: str) -> bool:
+    # A cancellable process avoids leaving input() alive in the default executor at shutdown.
+    reader = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-I",
+        "-c",
+        "import sys\n"
+        "try:\n"
+        "    answer = input(f'Type post {sys.argv[1]} to publish this exact review (anything else denies): ')\n"
+        "except (EOFError, KeyboardInterrupt):\n"
+        "    sys.exit(1)\n"
+        "sys.exit(0 if answer == f'post {sys.argv[1]}' else 1)\n",
+        action_sha256,
+    )
+    try:
+        return await reader.wait() == 0
+    finally:
+        if reader.returncode is None:
+            reader.kill()
+            await reader.wait()
+
+
 class ReviewPilot:
     def __init__(
         self,
@@ -105,11 +127,11 @@ class ReviewPilot:
         self.approval_requested = True
         await self.github.check_head(self.subject.base)
         # JSON escaping prevents a model-generated terminal control from hiding approval text.
-        print(json.dumps({"actor": self.actor, "effect": "COMMENT", **values}, ensure_ascii=True))
-        answer = input(
-            f"Type post {action.sha256} to publish this exact review (anything else denies): "
+        print(
+            json.dumps({"actor": self.actor, "effect": "COMMENT", **values}, ensure_ascii=True),
+            flush=True,
         )
-        if answer != f"post {action.sha256}":
+        if not await confirm_review(action.sha256):
             return None
         self.approved_action = action.sha256
         return self.issue(action)

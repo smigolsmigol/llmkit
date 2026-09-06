@@ -85,15 +85,23 @@ class GitHubReview:
 
     async def check_head(self, base: str | None = None) -> dict[str, Any]:
         pr = await self.request("GET", self.path)
+        base_ref, head_ref = pr.get("base"), pr.get("head")
+        if not isinstance(base_ref, dict) or not isinstance(head_ref, dict):
+            raise PilotError("invalid_github_response")
+        base_repo, head_repo = base_ref.get("repo"), head_ref.get("repo")
+        if not isinstance(base_repo, dict) or not isinstance(head_repo, dict):
+            raise PilotError("invalid_github_response")
+        base_sha = base_ref.get("sha")
         if (
             pr.get("number") != self.number
             or pr.get("state") != "open"
-            or pr.get("base", {}).get("repo", {}).get("full_name") != self.repository
-            or pr.get("base", {}).get("repo", {}).get("private") is not False
-            or pr.get("head", {}).get("repo", {}).get("private") is not False
-            or pr.get("head", {}).get("sha") != self.head
-            or not re.fullmatch(r"[0-9a-f]{40}", pr.get("base", {}).get("sha", ""))
-            or (base is not None and pr["base"]["sha"] != base)
+            or base_repo.get("full_name") != self.repository
+            or base_repo.get("private") is not False
+            or head_repo.get("private") is not False
+            or head_ref.get("sha") != self.head
+            or not isinstance(base_sha, str)
+            or not re.fullmatch(r"[0-9a-f]{40}", base_sha)
+            or (base is not None and base_sha != base)
         ):
             raise PilotError("pull_request_identity_changed_or_not_public_open")
         return pr
