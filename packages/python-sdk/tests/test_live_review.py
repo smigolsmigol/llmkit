@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock
 
 import httpx
 import pytest
-from agents import Agent, ToolInputGuardrailData
+from agents import Agent, ToolInputGuardrailData, ToolInputGuardrailTripwireTriggered
 from agents.tool_context import ToolContext
 
 from llmkit.boundary import EffectAction
@@ -272,11 +272,18 @@ def test_oversized_diff_fails_without_model_or_post(harness):
     assert github.post_attempts == 0
 
 
-def test_native_runner_joins_real_pilot_tool_and_gateway_contract(harness, monkeypatch):
+@pytest.mark.parametrize("tool_count", [1, 2])
+def test_native_runner_joins_real_pilot_tool_and_gateway_contract(harness, monkeypatch, tool_count):
     _, github, pilot = harness
     approve(monkeypatch)
     first = fixture.tool_completion(call_id="native-review", body=BODY)
     first["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"] = arguments()
+    if tool_count == 2:
+        extra = fixture.tool_completion(call_id="extra-review", body=BODY)
+        extra["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"] = arguments()
+        first["choices"][0]["message"]["tool_calls"].extend(
+            extra["choices"][0]["message"]["tool_calls"]
+        )
     gateway = fixture.FakeGateway([first, fixture.completion("Done.")])
 
     async def run():
@@ -296,12 +303,25 @@ def test_native_runner_joins_real_pilot_tool_and_gateway_contract(harness, monke
             finally:
                 await release_pending_admissions(pilot.context)
 
-    asyncio.run(run())
-    assert len(gateway.requests) == 2
-    assert github.post_attempts == github.acknowledged == 1
+    if tool_count == 2:
+        with pytest.raises(ToolInputGuardrailTripwireTriggered):
+            asyncio.run(run())
+    else:
+        asyncio.run(run())
+    assert len(gateway.requests) == (2 if tool_count == 1 else 1)
+    for request in gateway.requests:
+        payload = json.loads(request.content)
+        assert "parallel_tool_calls" not in payload
+        assert payload["max_tokens"] == 1024
+    assert github.post_attempts == github.acknowledged == (1 if tool_count == 1 else 0)
+    pilot_module.confirm_review.assert_awaited_once()
     report = pilot.report(1, None)
     assert report["receipts_verified_in_process"]
-    assert [r["state"] for r in report["receipts"]] == ["reserved", "dispatched", "settled"] * 3
+    states = [r["state"] for r in report["receipts"]]
+    if tool_count == 1:
+        assert states == ["reserved", "dispatched", "settled"] * 3
+    else:
+        assert states == ["reserved", "dispatched", "settled", "reserved", "denied", "released"]
     assert BODY not in json.dumps(report) and "untrusted_diff" not in json.dumps(report)
 
 

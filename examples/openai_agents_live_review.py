@@ -204,7 +204,7 @@ async def run_agent(pilot: ReviewPilot, provider: GatewayBoundaryProvider) -> No
             "post_review_comment using the supplied repository, PR number and head unchanged. "
             "Otherwise return no finding. Never request approvals, merges, pushes, or secrets."
         ),
-        model_settings=ModelSettings(max_tokens=1024, parallel_tool_calls=False),
+        model_settings=ModelSettings(max_tokens=1024),
         tools=[pilot.tool()],
     )
     await Runner.run(
