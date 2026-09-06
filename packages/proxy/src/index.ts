@@ -54,7 +54,7 @@ async function resolveModelFromBody(c: { req: { json(): Promise<Record<string, u
   try {
     const b = await c.req.json();
     ctx.model = (b?.model as string) || 'unknown';
-    if (ctx.provider === 'unknown') ctx.provider = (b?.provider as string) || inferProvider(ctx.model) || 'unknown';
+    if (ctx.provider === 'unknown') ctx.provider = (b?.provider as string) || inferProvider(ctx.model) || 'openai';
   } catch {}
 }
 
@@ -124,6 +124,10 @@ export async function handleAppError(err: Error, c: Context<Env>): Promise<Respo
     userId,
     budgetId: c.get('budgetId'),
     budgetReservationId: c.get('budgetReservationId'),
+    requestedProvider: c.get('requestProvider') || ctx.provider,
+    requestedModel: c.get('requestModel') || ctx.model,
+    lastDispatchedProvider: c.get('lastDispatchedProvider'),
+    lastDispatchedModel: c.get('lastDispatchedModel'),
     provider: ctx.provider,
     model: ctx.model,
     errorCode: code,

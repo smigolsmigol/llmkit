@@ -47,7 +47,7 @@
   {
     "id": "openai-pydantic-portability",
     "oracle": "same_contract_or_explicitly_uncovered",
-    "owner": "coverage-contract"
+    "owner": "python-sdk-boundary-adapters"
   },
   {
     "id": "raw-content-disabled",

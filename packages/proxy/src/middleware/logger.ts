@@ -32,6 +32,11 @@ export interface TrackParams {
   endUserId: string | undefined;
   idempotencyKeyHash: string | undefined;
   responseSha256: string | undefined;
+  requestedProvider?: string;
+  requestedModel?: string;
+  lastDispatchedProvider?: string;
+  lastDispatchedModel?: string;
+  providerResponseId?: string;
   toolCalls: { name: string }[] | undefined;
   providerCostUsd: number | undefined;
   apiKeyId: string | undefined;
@@ -61,6 +66,10 @@ export interface FailedTrackParams {
   userId: string | undefined;
   budgetId: string | undefined;
   budgetReservationId: string | undefined;
+  requestedProvider?: string;
+  requestedModel?: string;
+  lastDispatchedProvider?: string;
+  lastDispatchedModel?: string;
   provider: string;
   model: string;
   errorCode: string;
@@ -92,6 +101,38 @@ function receiptIdentity(p: {
   return !!p.requestId && !!p.userId && !!p.apiKeyId && !!p.customerId;
 }
 
+type DispatchReceiptFields = Pick<
+  RequestInsert,
+  | 'requested_provider'
+  | 'requested_model'
+  | 'last_dispatched_provider'
+  | 'last_dispatched_model'
+  | 'provider_response_id'
+  | 'dispatch_status'
+>;
+
+function failedDispatchReceiptFields(p: FailedTrackParams): DispatchReceiptFields {
+  return {
+    requested_provider: p.requestedProvider || p.provider,
+    requested_model: p.requestedModel || p.model,
+    last_dispatched_provider: p.lastDispatchedProvider || null,
+    last_dispatched_model: p.lastDispatchedModel || null,
+    provider_response_id: null,
+    dispatch_status: p.lastDispatchedProvider ? 'dispatched' : p.budgetReservationId ? 'admitted' : null,
+  };
+}
+
+function successfulDispatchReceiptFields(p: TrackParams): DispatchReceiptFields {
+  return {
+    requested_provider: p.requestedProvider || p.provider,
+    requested_model: p.requestedModel || p.model,
+    last_dispatched_provider: p.lastDispatchedProvider || p.provider,
+    last_dispatched_model: p.lastDispatchedModel || p.model,
+    provider_response_id: p.providerResponseId || null,
+    dispatch_status: 'dispatched',
+  };
+}
+
 function failedReceipt(p: FailedTrackParams): RequestInsert | undefined {
   if (!receiptIdentity(p)) return undefined;
   return {
@@ -109,6 +150,7 @@ function failedReceipt(p: FailedTrackParams): RequestInsert | undefined {
     settlement_status: p.budgetId && p.budgetReservationId ? 'unknown' : 'not_applicable',
     idempotency_key_hash: p.idempotencyKeyHash || null,
     response_sha256: null,
+    ...failedDispatchReceiptFields(p),
     provider: p.provider,
     model: p.model,
     input_tokens: 0,
@@ -145,6 +187,7 @@ function successfulReceipt(
     settlement_status: settlementStatus,
     idempotency_key_hash: p.idempotencyKeyHash || null,
     response_sha256: p.responseSha256 || null,
+    ...successfulDispatchReceiptFields(p),
     provider: p.provider,
     model: p.model,
     input_tokens: p.usage.inputTokens,
@@ -336,6 +379,11 @@ export function costLogger() {
       endUserId: c.get('endUserId'),
       idempotencyKeyHash: c.get('idempotencyKeyHash'),
       responseSha256: c.get('responseSha256'),
+      requestedProvider: c.get('requestProvider'),
+      requestedModel: c.get('requestModel'),
+      lastDispatchedProvider: c.get('lastDispatchedProvider'),
+      lastDispatchedModel: c.get('lastDispatchedModel'),
+      providerResponseId: meta.providerResponseId,
       toolCalls: meta.toolCalls,
       providerCostUsd: meta.providerCostUsd,
       apiKeyId: c.get('apiKeyId'),

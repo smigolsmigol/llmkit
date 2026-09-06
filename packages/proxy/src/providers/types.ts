@@ -16,6 +16,7 @@ export interface ProviderRequest {
   toolChoice?: unknown;
   responseFormat?: unknown;
   extra?: Record<string, unknown>;
+  beforeDispatch?: () => Promise<void>;
 }
 
 export interface ToolCall {

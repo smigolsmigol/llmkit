@@ -1,19 +1,32 @@
-"""OpenAI Agents SDK boundary for explicitly enrolled function tools."""
+"""Exact-effect boundaries for explicitly enrolled OpenAI Agents paths."""
 
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass, field, replace
-from typing import Any
+from typing import Any, cast
+
+import httpx
+from openai.types.responses.response_prompt_param import ResponsePromptParam
 
 try:
     from agents import (
+        AgentOutputSchemaBase,
         FunctionTool,
+        Handoff,
+        Model,
+        ModelProvider,
+        ModelResponse,
+        ModelSettings,
+        ModelTracing,
+        OpenAIProvider,
+        Tool,
         ToolGuardrailFunctionOutput,
         ToolInputGuardrail,
         ToolInputGuardrailData,
     )
+    from agents.items import TResponseInputItem, TResponseStreamEvent
     from agents.tool_context import ToolContext
 except ImportError as error:
     raise ImportError(
@@ -33,6 +46,18 @@ from llmkit.boundary import (
     EffectAction,
     ExactEffectGrant,
     coverage_report,
+)
+from llmkit.integrations.model_dispatch import (
+    GatewayModelDispatch,
+    ModelGrantResolver,
+    UnsupportedModelStreamingError,
+    _ModelAttempt,
+)
+from llmkit.integrations.model_dispatch import (
+    ModelDispatchBoundaryError as ModelDispatchBoundaryError,
+)
+from llmkit.integrations.model_dispatch import (
+    _current_model_attempt as _current_model_attempt,
 )
 
 GrantResolution = ExactEffectGrant | None | Awaitable[ExactEffectGrant | None]
@@ -58,6 +83,7 @@ class OpenAIBoundaryContext:
     grant_resolver: GrantResolver
     provenance: str | None = None
     receipts: list[BoundaryReceipt] = field(default_factory=list)
+    model_grant_resolver: ModelGrantResolver | None = None
     _admissions: dict[_AdmissionKey, _PendingAdmission] = field(default_factory=dict, repr=False)
     _admission_lock: asyncio.Lock = field(default_factory=asyncio.Lock, repr=False)
     _finalized: bool = field(default=False, repr=False)
@@ -79,7 +105,7 @@ def _find_call_admission(
     )
 
 
-def openai_agents_coverage() -> CoverageReport:
+def openai_agents_coverage(*, model_dispatch_enrolled: bool = False) -> CoverageReport:
     return coverage_report(
         "openai-agents",
         [
@@ -95,8 +121,18 @@ def openai_agents_coverage() -> CoverageReport:
             ),
             CoverageEntry(
                 "model_dispatch",
+                CoverageStatus.ENFORCED if model_dispatch_enrolled else CoverageStatus.UNCOVERED,
+                (
+                    "the enrolled provider joins an exact serialized request to a terminal "
+                    "LLMKit gateway receipt"
+                    if model_dispatch_enrolled
+                    else "requires an enrolled GatewayBoundaryProvider"
+                ),
+            ),
+            CoverageEntry(
+                "model_streaming",
                 CoverageStatus.UNCOVERED,
-                "requires a separately joined LLMKit gateway receipt",
+                "stream finality requires a separate evidence contract",
             ),
             CoverageEntry(
                 "hosted_tool",
@@ -187,6 +223,187 @@ async def release_pending_admissions(
             context.receipts.append(receipt)
             released.append(receipt)
     return tuple(released)
+
+
+class GatewayBoundaryProvider(ModelProvider):
+    """Owned non-streaming Agents provider routed through the LLMKit gateway."""
+
+    context: OpenAIBoundaryContext
+    runtime: BoundaryRuntime
+    provider: str
+    agent_id: str | None
+    session_id: str | None
+    _closed: bool
+    _delegate: OpenAIProvider
+    _model_dispatch: GatewayModelDispatch
+
+    def __init__(
+        self,
+        *,
+        context: OpenAIBoundaryContext,
+        runtime: BoundaryRuntime,
+        provider: str,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        provider_key: str | None = None,
+        agent_id: str | None = None,
+        session_id: str | None = None,
+        use_responses: bool = False,
+        receipt_timeout_seconds: float = 5.0,
+        receipt_poll_interval_seconds: float = 0.05,
+        request_transport: httpx.AsyncBaseTransport | None = None,
+        receipt_transport: httpx.AsyncBaseTransport | None = None,
+        call_id_factory: Callable[[], str] | None = None,
+    ) -> None:
+        self.context = context
+        self.runtime = runtime
+        self.provider = provider
+        self.agent_id = agent_id
+        self.session_id = session_id
+        self._closed = False
+        self._model_dispatch = GatewayModelDispatch(
+            runtime=runtime,
+            principal=context.principal,
+            tenant=context.tenant,
+            workload=context.workload,
+            budget_scope=context.budget_scope,
+            provenance=context.provenance,
+            model_grant_resolver=context.model_grant_resolver,
+            receipt_lock=context._admission_lock,
+            append_receipt=context.receipts.append,
+            provider=provider,
+            api_key=api_key,
+            base_url=base_url,
+            provider_key=provider_key,
+            agent_id=agent_id,
+            session_id=session_id,
+            receipt_timeout_seconds=receipt_timeout_seconds,
+            receipt_poll_interval_seconds=receipt_poll_interval_seconds,
+            request_transport=request_transport,
+            receipt_transport=receipt_transport,
+            call_id_factory=call_id_factory,
+            context_is_finalized=lambda: self.context._finalized,
+            owner_id=id(self),
+        )
+        self._delegate = OpenAIProvider(
+            openai_client=self._model_dispatch.openai_client,
+            use_responses=use_responses,
+            use_responses_websocket=False,
+        )
+
+    async def __aenter__(self) -> GatewayBoundaryProvider:
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        await self.aclose()
+
+    def get_model(self, model_name: str | None) -> Model:
+        if self._closed:
+            raise RuntimeError("GatewayBoundaryProvider is closed")
+        return GatewayBoundaryModel(
+            self._delegate.get_model(model_name),
+            self._model_dispatch,
+        )
+
+    def coverage(self) -> CoverageReport:
+        return openai_agents_coverage(model_dispatch_enrolled=True)
+
+    async def aclose(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        await self._delegate.aclose()
+        await self._model_dispatch.aclose()
+
+    async def _action_from_request(
+        self,
+        attempt: _ModelAttempt,
+        request: httpx.Request,
+    ) -> EffectAction:
+        return await self._model_dispatch._action_from_request(attempt, request)
+
+    async def _capture_response(self, response: httpx.Response) -> None:
+        await self._model_dispatch._capture_response(response)
+
+    async def _poll_terminal_receipt(self, receipt_id: str) -> dict[str, Any]:
+        return await self._model_dispatch._poll_terminal_receipt(receipt_id)
+
+    async def _verified_acknowledgement(
+        self,
+        attempt: _ModelAttempt,
+    ) -> EffectAcknowledgement:
+        return await self._model_dispatch._verified_acknowledgement(attempt)
+
+
+class GatewayBoundaryModel(Model):
+    """Non-streaming Model wrapper used unchanged by the Agents Runner."""
+
+    def __init__(self, delegate: Model, owner: GatewayModelDispatch) -> None:
+        self._delegate = delegate
+        self._owner = owner
+
+    async def get_response(
+        self,
+        system_instructions: str | None,
+        input: str | list[TResponseInputItem],  # noqa: A002
+        model_settings: ModelSettings,
+        tools: list[Tool],
+        output_schema: AgentOutputSchemaBase | None,
+        handoffs: list[Handoff],
+        tracing: ModelTracing,
+        *,
+        previous_response_id: str | None,
+        conversation_id: str | None,
+        prompt: ResponsePromptParam | None,
+    ) -> ModelResponse:
+        async def dispatch(call_id: str) -> ModelResponse:
+            extra_headers = dict(model_settings.extra_headers or {})
+            extra_headers["Idempotency-Key"] = call_id
+            dispatched_settings = replace(model_settings, extra_headers=extra_headers)
+            return await self._delegate.get_response(
+                system_instructions,
+                input,
+                dispatched_settings,
+                tools,
+                output_schema,
+                handoffs,
+                tracing,
+                previous_response_id=previous_response_id,
+                conversation_id=conversation_id,
+                prompt=prompt,
+            )
+
+        return await self._owner.execute(dispatch)
+
+    async def stream_response(
+        self,
+        system_instructions: str | None,
+        input: str | list[TResponseInputItem],  # noqa: A002
+        model_settings: ModelSettings,
+        tools: list[Tool],
+        output_schema: AgentOutputSchemaBase | None,
+        handoffs: list[Handoff],
+        tracing: ModelTracing,
+        *,
+        previous_response_id: str | None,
+        conversation_id: str | None,
+        prompt: ResponsePromptParam | None,
+    ) -> AsyncIterator[TResponseStreamEvent]:
+        del (
+            system_instructions,
+            input,
+            model_settings,
+            tools,
+            output_schema,
+            handoffs,
+            tracing,
+            previous_response_id,
+            conversation_id,
+            prompt,
+        )
+        if False:
+            yield cast(TResponseStreamEvent, None)
+        raise UnsupportedModelStreamingError("model_streaming_uncovered")
 
 
 def protect_function_tool(

@@ -8,3 +8,12 @@ export const MAX_COORDINATED_REQUEST_LIFETIME_MS = MAX_PROVIDER_EXECUTION_MS + C
 export function providerRequestSignal(timeoutMs = PROVIDER_REQUEST_TIMEOUT_MS): AbortSignal {
   return AbortSignal.timeout(timeoutMs);
 }
+
+export async function providerFetch(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  beforeDispatch?: () => Promise<void>,
+): Promise<Response> {
+  await beforeDispatch?.();
+  return fetch(input, init);
+}

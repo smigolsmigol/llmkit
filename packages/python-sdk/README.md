@@ -74,8 +74,8 @@ other integrations require their framework package separately.
 
 ## PydanticAI gateway model
 
-Use the native PydanticAI model interface when requests need shared budget admission, stable
-attribution, and gateway receipts:
+Use the native PydanticAI model interface to route requests through LLMKit for server-side budget
+admission, stable attribution, and gateway receipts:
 
 ```bash
 pip install "llmkit-sdk[pydantic-ai]"
@@ -101,29 +101,140 @@ result = await agent.run(
 
 `UsageLimits` remains the in-run token and request guard. LLMKit gateway mode adds the shared,
 multi-run spend boundary and receipt. Hard budgets require an explicit positive output-token limit.
-Client-side function tools are supported; provider-managed tools, images, and file attachments fail
-closed when the gateway cannot prove a pre-dispatch cost ceiling.
+Gateway-routed client-side function tools are supported but are not exact-effect-enforced;
+provider-managed tools, images, and file attachments fail closed when the gateway cannot prove a
+pre-dispatch cost ceiling.
 Transparent OpenAI SDK transport retries are disabled in gateway mode. Retry transient failures
 explicitly at the run boundary so every dispatch has a distinct budget reservation and receipt.
 
-## OpenAI Agents function-tool boundary (experimental)
+`gateway_model()` does not locally verify that a grant and terminal receipt match the exact request.
+Use the opt-in boundary model when the caller must withhold the model result until that proof is
+complete:
 
-Use the opt-in boundary when an OpenAI Agents `FunctionTool` can create an external side effect.
-The wrapper requires a signed grant for the exact tool, call ID, arguments, identity, policy,
-expiry, and budget scope before invoking the tool. `admit()` returns policy rejections as signed
-`denied` receipts; malformed inputs or a missing boundary context fail before admission and may not
-produce one. Reservations proven not to dispatch produce `released`. An invoked tool records
-`reserved`, `dispatched`, and a terminal `settled` or `uncertain` receipt without storing raw
-arguments. `settled` requires an application acknowledgement with a stable effect ID, source, and
-version. It is not independent proof from the remote system.
+```python
+from pydantic_ai import Agent, ModelSettings
+from llmkit.integrations.pydantic_ai import (
+    PydanticAIBoundaryContext,
+    gateway_boundary_model,
+)
+
+boundary_context = PydanticAIBoundaryContext(
+    principal="reviewer@example.com",
+    tenant="acme",
+    workload="release-review",
+    budget_scope="approved-budget-id",
+    model_grant_resolver=resolve_model_grant,
+    provenance="trusted",
+)
+model = gateway_boundary_model(
+    "gpt-4.1-mini",
+    context=boundary_context,
+    runtime=boundary_runtime,
+    provider="openai",
+    settings=ModelSettings(max_tokens=512),
+)
+
+async with model:
+    result = await Agent(model).run("Review this release candidate.")
+```
+
+Here, `boundary_runtime` and `resolve_model_grant` are application-owned. The resolver receives the
+exact serialized request action and must return its signed grant. The result is released only after
+the authenticated terminal receipt matches the request identity, budget, provider and model,
+response ID and body hash, and idempotency key. A denial stops before network dispatch; missing or
+mismatched evidence after dispatch produces `uncertain`. This boundary enforces non-streaming model
+calls only. Function tools need separate enrollment below. PydanticAI streaming and provider-managed
+tools remain explicitly uncovered, as do calls made directly through the wrapped model or OpenAI client.
+
+## PydanticAI function-tool boundary (experimental)
+
+`protect_function_tool()` returns a native toolset for `Agent(toolsets=[...])`. It checks a signed
+grant for the exact tool name, version, call ID, validated JSON arguments, identity, policy, expiry,
+and budget scope before invoking the enrolled function. Arguments include native validated defaults
+and are copied before an asynchronous grant resolver runs.
+
+```python
+from pydantic_ai import Agent, Tool
+from llmkit.integrations.pydantic_ai import protect_function_tool
+
+review_toolset = protect_function_tool(
+    Tool(post_review_comment),
+    context=boundary_context,
+    runtime=boundary_runtime,
+    grant_resolver=resolve_tool_grant,
+    tool_version="1",
+    effect_class="github.review_comment",
+    acknowledgement=extract_review_acknowledgement,
+)
+agent = Agent(model, toolsets=[review_toolset])
+```
+
+The tool grant resolver receives the exact `EffectAction` and native `RunContext`. It returns a
+signed grant or `None`, synchronously or asynchronously. The acknowledgement callback must return
+an `EffectAcknowledgement` backed by the application's sink response. A successful function return
+alone does not settle the effect. Missing or invalid acknowledgement, cancellation, native timeout,
+and exceptions after invocation leave the receipt `uncertain`, never `released`.
+
+Admission and dispatch have no intervening asynchronous step, so cancellation while resolving a
+grant leaves no reservation. Unlike the OpenAI Agents guardrail adapter, this toolset does not need
+a pending-admission finalizer. Use an application-owned context and runtime; the supplied HMAC and
+in-memory replay store prove an in-process lifecycle, not durable crash recovery or cross-process
+coordination.
+
+Only explicitly wrapped native function tools with JSON-compatible validated arguments are covered.
+Approval-required or deferred tools, dynamic renames, custom toolsets, MCP tools, Python-object
+arguments, and direct calls to the original function are not covered. The coverage report declares
+enrollment, not an inventory of everything the Agent can execute.
+
+The [PydanticAI review example][pydantic-boundary-example] uses the same fake gateway and review sink
+as the OpenAI Agents example. From `packages/python-sdk`, with the `pydantic-ai` extra installed:
+
+```bash
+python ../../examples/pydantic_ai_boundary_review.py
+```
+
+Both native SDKs deny the poisoned review before the sink and join two approved model calls and one
+tool effect into nine receipt states. These local examples make no GitHub or hosted LLMKit request;
+they prove SDK wiring and the shared receipt contract, not deployment.
+
+[pydantic-boundary-example]: https://github.com/smigolsmigol/llmkit/blob/main/examples/pydantic_ai_boundary_review.py
+
+## OpenAI Agents exact-effect boundary (experimental)
+
+Use the opt-in boundary when an OpenAI Agents run must prove both model dispatch and function-tool
+effects. `protect_function_tool()` requires a signed grant for the exact tool, call ID, arguments,
+identity, policy, expiry, and budget scope before invoking the tool. `GatewayBoundaryProvider` uses
+the Agents `ModelProvider` seam to bind a separate grant to the exact serialized non-streaming
+model request before the HTTP transport sends it.
+
+The model result remains withheld until an authenticated LLMKit receipt matches the request ID,
+identity, budget reservation, requested and last-dispatched provider and model, provider response
+ID, response-body hash, idempotency evidence, and terminal `settled_actual` state. Missing, expired,
+changed, or replayed grants stop before network dispatch. Cancellation, parsing failure, or missing
+terminal evidence after dispatch produces `uncertain`. The provider accepts one explicit provider
+and disables transparent OpenAI retries so one grant maps to one transport attempt.
 
 ```bash
 pip install "llmkit-sdk[openai-agents]"
 ```
 
-The [local PR-review example][openai-boundary-example] calls the SDK guardrail and tool primitives
-directly. It runs one poisoned request with no grant and one granted request without calling a
-Runner, model, or GitHub.
+The [local PR-review example][openai-boundary-example] runs the real Agents `Runner` against an
+in-process fake gateway. The poisoned review receives no tool grant and reaches the sink zero times.
+The approved review joins two model calls and one tool effect into three signed receipt chains. The
+fixture sends no GitHub or hosted LLMKit request, so it proves consumer wiring rather than hosted
+deployment.
+
+From `packages/python-sdk`, the check takes a few minutes:
+
+```bash
+python -m venv .venv
+.venv/bin/python -m pip install -e ".[openai-agents]"
+.venv/bin/python ../../examples/openai_agents_boundary_review.py
+```
+
+On Windows, use `.venv\Scripts\python.exe`. A passing result reports zero poisoned sink calls, one
+approved sink call, two approved model requests, and nine approved receipt states in
+`reserved`, `dispatched`, `settled` order.
 
 Wrap each Agents run in `try` / `finally` and call
 `await release_pending_admissions(boundary_context)` in the finalizer. This closes reservations
@@ -132,13 +243,20 @@ single-run and rejects admissions after finalization.
 
 [openai-boundary-example]: https://github.com/smigolsmigol/llmkit/blob/main/examples/openai_agents_boundary_review.py
 
-Only function tools passed through `protect_function_tool()` are enforced. The coverage report is
-a declared list, not runtime inventory. Approval-required function tools are rejected because
-OpenAI Agents 0.20 does not expose a rejection hook that can release a reserved grant. Unwrapped
-function tools, hosted tools, hosted or local MCP, computer, shell, apply-patch, handoffs,
-agent-as-tool calls, realtime, direct clients, and background retries remain uncovered. The
-included HMAC authority and replay/lifecycle stores are local proof components, not a production
-key service or durable coordination layer.
+For an opt-in public-PR pilot, follow the [live review instructions][live-review-pilot]. Its default
+only reads GitHub. Model spend and an interactively approved exact comment are separate opt-ins;
+the pilot requires an existing gateway and does not change the adapter's enforcement scope.
+
+[live-review-pilot]: https://github.com/smigolsmigol/llmkit/blob/main/examples/LIVE_REVIEW.md
+
+Only function tools passed through `protect_function_tool()` and model calls routed through
+`GatewayBoundaryProvider` are enforced. Streaming model calls fail before dispatch because stream
+finality needs a separate evidence contract. The coverage report is declared scope, not runtime
+inventory. Approval-required function tools are rejected because OpenAI Agents 0.20 does not expose
+a rejection hook that can release a reserved grant. Unwrapped tools, hosted tools, hosted or local
+MCP, computer, shell, apply-patch, handoffs, agent-as-tool calls, realtime, direct clients, and
+background retries remain uncovered. The included HMAC authority and replay/lifecycle stores are
+local proof components, not a production key service or durable coordination layer.
 
 ## Sessions and gateway mode
 

@@ -122,7 +122,7 @@ export function idempotency() {
       body,
     }));
     const objectName = await sha256Hex(`${apiKeyId}\n${key}`);
-    c.set('idempotencyKeyHash', objectName);
+    c.set('idempotencyKeyHash', await sha256Hex(key));
     const stub = c.env.IDEMPOTENCY_DO.get(c.env.IDEMPOTENCY_DO.idFromName(objectName));
     const claim = await stub.claim({ fingerprint });
 
