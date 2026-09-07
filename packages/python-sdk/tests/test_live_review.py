@@ -15,6 +15,7 @@ from agents import Agent, ToolInputGuardrailData, ToolInputGuardrailTripwireTrig
 from agents.tool_context import ToolContext
 
 from llmkit.boundary import EffectAction
+from llmkit.boundary_policy import BoundaryPolicy
 from llmkit.integrations.openai_agents import GatewayBoundaryProvider, release_pending_admissions
 
 EXAMPLES = Path(__file__).resolve().parents[3] / "examples"
@@ -92,6 +93,23 @@ def harness(tmp_path):
     subject = asyncio.run(github.freeze())
     pilot = pilot_module.ReviewPilot(
         github, subject, "reviewer", fixture.BUDGET_ID, fixture.MODEL, tmp_path, allow_comment=True
+    )
+    return remote, github, pilot
+
+
+@pytest.fixture
+def policy_harness(harness):
+    remote, github, original = harness
+    policy = BoundaryPolicy.load(EXAMPLES / "pr_review_policy.json")
+    pilot = pilot_module.ReviewPilot(
+        github,
+        original.subject,
+        original.actor,
+        fixture.BUDGET_ID,
+        fixture.MODEL,
+        original.output,
+        allow_comment=True,
+        policy=policy,
     )
     return remote, github, pilot
 
@@ -273,8 +291,10 @@ def test_oversized_diff_fails_without_model_or_post(harness):
 
 
 @pytest.mark.parametrize("tool_count", [1, 2])
-def test_native_runner_joins_real_pilot_tool_and_gateway_contract(harness, monkeypatch, tool_count):
-    _, github, pilot = harness
+def test_native_runner_joins_real_pilot_tool_and_gateway_contract(
+    policy_harness, monkeypatch, tool_count
+):
+    _, github, pilot = policy_harness
     approve(monkeypatch)
     first = fixture.tool_completion(call_id="native-review", body=BODY)
     first["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"] = arguments()
@@ -317,12 +337,83 @@ def test_native_runner_joins_real_pilot_tool_and_gateway_contract(harness, monke
     pilot_module.confirm_review.assert_awaited_once()
     report = pilot.report(1, None)
     assert report["receipts_verified_in_process"]
+    assert report["boundary_check"]["ok"]
+    assert {receipt["policy_sha256"] for receipt in report["receipts"]} == {
+        report["boundary_check"]["policy_sha256"]
+    }
     states = [r["state"] for r in report["receipts"]]
     if tool_count == 1:
         assert states == ["reserved", "dispatched", "settled"] * 3
     else:
         assert states == ["reserved", "dispatched", "settled", "reserved", "denied", "released"]
     assert BODY not in json.dumps(report) and "untrusted_diff" not in json.dumps(report)
+
+
+def test_policy_does_not_replace_exact_human_approval(policy_harness, monkeypatch):
+    _, github, pilot = policy_harness
+    approve(monkeypatch)
+    pilot.allow_comment = False
+    asyncio.run(call_tool(pilot, arguments()))
+    assert pilot.context.receipts[-1].reason == "missing_grant"
+    assert github.post_attempts == 0
+
+
+def test_changed_policy_tool_binding_denies_before_post(harness, monkeypatch):
+    _, github, original = harness
+    payload = json.loads((EXAMPLES / "pr_review_policy.json").read_text())
+    payload["routes"][1]["version"] = "2"
+    policy = BoundaryPolicy.parse(json.dumps(payload))
+    assert policy.check()["ok"]
+    pilot = pilot_module.ReviewPilot(
+        github,
+        original.subject,
+        original.actor,
+        fixture.BUDGET_ID,
+        fixture.MODEL,
+        original.output,
+        allow_comment=True,
+        policy=policy,
+    )
+    approve(monkeypatch)
+    asyncio.run(call_tool(pilot, arguments()))
+    assert pilot.context.receipts[-1].reason == "action_outside_policy"
+    assert github.post_attempts == 0
+
+
+def test_pilot_rejects_another_framework_policy(harness):
+    _, github, original = harness
+    payload = json.loads((EXAMPLES / "pr_review_policy.json").read_text())
+    payload["adapter"] = "pydantic-ai"
+    with pytest.raises(github_module.PilotError, match="boundary_policy_adapter_mismatch"):
+        pilot_module.ReviewPilot(
+            github,
+            original.subject,
+            original.actor,
+            fixture.BUDGET_ID,
+            fixture.MODEL,
+            original.output,
+            policy=BoundaryPolicy.parse(json.dumps(payload)),
+        )
+
+
+@pytest.mark.parametrize("mode", ["unenrolled", "adapter"])
+def test_policy_failure_stops_before_github_reads(tmp_path, monkeypatch, mode):
+    payload = json.loads((EXAMPLES / "pr_review_policy.json").read_text())
+    if mode == "unenrolled":
+        payload["routes"][1]["enrolled"] = False
+    else:
+        payload["adapter"] = "pydantic-ai"
+    policy_file = tmp_path / "policy.json"
+    policy_file.write_text(json.dumps(payload))
+    freeze = AsyncMock(side_effect=AssertionError("GitHub must not be contacted"))
+    monkeypatch.setattr(github_module.GitHubReview, "freeze", freeze)
+    with pytest.raises(github_module.PilotError, match="boundary_policy_check_failed"):
+        asyncio.run(
+            pilot_module.main(
+                ["--repo", REPO, "--pr", "7", "--head", HEAD, "--policy", str(policy_file)]
+            )
+        )
+    freeze.assert_not_awaited()
 
 
 def test_model_grants_bound_model_and_request_count(harness):
@@ -376,8 +467,9 @@ def test_default_cli_only_reads_public_pr(monkeypatch, capsys):
 
 
 @pytest.mark.parametrize("post", [False, True])
+@pytest.mark.parametrize("policy_mode", ["legacy", "enrolled", "model-mismatch"])
 def test_live_cli_runs_native_consumer_and_writes_content_minimal_report(
-    tmp_path, monkeypatch, capsys, post
+    tmp_path, monkeypatch, capsys, post, policy_mode
 ):
     remote = GitHubFixture()
     client_type, provider_type = httpx.AsyncClient, GatewayBoundaryProvider
@@ -423,16 +515,37 @@ def test_live_cli_runs_native_consumer_and_writes_content_minimal_report(
     ]
     if post:
         argv += ["--allow-comment", "--actor", "reviewer"]
+    if policy_mode != "legacy":
+        policy_file = EXAMPLES / "pr_review_policy.json"
+        if policy_mode == "model-mismatch":
+            payload = json.loads(policy_file.read_text())
+            payload["routes"][0]["target"] = "llmkit-gateway:openai:another-model"
+            policy_file = tmp_path / "policy.json"
+            policy_file.write_text(json.dumps(payload))
+        argv += ["--policy", str(policy_file)]
     result = asyncio.run(pilot_module.main(argv))
     report = json.loads((output / "receipt.json").read_text())
-    assert report["github_post_attempts"] == report["github_acknowledged_reviews"] == int(post)
-    assert result == int(not post)
+    expected_post = int(post and policy_mode != "model-mismatch")
+    assert report["github_post_attempts"] == report["github_acknowledged_reviews"] == expected_post
+    assert result == int(not expected_post)
     assert report["receipts_verified_in_process"]
+    if policy_mode != "legacy":
+        assert report["boundary_check"]["ok"]
+        assert {receipt["policy_sha256"] for receipt in report["receipts"]} == {
+            report["boundary_check"]["policy_sha256"]
+        }
+    else:
+        assert report["boundary_check"] is None
     assert "test-only-token" not in json.dumps(report)
     assert BODY not in json.dumps(report)
     with pytest.raises(FileExistsError):
         asyncio.run(pilot_module.main(argv))
-    assert len(gateway.requests) == (2 if post else 1)
+    if policy_mode == "model-mismatch":
+        assert not gateway.requests
+        assert report["receipts"][-1]["reason"] == "action_outside_policy"
+        pilot_module.confirm_review.assert_not_awaited()
+    else:
+        assert len(gateway.requests) == (2 if post else 1)
     capsys.readouterr()
 
 

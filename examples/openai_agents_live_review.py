@@ -19,6 +19,7 @@ from agents.tool_context import ToolContext
 from live_review_github import GitHubReview, PilotError, PullRequest, write_record
 from llmkit import BoundaryRuntime, EffectAcknowledgement, HmacAuthority
 from llmkit.boundary import EffectAction, ExactEffectGrant, canonical_arguments, content_sha256
+from llmkit.boundary_policy import BoundaryPolicy
 from llmkit.integrations.openai_agents import (
     GatewayBoundaryProvider,
     OpenAIBoundaryContext,
@@ -63,14 +64,22 @@ class ReviewPilot:
         output: Path,
         *,
         allow_comment: bool = False,
+        policy: BoundaryPolicy | None = None,
     ):
         self.github, self.subject, self.output = github, subject, output
         self.actor, self.model, self.allow_comment = actor, model, allow_comment
         self.authority = HmacAuthority("live-pilot-ephemeral", secrets.token_bytes(32))
-        self.runtime = BoundaryRuntime(
-            authority=self.authority,
-            policy_sha256=POLICY,
-            adapter="openai-agents-live-pilot-v1",
+        if policy is not None and policy.adapter != "openai-agents":
+            raise PilotError("boundary_policy_adapter_mismatch")
+        self.policy = policy
+        self.runtime = (
+            policy.runtime(authority=self.authority)
+            if policy is not None
+            else BoundaryRuntime(
+                authority=self.authority,
+                policy_sha256=POLICY,
+                adapter="openai-agents-live-pilot-v1",
+            )
         )
         self.model_grants = 0
         self.approval_requested = False
@@ -92,7 +101,7 @@ class ReviewPilot:
             tenant=self.context.tenant,
             workload=self.context.workload,
             action=action,
-            policy_sha256=POLICY,
+            policy_sha256=self.runtime.policy_sha256,
             expires_at=datetime.now(UTC) + timedelta(minutes=5),
             budget_scope=self.context.budget_scope,
         )
@@ -191,6 +200,7 @@ class ReviewPilot:
             "receipts_verified_in_process": bool(self.context.receipts)
             and all(self.authority.verify_receipt(receipt) for receipt in self.context.receipts),
             "receipt_key_persistence": "none; not independently verifiable after exit",
+            "boundary_check": self.policy.check() if self.policy is not None else None,
         }
 
 
@@ -238,6 +248,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--model", help="Explicit gateway-supported model; no default or fallback")
     parser.add_argument("--actor", help="Expected GitHub user login for the posting token")
     parser.add_argument("--output", type=Path, help="New, non-existing local evidence directory")
+    parser.add_argument("--policy", type=Path, help="Use the same JSON route policy checked in CI")
     args = parser.parse_args(argv)
     if args.allow_comment and (not args.run_model or not args.actor):
         parser.error("--allow-comment requires --run-model and --actor")
@@ -248,6 +259,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 async def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    policy = BoundaryPolicy.load(args.policy) if args.policy is not None else None
+    if policy is not None and (policy.adapter != "openai-agents" or not policy.check()["ok"]):
+        raise PilotError("boundary_policy_check_failed")
     token = os.environ.get("GH_TOKEN")
     if args.run_model and not os.environ.get("LLMKIT_API_KEY"):
         raise PilotError("missing_llmkit_api_key")
@@ -287,6 +301,7 @@ async def main(argv: list[str] | None = None) -> int:
             args.model,
             args.output,
             allow_comment=args.allow_comment,
+            policy=policy,
         )
         started, error = time.monotonic(), None
         try:

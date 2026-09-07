@@ -258,6 +258,46 @@ MCP, computer, shell, apply-patch, handoffs, agent-as-tool calls, realtime, dire
 background retries remain uncovered. The included HMAC authority and replay/lifecycle stores are
 local proof components, not a production key service or durable coordination layer.
 
+## Boundary Check (experimental, source checkout)
+
+Check a declared route policy in CI, then use that same policy to restrict runtime admission.
+This command requires the current source checkout; it is not in the published 0.1.11 wheel.
+From the repository root, in a Python 3.11+ environment:
+
+```console
+python -m pip install -e "./packages/python-sdk[openai-agents]"
+python -m llmkit.boundary_check examples/pr_review_policy.json
+```
+
+The example declares one gateway model route and one review-comment tool. Set the comment route's
+`enrolled` field to `false` and rerun the command: it exits 1 with `unenrolled_route` for
+`post_review_comment`. Restore `true` and it exits 0. Malformed or unreadable policy files exit 2
+without echoing their contents. The repository's `quality:pr` gate runs this check on the example.
+No API key, gateway, model request, or GitHub access is needed for the check.
+
+```python
+from llmkit.boundary_policy import BoundaryPolicy
+
+policy = BoundaryPolicy.load("examples/pr_review_policy.json")
+boundary_runtime = policy.runtime(authority=authority)
+```
+
+Pass this runtime to the existing native model and tool boundaries. `authority` and exact grant
+issuance remain application-owned. Runtime admission requires both a matching policy route
+(effect class, target, version) and a valid exact-action grant. Grants and receipts carry the same
+normalized policy hash as the check; changing the policy invalidates grants for the old hash.
+Policies support the `openai-agents` and `pydantic-ai` adapters with their respective SDK extras.
+
+This is a **declared inventory**, not code discovery or proof of runtime enrollment. The command
+imports only the selected built-in adapter, never an application module named in the policy.
+Unlisted routes and calls outside the wrappers are not protected. A passing check does not prove
+provider support, pricing, gateway configuration, or a configured hard budget. Reports explicitly
+set `runtime_enforcement_verified` to `false`; enrollment requires separate consumer tests.
+
+The [live review pilot][live-review-pilot] accepts `--policy examples/pr_review_policy.json` and
+uses that policy for its model and tool runtime. Its spend and exact human-approval requirements
+remain unchanged.
+
 ## Sessions and gateway mode
 
 Use the hosted or self-hosted LLMKit gateway when you need shared budgets, request receipts,

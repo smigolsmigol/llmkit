@@ -140,6 +140,7 @@ function runPythonStatic() {
 
 function runPythonProof() {
   const sdk = join(root, 'packages', 'python-sdk');
+  python(['-m', 'llmkit.boundary_check', join(root, 'examples', 'pr_review_policy.json')], sdk);
   python(['-m', 'build', '--wheel', '--no-isolation'], sdk);
   python(['-m', 'coverage', 'erase'], sdk);
   python(['-m', 'coverage', 'run', '--branch', '-m', 'pytest', 'tests'], sdk);
