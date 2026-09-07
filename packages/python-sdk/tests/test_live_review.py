@@ -416,6 +416,57 @@ def test_policy_failure_stops_before_github_reads(tmp_path, monkeypatch, mode):
     freeze.assert_not_awaited()
 
 
+@pytest.mark.parametrize("run_model", [False, True])
+@pytest.mark.parametrize("mismatch", ["model", "provider", "missing", "tool-only"])
+def test_model_policy_mismatch_stops_before_credentials_or_io(
+    tmp_path, monkeypatch, run_model, mismatch
+):
+    payload = json.loads((EXAMPLES / "pr_review_policy.json").read_text())
+    model = fixture.MODEL
+    if mismatch == "model":
+        model = "another-model"
+    elif mismatch == "provider":
+        payload["routes"][0]["target"] = f"llmkit-gateway:anthropic:{model}"
+    elif mismatch == "missing":
+        del payload["routes"][0]
+    else:
+        payload["routes"][0]["surface"] = "enrolled_function_tool"
+        payload["routes"][0]["effect_class"] = "example.tool"
+    assert BoundaryPolicy.parse(json.dumps(payload)).check()["ok"]
+    policy_file = tmp_path / "policy.json"
+    policy_file.write_text(json.dumps(payload))
+    output = tmp_path / "run"
+    argv = [
+        "--repo",
+        REPO,
+        "--pr",
+        "7",
+        "--head",
+        HEAD,
+        "--policy",
+        str(policy_file),
+        "--model",
+        model,
+    ]
+    if run_model:
+        argv += [
+            "--run-model",
+            "--gateway",
+            "https://gateway.invalid/v1",
+            "--budget-id",
+            fixture.BUDGET_ID,
+            "--output",
+            str(output),
+        ]
+    monkeypatch.delenv("LLMKIT_API_KEY", raising=False)
+    monkeypatch.setattr(
+        pilot_module.httpx, "AsyncClient", lambda **kw: pytest.fail("HTTP client created")
+    )
+    with pytest.raises(github_module.PilotError, match="boundary_policy_model_mismatch"):
+        asyncio.run(pilot_module.main(argv))
+    assert not output.exists()
+
+
 def test_model_grants_bound_model_and_request_count(harness):
     _, _, pilot = harness
 
@@ -450,7 +501,8 @@ def test_live_flags_require_explicit_configuration(extra):
         pilot_module.parse_args(["--repo", REPO, "--pr", "7", "--head", HEAD, *extra])
 
 
-def test_default_cli_only_reads_public_pr(monkeypatch, capsys):
+@pytest.mark.parametrize("policy_mode", ["legacy", "policy-only", "model-matched"])
+def test_default_cli_only_reads_public_pr(monkeypatch, capsys, policy_mode):
     remote = GitHubFixture()
     client_type = httpx.AsyncClient
     monkeypatch.setattr(
@@ -459,7 +511,12 @@ def test_default_cli_only_reads_public_pr(monkeypatch, capsys):
         lambda **kw: client_type(transport=httpx.MockTransport(remote), **kw),
     )
     monkeypatch.delenv("GH_TOKEN", raising=False)
-    result = asyncio.run(pilot_module.main(["--repo", REPO, "--pr", "7", "--head", HEAD]))
+    argv = ["--repo", REPO, "--pr", "7", "--head", HEAD]
+    if policy_mode != "legacy":
+        argv += ["--policy", str(EXAMPLES / "pr_review_policy.json")]
+    if policy_mode == "model-matched":
+        argv += ["--model", fixture.MODEL]
+    result = asyncio.run(pilot_module.main(argv))
     report = json.loads(capsys.readouterr().out)
     assert result == 0 and report["mode"] == "dry-run"
     assert report["model_requests"] == report["github_post_attempts"] == 0
@@ -467,7 +524,7 @@ def test_default_cli_only_reads_public_pr(monkeypatch, capsys):
 
 
 @pytest.mark.parametrize("post", [False, True])
-@pytest.mark.parametrize("policy_mode", ["legacy", "enrolled", "model-mismatch"])
+@pytest.mark.parametrize("policy_mode", ["legacy", "enrolled", "multiple-models", "model-mismatch"])
 def test_live_cli_runs_native_consumer_and_writes_content_minimal_report(
     tmp_path, monkeypatch, capsys, post, policy_mode
 ):
@@ -517,15 +574,34 @@ def test_live_cli_runs_native_consumer_and_writes_content_minimal_report(
         argv += ["--allow-comment", "--actor", "reviewer"]
     if policy_mode != "legacy":
         policy_file = EXAMPLES / "pr_review_policy.json"
-        if policy_mode == "model-mismatch":
+        if policy_mode in ("multiple-models", "model-mismatch"):
             payload = json.loads(policy_file.read_text())
-            payload["routes"][0]["target"] = "llmkit-gateway:openai:another-model"
+            if policy_mode == "multiple-models":
+                payload["routes"][0]["id"] = "selected_model"
+                payload["routes"].insert(
+                    0,
+                    {
+                        **payload["routes"][0],
+                        "id": "other_model",
+                        "target": "llmkit-gateway:openai:another-model",
+                    },
+                )
+            else:
+                payload["routes"][0]["target"] = "llmkit-gateway:openai:another-model"
             policy_file = tmp_path / "policy.json"
             policy_file.write_text(json.dumps(payload))
         argv += ["--policy", str(policy_file)]
+    if policy_mode == "model-mismatch":
+        with pytest.raises(github_module.PilotError, match="boundary_policy_model_mismatch"):
+            asyncio.run(pilot_module.main(argv))
+        assert not remote.requests
+        assert not gateway.requests
+        assert not output.exists()
+        pilot_module.confirm_review.assert_not_awaited()
+        return
     result = asyncio.run(pilot_module.main(argv))
     report = json.loads((output / "receipt.json").read_text())
-    expected_post = int(post and policy_mode != "model-mismatch")
+    expected_post = int(post)
     assert report["github_post_attempts"] == report["github_acknowledged_reviews"] == expected_post
     assert result == int(not expected_post)
     assert report["receipts_verified_in_process"]
@@ -540,12 +616,7 @@ def test_live_cli_runs_native_consumer_and_writes_content_minimal_report(
     assert BODY not in json.dumps(report)
     with pytest.raises(FileExistsError):
         asyncio.run(pilot_module.main(argv))
-    if policy_mode == "model-mismatch":
-        assert not gateway.requests
-        assert report["receipts"][-1]["reason"] == "action_outside_policy"
-        pilot_module.confirm_review.assert_not_awaited()
-    else:
-        assert len(gateway.requests) == (2 if post else 1)
+    assert len(gateway.requests) == (2 if post else 1)
     capsys.readouterr()
 
 

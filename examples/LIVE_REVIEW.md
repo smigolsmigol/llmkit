@@ -44,9 +44,11 @@ for the runtime binding and limitations.
 Add `--policy examples/pr_review_policy.json` to the pilot command to use the checked policy.
 It is checked before GitHub reads, and the model and tool boundaries use its hash and permitted
 effects. The example model target is `llmkit-gateway:openai:gpt-4.1-mini`; set `--model` to match
-the reviewed policy, or edit and recheck the policy for your gateway-supported model. A policy
-does not configure a gateway budget or grant permission to post. Omitting `--policy` retains the
-pilot's original fixed policy. The new command and option are not in the published 0.1.11 wheel.
+the reviewed policy, or edit and recheck the policy for your gateway-supported model. When supplied,
+`--model` must match an enrolled model route, even in a dry-run; a mismatch stops before credential
+checks, GitHub reads, or output creation. A dry-run without `--model` leaves this comparison unchecked.
+A policy does not configure a gateway budget or grant permission to post. Omitting `--policy` retains
+the pilot's original fixed policy. The new command and option are not in the published 0.1.11 wheel.
 
 ## Run the model without posting
 

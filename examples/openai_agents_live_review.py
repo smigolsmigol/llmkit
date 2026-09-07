@@ -262,6 +262,16 @@ async def main(argv: list[str] | None = None) -> int:
     policy = BoundaryPolicy.load(args.policy) if args.policy is not None else None
     if policy is not None and (policy.adapter != "openai-agents" or not policy.check()["ok"]):
         raise PilotError("boundary_policy_check_failed")
+    if (
+        policy is not None
+        and args.model is not None
+        and not any(
+            route.surface == "model_dispatch"
+            and route.target == f"llmkit-gateway:openai:{args.model}"
+            for route in policy.routes
+        )
+    ):
+        raise PilotError("boundary_policy_model_mismatch")
     token = os.environ.get("GH_TOKEN")
     if args.run_model and not os.environ.get("LLMKIT_API_KEY"):
         raise PilotError("missing_llmkit_api_key")
