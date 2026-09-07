@@ -4,15 +4,15 @@ Read one public GitHub PR at an explicit head, then optionally run the OpenAI Ag
 through an existing LLMKit gateway. Dry-run is the default: no model request and no GitHub write.
 The runner never checks out, imports, builds, or executes code from the reviewed PR.
 
-This is a pilot, not a hosted service or an autonomous reviewer. It uses the released SDK's native
-model and function-tool boundaries. It does not provision a gateway, key, or budget.
+This is a pilot, not a hosted service or an autonomous reviewer. Use the SDK from this source
+checkout for the shared-policy option below. It does not provision a gateway, key, or budget.
 
 ## Start with the read-only check
 
 Use a Python 3.11+ environment and this repository checkout. From the repository root:
 
 ```console
-python -m pip install "llmkit-sdk[openai-agents]==0.1.11"
+python -m pip install -e "./packages/python-sdk[openai-agents]"
 python examples/openai_agents_live_review.py --help
 ```
 
@@ -26,6 +26,27 @@ python examples/openai_agents_live_review.py --repo your-org/your-repo --pr 123 
 Success reports `mode: dry-run`, the repository, PR, base/head, diff hash, zero model requests, and
 zero POST attempts. Closed/private PRs, a moved base or head, redirects, and diffs over 100 KB stop
 the run. Optional `GH_TOKEN` authenticates the GitHub reads; it is sent only to api.github.com.
+
+## Check the same policy before running
+
+The source-checkout Boundary Check command needs no credentials or network access:
+
+```console
+python -m llmkit.boundary_check examples/pr_review_policy.json
+```
+
+It checks the declared routes, not application code or live enrollment. Exit 0 means the declared
+configuration passes, 1 identifies a route finding, and 2 rejects an unreadable or malformed policy.
+For the first failure, set `post_review_comment.enrolled` to `false` in the JSON routes array,
+rerun to see `unenrolled_route`, then restore it. See the [SDK policy contract](../packages/python-sdk/README.md#boundary-check-experimental-source-checkout)
+for the runtime binding and limitations.
+
+Add `--policy examples/pr_review_policy.json` to the pilot command to use the checked policy.
+It is checked before GitHub reads, and the model and tool boundaries use its hash and permitted
+effects. The example model target is `llmkit-gateway:openai:gpt-4.1-mini`; set `--model` to match
+the reviewed policy, or edit and recheck the policy for your gateway-supported model. A policy
+does not configure a gateway budget or grant permission to post. Omitting `--policy` retains the
+pilot's original fixed policy. The new command and option are not in the published 0.1.11 wheel.
 
 ## Run the model without posting
 
