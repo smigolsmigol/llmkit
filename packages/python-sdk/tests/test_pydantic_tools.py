@@ -32,6 +32,7 @@ from llmkit.boundary import (
     HmacAuthority,
     content_sha256,
 )
+from llmkit.boundary_policy import BoundaryPolicy
 from llmkit.integrations.pydantic_ai import (
     PydanticAIBoundaryContext,
     protect_function_tool,
@@ -512,3 +513,162 @@ def test_native_review_examples_share_model_and_tool_receipt_contract(monkeypatc
         assert result["sink_calls"] == 1
         results.append(result)
     assert results[0]["coverage"]["contract_version"] == results[1]["coverage"]["contract_version"]
+
+
+@pytest.fixture
+def pydantic_review(monkeypatch):
+    examples = Path(__file__).resolve().parents[3] / "examples"
+    monkeypatch.syspath_prepend(str(examples))
+    return runpy.run_path(str(examples / "pydantic_ai_boundary_review.py"))
+
+
+def test_pydantic_review_default_policy_binds_native_receipts(pydantic_review, capsys):
+    from llmkit.boundary_check import main as check_policy
+
+    examples = Path(pydantic_review["__file__"]).parent
+    assert check_policy([str(examples / "pydantic_review_policy.json")]) == 0
+    check = json.loads(capsys.readouterr().out)
+    asyncio.run(pydantic_review["main"]())
+    result = json.loads(capsys.readouterr().out)
+    for name in ("poisoned_run", "approved_run"):
+        run = result[name]
+        assert run["boundary_check"] == check
+        assert run["boundary_check"]["runtime_enforcement_verified"] is False
+        assert run["receipt_policy_sha256s"] == [run["boundary_check"]["policy_sha256"]]
+
+
+@pytest.mark.parametrize(
+    ("change", "model_requests", "sink_calls"),
+    [
+        ("none", 2, 1),
+        ("no-grant", 1, 0),
+        ("model-target", 0, 0),
+        ("missing-model", 0, 0),
+        ("tool-version", 1, 0),
+        ("tool-target", 1, 0),
+        ("missing-tool", 1, 0),
+    ],
+)
+def test_pydantic_review_checked_policy_controls_native_sinks(
+    pydantic_review, change, model_requests, sink_calls
+):
+    examples = Path(pydantic_review["__file__"]).parent
+    policy = BoundaryPolicy.load(examples / "pydantic_review_policy.json")
+    model, tool = policy.routes
+    if change == "model-target":
+        model = replace(model, target="llmkit-gateway:openai:other-model")
+    if change == "tool-version":
+        tool = replace(tool, version="2")
+    if change == "tool-target":
+        tool = replace(tool, target="other_tool")
+    routes = (tool,) if change == "missing-model" else (model,)
+    if change not in ("missing-model", "missing-tool"):
+        routes = (model, tool)
+    policy = replace(policy, routes=routes)
+    assert policy.check()["ok"] is True
+    sink = pydantic_review["InMemoryReviewSink"]()
+    result = asyncio.run(
+        pydantic_review["run_review"](
+            authority=HmacAuthority("test", secrets.token_bytes(32)),
+            sink=sink,
+            allow_tool=change != "no-grant",
+            policy=policy,
+        )
+    )
+    assert result["model_requests"] == model_requests
+    assert result["sink_calls"] == sink_calls == len(sink.comments)
+    assert result["boundary_check"] == policy.check()
+    assert result["receipt_policy_sha256s"] == [policy.sha256]
+    if change == "none":
+        assert result["error"] is None
+        assert result["receipt_states"] == ["reserved", "dispatched", "settled"] * 3
+    else:
+        assert result["error"] is not None
+        assert result["receipt_states"] == [
+            "reserved",
+            "dispatched",
+            "settled",
+        ] * model_requests + ["denied"]
+        assert result["receipt_reasons"][-1] == (
+            "missing_grant" if change == "no-grant" else "action_outside_policy"
+        )
+
+
+@pytest.mark.parametrize("change", ["adapter", "unenrolled", "unsupported"])
+def test_pydantic_review_invalid_policy_stops_before_gateway(pydantic_review, monkeypatch, change):
+    examples = Path(pydantic_review["__file__"]).parent
+    policy = BoundaryPolicy.load(examples / "pydantic_review_policy.json")
+    if change == "adapter":
+        policy = replace(policy, adapter="openai-agents")
+    else:
+        model, tool = policy.routes
+        tool = (
+            replace(tool, enrolled=False)
+            if change == "unenrolled"
+            else replace(tool, surface="hosted_tool")
+        )
+        policy = replace(policy, routes=(model, tool))
+
+    def unexpected_gateway(*args, **kwargs):
+        pytest.fail("invalid policy reached gateway construction")
+
+    monkeypatch.setitem(
+        pydantic_review["run_review"].__globals__, "FakeGateway", unexpected_gateway
+    )
+    sink = pydantic_review["InMemoryReviewSink"]()
+    with pytest.raises(
+        ValueError, match=r"pydantic_ai_policy_required|boundary_policy_check_failed"
+    ):
+        asyncio.run(
+            pydantic_review["run_review"](
+                authority=HmacAuthority("test", secrets.token_bytes(32)),
+                sink=sink,
+                allow_tool=True,
+                policy=policy,
+            )
+        )
+    assert sink.comments == []
+
+
+def test_pydantic_review_reports_unexpected_approval(pydantic_review, monkeypatch, capsys):
+    run_review = pydantic_review["run_review"]
+
+    async def approve_both_runs(**kwargs):
+        kwargs["allow_tool"] = True
+        return await run_review(**kwargs)
+
+    monkeypatch.setitem(pydantic_review["main"].__globals__, "run_review", approve_both_runs)
+    with pytest.raises(RuntimeError, match="denied action reached the review sink"):
+        asyncio.run(pydantic_review["main"]())
+    result = json.loads(capsys.readouterr().out)
+    assert result["poisoned_run"]["sink_calls"] == 1
+    assert result["approved_run"]["sink_calls"] == 2
+
+
+@pytest.mark.parametrize("change", ["none", "model-target", "tool-version"])
+def test_pydantic_review_command_reports_policy_denial(
+    pydantic_review, monkeypatch, capsys, change
+):
+    path = Path(pydantic_review["__file__"])
+    policy = BoundaryPolicy.load(path.with_name("pydantic_review_policy.json"))
+    model, tool = policy.routes
+    if change == "model-target":
+        model = replace(model, target="llmkit-gateway:openai:other-model")
+    if change == "tool-version":
+        tool = replace(tool, version="2")
+    policy = replace(policy, routes=(model, tool))
+    monkeypatch.setattr(BoundaryPolicy, "load", lambda path: policy)
+    if change == "none":
+        runpy.run_path(str(path), run_name="__main__")
+    else:
+        with pytest.raises(RuntimeError, match="Agent did not join"):
+            runpy.run_path(str(path), run_name="__main__")
+    result = json.loads(capsys.readouterr().out)
+    approved = result["approved_run"]
+    assert approved["boundary_check"]["policy_sha256"] == policy.sha256
+    if change == "none":
+        assert approved["sink_calls"] == 1
+    else:
+        assert approved["sink_calls"] == 0
+        assert approved["receipt_reasons"][-1] == "action_outside_policy"
+        assert approved["receipt_states"][-1] == "denied"
