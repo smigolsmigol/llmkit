@@ -1,0 +1,23 @@
+{
+  "version": "llmkit-boundary-policy-v1",
+  "adapter": "pydantic-ai",
+  "require_trusted_provenance": true,
+  "routes": [
+    {
+      "id": "review_model",
+      "surface": "model_dispatch",
+      "effect_class": "model.dispatch",
+      "target": "llmkit-gateway:openai:gpt-4.1-mini",
+      "version": "llmkit-gateway-receipt-v1",
+      "enrolled": true
+    },
+    {
+      "id": "post_review_comment",
+      "surface": "enrolled_function_tool",
+      "effect_class": "github.review_comment",
+      "target": "post_review_comment",
+      "version": "1",
+      "enrolled": true
+    }
+  ]
+}

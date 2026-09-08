@@ -123,6 +123,11 @@ without extending them. When an adapter changes scope, update its coverage repor
 and its example together. Keep the frozen boundary cases and native SDK tests aligned, including the
 joined OpenAI Agents and PydanticAI review examples in `test_pydantic_tools.py`.
 
+The review policy files under `examples/` own the sample route declarations. Their packaged copies
+under `packages/python-sdk/src/llmkit/policies/` must remain JSON-equivalent; `test_boundary_policy.py`
+checks both copies and the exported policy report. A first-run command change also requires the
+SDK README, CLI help, and isolated installed-wheel proof in `scripts/run-artifact-reproducibility.mjs`.
+
 ## Brand assets
 
 `.github/logo-wordmark.svg` and `.github/logo-wordmark-animated.svg` are the canonical logo

@@ -6,6 +6,7 @@ import asyncio
 import json
 import secrets
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -14,7 +15,6 @@ from agents.tool_context import ToolContext
 from boundary_review_fixture import (
     BUDGET_ID,
     MODEL,
-    POLICY,
     FakeGateway,
     InMemoryReviewSink,
     completion,
@@ -22,6 +22,7 @@ from boundary_review_fixture import (
 )
 from llmkit import BoundaryRuntime, EffectAcknowledgement, HmacAuthority
 from llmkit.boundary import EffectAction, ExactEffectGrant
+from llmkit.boundary_policy import BoundaryPolicy
 from llmkit.integrations.openai_agents import (
     GatewayBoundaryProvider,
     OpenAIBoundaryContext,
@@ -52,6 +53,7 @@ def boundary_context(
     *,
     authority: HmacAuthority,
     allow_tool: bool,
+    policy_sha256: str,
 ) -> OpenAIBoundaryContext:
     def issue(action: EffectAction, *, prefix: str) -> ExactEffectGrant:
         return authority.issue(
@@ -60,7 +62,7 @@ def boundary_context(
             tenant="smigolsmigol",
             workload="pr-review",
             action=action,
-            policy_sha256=POLICY,
+            policy_sha256=policy_sha256,
             expires_at=datetime.now(UTC) + timedelta(minutes=5),
             budget_scope=BUDGET_ID,
         )
@@ -127,12 +129,10 @@ async def run_review(
 
 async def main() -> None:
     authority = HmacAuthority("local-demo", secrets.token_bytes(32))
-    runtime = BoundaryRuntime(
-        authority=authority,
-        policy_sha256=POLICY,
-        adapter="openai-agents-0.20",
-        require_trusted_provenance=True,
-    )
+    policy = BoundaryPolicy.load(Path(__file__).with_name("pr_review_policy.json"))
+    if policy.adapter != "openai-agents":
+        raise ValueError("openai_agents_policy_required")
+    runtime = policy.runtime(authority=authority)
     sink = InMemoryReviewSink()
     protected = protect_function_tool(
         review_tool(sink),
@@ -146,7 +146,9 @@ async def main() -> None:
         ),
     )
 
-    poisoned_context = boundary_context(authority=authority, allow_tool=False)
+    poisoned_context = boundary_context(
+        authority=authority, allow_tool=False, policy_sha256=policy.sha256
+    )
     poisoned_gateway = FakeGateway(
         [
             tool_completion(
@@ -165,7 +167,9 @@ async def main() -> None:
             await release_pending_admissions(poisoned_context)
     sink_calls_after_denial = len(sink.comments)
 
-    approved_context = boundary_context(authority=authority, allow_tool=True)
+    approved_context = boundary_context(
+        authority=authority, allow_tool=True, policy_sha256=policy.sha256
+    )
     approved_gateway = FakeGateway(
         [
             tool_completion(
@@ -209,6 +213,10 @@ async def main() -> None:
         json.dumps(
             {
                 "poisoned_run": {
+                    "boundary_check": policy.check(),
+                    "receipt_policy_sha256s": sorted(
+                        {receipt.policy_sha256 for receipt in poisoned_context.receipts}
+                    ),
                     "error": poisoned_error,
                     "receipt_states": [
                         receipt.state.value for receipt in poisoned_context.receipts
@@ -216,6 +224,10 @@ async def main() -> None:
                     "sink_calls": sink_calls_after_denial,
                 },
                 "approved_run": {
+                    "boundary_check": policy.check(),
+                    "receipt_policy_sha256s": sorted(
+                        {receipt.policy_sha256 for receipt in approved_context.receipts}
+                    ),
                     "final_output": approved.final_output,
                     "model_requests": len(approved_gateway.requests),
                     "receipt_states": approved_states,

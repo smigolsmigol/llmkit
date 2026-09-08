@@ -4,8 +4,9 @@ Read one public GitHub PR at an explicit head, then optionally run the OpenAI Ag
 through an existing LLMKit gateway. Dry-run is the default: no model request and no GitHub write.
 The runner never checks out, imports, builds, or executes code from the reviewed PR.
 
-This is a pilot, not a hosted service or an autonomous reviewer. Use the SDK from this source
-checkout for the shared-policy option below. It does not provision a gateway, key, or budget.
+This is a pilot, not a hosted service or an autonomous reviewer. Use SDK 0.1.12 or newer for the
+shared-policy option below; see the [release-candidate install](../packages/python-sdk/README.md#boundary-check-experimental).
+It does not provision a gateway, key, or budget.
 
 ## Start with the read-only check
 
@@ -29,7 +30,7 @@ the run. Optional `GH_TOKEN` authenticates the GitHub reads; it is sent only to 
 
 ## Check the same policy before running
 
-The source-checkout Boundary Check command needs no credentials or network access:
+The Boundary Check command needs no credentials or network access:
 
 ```console
 python -m llmkit.boundary_check examples/pr_review_policy.json
@@ -38,7 +39,7 @@ python -m llmkit.boundary_check examples/pr_review_policy.json
 It checks the declared routes, not application code or live enrollment. Exit 0 means the declared
 configuration passes, 1 identifies a route finding, and 2 rejects an unreadable or malformed policy.
 For the first failure, set `post_review_comment.enrolled` to `false` in the JSON routes array,
-rerun to see `unenrolled_route`, then restore it. See the [SDK policy contract](../packages/python-sdk/README.md#boundary-check-experimental-source-checkout)
+rerun to see `unenrolled_route`, then restore it. See the [SDK policy contract](../packages/python-sdk/README.md#boundary-check-experimental)
 for the runtime binding and limitations.
 
 Add `--policy examples/pr_review_policy.json` to the pilot command to use the checked policy.
@@ -48,7 +49,7 @@ the reviewed policy, or edit and recheck the policy for your gateway-supported m
 `--model` must match an enrolled model route, even in a dry-run; a mismatch stops before credential
 checks, GitHub reads, or output creation. A dry-run without `--model` leaves this comparison unchecked.
 A policy does not configure a gateway budget or grant permission to post. Omitting `--policy` retains
-the pilot's original fixed policy. The new command and option are not in the published 0.1.11 wheel.
+the pilot's original fixed policy. The published 0.1.11 wheel does not support this option.
 
 ## Run the model without posting
 

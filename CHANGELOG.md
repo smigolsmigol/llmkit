@@ -7,6 +7,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- Packaged Boundary Check example policies and an overwrite-safe export command for the Python SDK 0.1.12 release candidate
+- Installed-wheel proof of policy-bound OpenAI Agents and PydanticAI review flows outside the source checkout
 - Dependabot config and MCP config fixer script
 - Vercel custom event tracking
 - `/compare` cost calculator page on the dashboard

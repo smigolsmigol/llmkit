@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import {
+  copyFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -146,6 +147,7 @@ const sourceDateEpoch = git(['show', '-s', '--format=%ct', 'HEAD']).trim();
 const buildEnvironment = { ...process.env, SOURCE_DATE_EPOCH: sourceDateEpoch };
 
 function buildArtifacts(label) {
+  console.log(`Building artifact set: ${label}`);
   const output = join(proofRoot, label);
   const npmOutput = join(output, 'npm');
   const pythonOutput = join(output, 'python');
@@ -158,13 +160,14 @@ function buildArtifacts(label) {
   }
   run(
     qualityPython,
-    ['-m', 'build', '--wheel', '--no-isolation', '--outdir', pythonOutput],
+    ['-m', 'build', '--no-isolation', '--outdir', pythonOutput],
     { cwd: join(root, 'packages', 'python-sdk'), env: buildEnvironment },
   );
   return output;
 }
 
 function proveNodeInstall(artifactDirectory) {
+  console.log('Checking isolated Node install/uninstall');
   const consumer = join(proofRoot, 'node-consumer');
   mkdirSync(consumer, { recursive: true });
   writeFileSync(join(consumer, 'package.json'), '{"name":"llmkit-install-proof","private":true,"type":"module"}\n');
@@ -206,6 +209,7 @@ function proveNodeInstall(artifactDirectory) {
 }
 
 function provePythonInstall(artifactDirectory) {
+  console.log('Checking isolated Python install and native boundaries');
   const consumer = join(proofRoot, 'python-consumer');
   run(qualityPython, ['-m', 'venv', consumer]);
   const python = process.platform === 'win32'
@@ -213,10 +217,25 @@ function provePythonInstall(artifactDirectory) {
     : join(consumer, 'bin', 'python');
   const wheels = filesBelow(join(artifactDirectory, 'python')).filter((path) => path.endsWith('.whl'));
   if (wheels.length !== 1) throw new Error(`Expected one Python wheel, found ${wheels.length}.`);
-  run(python, ['-m', 'pip', 'install', '--disable-pip-version-check', wheels[0]]);
-  run(python, ['-c', "import llmkit; print(llmkit.__name__)"]);
-  run(python, ['-m', 'pip', 'uninstall', '--yes', 'llmkit-sdk']);
-  run(python, ['-c', "import importlib.util; assert importlib.util.find_spec('llmkit') is None"]);
+  const options = { cwd: consumer, timeout: 120_000 };
+  const proof = join(consumer, 'check-python-boundary-install.py');
+  copyFileSync(join(root, 'scripts', 'check-python-boundary-install.py'), proof);
+  for (const example of [
+    'boundary_review_fixture.py',
+    'openai_agents_boundary_review.py',
+    'pydantic_ai_boundary_review.py',
+  ]) {
+    copyFileSync(join(root, 'examples', example), join(consumer, example));
+  }
+  run(python, ['-I', '-m', 'pip', 'install', '--disable-pip-version-check', wheels[0]], options);
+  run(python, ['-I', proof, '--without-adapters'], options);
+  run(python, [
+    '-I', '-m', 'pip', 'install', '--disable-pip-version-check',
+    `${wheels[0]}[openai-agents,pydantic-ai]`,
+  ], options);
+  run(python, ['-I', proof], options);
+  run(python, ['-I', '-m', 'pip', 'uninstall', '--yes', 'llmkit-sdk'], options);
+  run(python, ['-I', '-c', "import importlib.util; assert importlib.util.find_spec('llmkit') is None"], options);
 }
 
 try {
@@ -238,7 +257,7 @@ try {
     artifacts: Object.fromEntries([...first.entries()].sort(([a], [b]) => a.localeCompare(b))),
     installProof: {
       node: 'five tarballs installed with npm, imports and CLI help exercised, packages uninstalled',
-      python: 'wheel and declared dependencies installed, imported, and package uninstalled in an isolated venv',
+      python: 'isolated wheel install; missing adapters fail closed; both native adapters join policy hashes, denial and approval; package uninstalled',
     },
   };
   mkdirSync(join(root, 'audits'), { recursive: true });
