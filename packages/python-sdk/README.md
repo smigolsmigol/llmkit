@@ -187,7 +187,8 @@ arguments, and direct calls to the original function are not covered. The covera
 enrollment, not an inventory of everything the Agent can execute.
 
 The [PydanticAI review example][pydantic-boundary-example] uses the same fake gateway and review sink
-as the OpenAI Agents example. From `packages/python-sdk`, with the `pydantic-ai` extra installed:
+as the OpenAI Agents example. It requires the current editable source checkout with the `pydantic-ai`
+extra installed. From `packages/python-sdk`:
 
 ```bash
 python ../../examples/pydantic_ai_boundary_review.py
@@ -196,6 +197,11 @@ python ../../examples/pydantic_ai_boundary_review.py
 Both native SDKs deny the poisoned review before the sink and join two approved model calls and one
 tool effect into nine receipt states. These local examples make no GitHub or hosted LLMKit request;
 they prove SDK wiring and the shared receipt contract, not deployment.
+
+The PydanticAI example loads `examples/pydantic_review_policy.json` relative to its own file and
+uses it for both model and tool admission. Its output joins the check's policy hash to the signed
+receipts. The fixture labels its input provenance as trusted; it does not establish real-world
+provenance.
 
 [pydantic-boundary-example]: https://github.com/smigolsmigol/llmkit/blob/main/examples/pydantic_ai_boundary_review.py
 
@@ -297,6 +303,19 @@ set `runtime_enforcement_verified` to `false`; enrollment requires separate cons
 The [live review pilot][live-review-pilot] accepts `--policy examples/pr_review_policy.json` and
 uses that policy for its model and tool runtime. Its spend and exact human-approval requirements
 remain unchanged.
+
+For the local PydanticAI consumer, run from the repository root with its extra installed:
+
+```console
+python -m llmkit.boundary_check examples/pydantic_review_policy.json
+python examples/pydantic_ai_boundary_review.py
+```
+
+The check exits 0 and the example reports zero poisoned sink calls and one approved sink call.
+Change the tool route's version to `2`: the declaration still checks, but the example's version `1`
+tool is denied with `action_outside_policy` before the sink. The example exits nonzero because its
+approved-path assertion no longer holds. Restore version `1` to run the approved path again.
+This demonstrates policy-to-runtime wiring through the native Agent, not automatic route discovery.
 
 ## Sessions and gateway mode
 
