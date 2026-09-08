@@ -153,6 +153,24 @@ class EffectAction:
 
 
 @dataclass(frozen=True)
+class EffectScope:
+    effect_class: str
+    target: str
+    version: str
+
+    def __post_init__(self) -> None:
+        for name in ("effect_class", "target", "version"):
+            _require_text(name, getattr(self, name))
+
+    def matches(self, action: EffectAction) -> bool:
+        return (self.effect_class, self.target, self.version) == (
+            action.effect_class,
+            action.target,
+            action.version,
+        )
+
+
+@dataclass(frozen=True)
 class EffectAcknowledgement:
     source: str
     effect_id: str
@@ -410,6 +428,7 @@ class BoundaryRuntime:
         require_trusted_provenance: bool = False,
         clock: Callable[[], datetime] | None = None,
         receipt_id_factory: Callable[[], str] | None = None,
+        allowed_effects: tuple[EffectScope, ...] | None = None,
     ) -> None:
         _require_digest("policy digest", policy_sha256)
         _require_text("adapter", adapter)
@@ -421,6 +440,12 @@ class BoundaryRuntime:
         self.require_trusted_provenance = require_trusted_provenance
         self._clock = clock or (lambda: datetime.now(UTC))
         self._receipt_id_factory = receipt_id_factory or (lambda: str(uuid.uuid4()))
+        if allowed_effects is not None and (
+            type(allowed_effects) is not tuple
+            or any(not isinstance(scope, EffectScope) for scope in allowed_effects)
+        ):
+            raise TypeError("allowed effects must be a tuple of EffectScope values")
+        self._allowed_effects = allowed_effects
 
     def _now(self) -> datetime:
         now = self._clock()
@@ -538,6 +563,10 @@ class BoundaryRuntime:
         now = self._now()
         if grant is None:
             reason = "missing_grant"
+        elif self._allowed_effects is not None and not any(
+            scope.matches(action) for scope in self._allowed_effects
+        ):
+            reason = "action_outside_policy"
         elif self.require_trusted_provenance and provenance != "trusted":
             reason = "missing_provenance"
         elif not self.authority.verify_grant(grant):

@@ -22,13 +22,13 @@
   "dependencies": {
     "@clerk/nextjs": "^6.39.6",
     "@f3d1/llmkit-shared": "workspace:*",
-    "@supabase/supabase-js": "^2.112.2",
+    "@supabase/supabase-js": "^2.115.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "echarts": "^6.1.0",
     "echarts-for-react": "^3.0.6",
     "lucide-react": "^0.577.0",
-    "next": "15.5.23",
+    "next": "15.5.25",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "server-only": "0.0.1",
@@ -38,14 +38,14 @@
     "@opennextjs/cloudflare": "1.20.2",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.4",
-    "@vitest/browser-playwright": "4.1.10",
-    "@vitest/coverage-istanbul": "4.1.10",
+    "@types/react-dom": "^19.2.5",
+    "@vitest/browser-playwright": "4.1.11",
+    "@vitest/coverage-istanbul": "4.1.11",
     "playwright": "1.62.1",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.0",
-    "vitest": "4.1.10",
-    "wrangler": "4.114.0"
+    "vitest": "4.1.11",
+    "wrangler": "4.128.0"
   }
 }

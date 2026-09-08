@@ -115,6 +115,14 @@ packages/
   dashboard/        Next.js 15 admin UI (private, deployed)
 ```
 
+## Boundary integration documentation
+
+The integration modules' coverage reports own the declared enforcement scope. The Python SDK README
+owns enrollment instructions and limitations; the boundary review examples demonstrate those claims
+without extending them. When an adapter changes scope, update its coverage report, the SDK README,
+and its example together. Keep the frozen boundary cases and native SDK tests aligned, including the
+joined OpenAI Agents and PydanticAI review examples in `test_pydantic_tools.py`.
+
 ## Brand assets
 
 `.github/logo-wordmark.svg` and `.github/logo-wordmark-animated.svg` are the canonical logo

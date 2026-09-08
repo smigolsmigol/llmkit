@@ -1,6 +1,6 @@
 import type { TokenUsage } from '@f3d1/llmkit-shared';
 import { readJsonResponseBounded, readProviderErrorDetail } from '../response-body';
-import { providerRequestSignal } from './request';
+import { providerFetch, providerRequestSignal } from './request';
 import { readSseLines } from './sse-lines';
 import type { ProviderAdapter, ProviderRequest, ProviderResponse, StreamEvent } from './types';
 
@@ -81,7 +81,7 @@ export class GeminiAdapter implements ProviderAdapter {
     }
     if (req.extra) Object.assign(body, req.extra);
 
-    const res = await fetch(`${BASE_URL}/${req.model}:generateContent`, {
+    const res = await providerFetch(`${BASE_URL}/${req.model}:generateContent`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -89,7 +89,7 @@ export class GeminiAdapter implements ProviderAdapter {
       },
       body: JSON.stringify(body),
       signal: providerRequestSignal(),
-    });
+    }, req.beforeDispatch);
 
     if (!res.ok) {
       const detail = await readProviderErrorDetail(res);
@@ -116,7 +116,7 @@ export class GeminiAdapter implements ProviderAdapter {
     }
     if (Object.keys(genConfig).length) body.generationConfig = genConfig;
 
-    const res = await fetch(`${BASE_URL}/${req.model}:streamGenerateContent?alt=sse`, {
+    const res = await providerFetch(`${BASE_URL}/${req.model}:streamGenerateContent?alt=sse`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -124,7 +124,7 @@ export class GeminiAdapter implements ProviderAdapter {
       },
       body: JSON.stringify(body),
       signal: providerRequestSignal(),
-    });
+    }, req.beforeDispatch);
 
     if (!res.ok) {
       const detail = await readProviderErrorDetail(res);
