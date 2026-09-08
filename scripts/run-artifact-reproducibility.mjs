@@ -228,12 +228,12 @@ function provePythonInstall(artifactDirectory) {
     copyFileSync(join(root, 'examples', example), join(consumer, example));
   }
   run(python, ['-I', '-m', 'pip', 'install', '--disable-pip-version-check', wheels[0]], options);
-  run(python, ['-I', proof, '--without-adapters'], options);
+  run(python, ['-I', '-O', proof, '--without-adapters'], options);
   run(python, [
     '-I', '-m', 'pip', 'install', '--disable-pip-version-check',
     `${wheels[0]}[openai-agents,pydantic-ai]`,
   ], options);
-  run(python, ['-I', proof], options);
+  run(python, ['-I', '-O', proof], options);
   run(python, ['-I', '-m', 'pip', 'uninstall', '--yes', 'llmkit-sdk'], options);
   run(python, ['-I', '-c', "import importlib.util; assert importlib.util.find_spec('llmkit') is None"], options);
 }
