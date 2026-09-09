@@ -78,8 +78,33 @@ tmp/
 .cache/
 supabase/.temp/
 
-# planning docs (local only, not repo material)
-/docs/
+# Public documentation only; keep unrelated local planning notes ignored.
+/docs/*
+!/docs/guides/
+/docs/guides/*
+!/docs/integrations/
+/docs/integrations/*
+!/docs/operations/
+/docs/operations/*
+!/docs/README.md
+!/docs/accessibility.md
+!/docs/api.md
+!/docs/architecture.md
+!/docs/getting-started.md
+!/docs/guides/live-review.md
+!/docs/integrations/cli.md
+!/docs/integrations/mcp.md
+!/docs/integrations/python.md
+!/docs/integrations/shared.md
+!/docs/integrations/typescript.md
+!/docs/integrations/vercel-ai-sdk.md
+!/docs/operations/database-recovery.md
+!/docs/operations/database.md
+!/docs/operations/python-releases.md
+!/docs/operations/quality.md
+!/docs/operations/staging-proof.md
+!/docs/roadmap.md
+!/docs/security-assurance.md
 
 # claude working files (local only, NEVER commit)
 .claude/

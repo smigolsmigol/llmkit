@@ -28,9 +28,36 @@ console.log(text);
 console.log('Cost:', providerMetadata?.llmkit);
 ```
 
-See the [Vercel AI SDK guide](https://github.com/smigolsmigol/llmkit/blob/main/docs/integrations/vercel-ai-sdk.md) for streaming
-and configuration. Calls outside this provider are not routed through LLMKit.
+### Streaming
+
+```ts
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: llmkit.chat('gpt-4.1'),
+  prompt: 'Write a haiku about cost tracking.',
+});
+
+for await (const chunk of result.textStream) {
+  process.stdout.write(chunk);
+}
+```
+
+### Config options
+
+```ts
+createLLMKit({
+  apiKey: 'llmk_...',
+  sessionId: 'my-session',      // group requests into sessions
+  provider: 'anthropic',         // force a specific provider
+  baseUrl: 'http://localhost:8787', // custom proxy URL
+});
+```
+
+## Docs
+
+See the [LLMKit repository](https://github.com/smigolsmigol/llmkit) for gateway and provider setup.
 
 ## License
 
-[MIT](https://github.com/smigolsmigol/llmkit/blob/main/LICENSE)
+MIT

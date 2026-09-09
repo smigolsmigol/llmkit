@@ -13,7 +13,7 @@ custody, or access continuity that does not yet exist.
 ## How decisions are made
 
 1. Feature proposals, behavior changes, and support questions start in a GitHub issue or discussion.
-2. The maintainer decides whether a proposal fits the [roadmap](ROADMAP.md), security requirements,
+2. The maintainer decides whether a proposal fits the [roadmap](docs/roadmap.md), security requirements,
    maintenance cost, and compatibility commitments.
 3. Accepted changes are reviewed through a pull request. Required CI must pass before merge.
 4. The maintainer records material compatibility, security, or governance decisions in the owning

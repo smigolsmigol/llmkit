@@ -71,7 +71,7 @@ applicable only when its description identifies the non-executable change and th
 that rationale during review.
 
 The exact commands, gate levels, and current JavaScript coverage boundary are documented in
-[`scripts/QUALITY.md`](scripts/QUALITY.md).
+[`scripts/QUALITY.md`](docs/operations/quality.md).
 
 ## Security
 
@@ -117,20 +117,38 @@ packages/
 
 ## Boundary integration documentation
 
-The integration modules' coverage reports own the declared enforcement scope. The Python SDK README
+The integration modules' coverage reports own the declared enforcement scope. The
+[Python integration guide](docs/integrations/python.md)
 owns enrollment instructions and limitations; the boundary review examples demonstrate those claims
-without extending them. When an adapter changes scope, update its coverage report, the SDK README,
+without extending them. When an adapter changes scope, update its coverage report, the Python guide,
 and its example together. Keep the frozen boundary cases and native SDK tests aligned, including the
 joined OpenAI Agents and PydanticAI review examples in `test_pydantic_tools.py`.
 
 The review policy files under `examples/` own the sample route declarations. Their packaged copies
 under `packages/python-sdk/src/llmkit/policies/` must remain JSON-equivalent; `test_boundary_policy.py`
 checks both copies and the exported policy report. A first-run command change also requires the
-SDK README, CLI help, and isolated installed-wheel proof in `scripts/run-artifact-reproducibility.mjs`.
+Python guide, package README, CLI help, and isolated installed-wheel proof in
+`scripts/run-artifact-reproducibility.mjs`.
+
+## Documentation layout
+
+[docs/README.md](docs/README.md) indexes the detailed guides. Root and package READMEs own the
+short first-result paths; package entry points use absolute public links so they also work on npm,
+PyPI and in the MCP bundle. Runtime code, sample policies, migrations and recovery snapshots stay
+with their implementation.
+
+When a guide moves, update its index entry, incoming links, relative links and any public evidence
+URL. Keep command working directories explicit. When an install example changes, update the
+corresponding package README and guide together and run the installed-artifact proof. Detailed
+compatibility and boundary limitations have one owner in the integration guide, not copied tables.
+
+The public-content contract checks the documented paths and links. The catalog's summary is checked
+in the shared-package guide against `pricing.json`. Keep local planning notes out of public docs:
+new public files need an explicit `.gitignore` entry and an index link.
 
 ## Releases
 
-The [Python release guide](packages/python-sdk/RELEASING.md) owns Python package tags, artifact
+The [Python release guide](docs/operations/python-releases.md) owns Python package tags, artifact
 verification and recovery. `pyproject.toml` owns the package version; the publication workflow owns
 build and upload behavior. Changes to those contracts must update the guide and
 `test/release-workflow-contract-test.mjs` together. npm packages retain their independent versions
@@ -145,7 +163,7 @@ visually review both when the canonical logo changes.
 
 Project decisions, maintainer responsibilities, and dispute handling are documented in
 [`GOVERNANCE.md`](GOVERNANCE.md). The current product boundaries are documented in
-[`ARCHITECTURE.md`](ARCHITECTURE.md) and [`SECURITY.md`](SECURITY.md).
+[`ARCHITECTURE.md`](docs/architecture.md) and [`SECURITY.md`](SECURITY.md).
 
 ## Need help?
 
