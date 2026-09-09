@@ -54,29 +54,91 @@ assert.ok(
 
 const evidenceFiles = [
   'GOVERNANCE.md',
-  'ROADMAP.md',
-  'ARCHITECTURE.md',
+  'docs/roadmap.md',
+  'docs/architecture.md',
   'SECURITY.md',
-  'SECURITY-ASSURANCE.md',
-  'ACCESSIBILITY.md',
+  'docs/security-assurance.md',
+  'docs/accessibility.md',
   'CONTRIBUTING.md',
 ];
 
-for (const relativePath of evidenceFiles) {
-  assert.ok(existsSync(`${repoRoot}/${relativePath}`), `${relativePath} must exist`);
-  const markdown = readRepo(relativePath);
-  for (const match of markdown.matchAll(/(?<!!)\[[^\]]+\]\(([^)]+)\)/g)) {
-    const rawTarget = match[1].replace(/^<|>$/g, '');
-    if (/^(?:https?:|mailto:|#)/.test(rawTarget)) continue;
-    const fileTarget = rawTarget.split('#', 1)[0];
-    if (!fileTarget) continue;
-    const absoluteTarget = resolve(repoRoot, dirname(relativePath), fileTarget);
-    assert.ok(
-      existsSync(absoluteTarget),
-      `${relativePath} links to missing repository path ${rawTarget}`,
-    );
+const guideFiles = [
+  'docs/getting-started.md',
+  'docs/api.md',
+  'docs/architecture.md',
+  'docs/roadmap.md',
+  'docs/security-assurance.md',
+  'docs/accessibility.md',
+  'docs/guides/live-review.md',
+  'docs/integrations/python.md',
+  'docs/integrations/typescript.md',
+  'docs/integrations/cli.md',
+  'docs/integrations/mcp.md',
+  'docs/integrations/vercel-ai-sdk.md',
+  'docs/integrations/shared.md',
+  'docs/operations/quality.md',
+  'docs/operations/python-releases.md',
+  'docs/operations/staging-proof.md',
+  'docs/operations/database.md',
+  'docs/operations/database-recovery.md',
+];
+const packageReadmes = [
+  'packages/python-sdk/README.md',
+  'packages/sdk/README.md',
+  'packages/cli/README.md',
+  'packages/mcp-server/README.md',
+  'packages/ai-sdk-provider/README.md',
+  'packages/shared/README.md',
+];
+
+function assertRepositoryLinks(relativePath, source) {
+  const markdown = source.replace(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm, '');
+  const targets = [
+    ...Array.from(markdown.matchAll(/\[[^\]]*\]\(([^)]+)\)/g), (match) => match[1]),
+    ...Array.from(markdown.matchAll(/(?:href|src)=["']([^"']+)["']/g), (match) => match[1]),
+    ...Array.from(markdown.matchAll(/^\[[^\]]+\]:\s*(\S+)/gm), (match) => match[1]),
+  ];
+  for (const target of targets) {
+    const rawTarget = target.replace(/^<|>$/g, '');
+    const publicPath = rawTarget.match(/^https:\/\/github\.com\/smigolsmigol\/llmkit\/blob\/main\/([^#]+)(#.*)?$/);
+    if (!publicPath && /^(?:https?:|mailto:)/.test(rawTarget)) continue;
+    const [fileTarget, fragment] = (publicPath ? publicPath[1] + (publicPath[2] ?? '') : rawTarget).split('#');
+    const absoluteTarget = publicPath
+      ? resolve(repoRoot, decodeURIComponent(fileTarget))
+      : resolve(repoRoot, dirname(relativePath), decodeURIComponent(fileTarget || relativePath.split('/').at(-1)));
+    assert.ok(existsSync(absoluteTarget), `${relativePath} links to missing repository path ${rawTarget}`);
+    if (!fragment || !absoluteTarget.endsWith('.md')) continue;
+    const destination = readFileSync(absoluteTarget, 'utf8');
+    const anchors = Array.from(destination.matchAll(/^#{1,6}\s+(.+)$/gm), (match) => match[1]
+      .toLowerCase().replace(/[^\p{L}\p{N}_\-\s]/gu, '').trim().replace(/\s/g, '-'));
+    assert.ok(anchors.includes(decodeURIComponent(fragment)), `${relativePath} links to missing heading ${rawTarget}`);
   }
 }
+
+for (const relativePath of new Set([
+  ...evidenceFiles, ...guideFiles, ...packageReadmes,
+  'README.md', 'docs/README.md', 'supabase/README.md', 'supabase/recovery/README.md',
+])) {
+  assert.ok(existsSync(`${repoRoot}/${relativePath}`), `${relativePath} must exist`);
+  assertRepositoryLinks(relativePath, readRepo(relativePath));
+}
+for (const invalidLink of [
+  '[missing](missing-guide.md)',
+  '![missing](missing-image.svg)',
+  '[missing](docs/integrations/python.md#missing-heading)',
+  '[guide]: https://github.com/smigolsmigol/llmkit/blob/main/missing-guide.md',
+]) {
+  assert.throws(() => assertRepositoryLinks('README.md', invalidLink), /missing/);
+}
+const docsIndex = readRepo('docs/README.md');
+for (const guide of guideFiles) {
+  assert.ok(docsIndex.includes(`](${guide.slice('docs/'.length)})`), `${guide} must be indexed`);
+}
+for (const packageReadme of packageReadmes) {
+  assert.match(readRepo(packageReadme), /https:\/\/github\.com\/smigolsmigol\/llmkit\/blob\/main\/docs\/integrations\//);
+}
+assert.match(readRepo('packages/python-sdk/pyproject.toml'), /^readme = "README\.md"$/m);
+assert.match(readRepo('scripts/build-mcpb.mjs'), /'MCP_PRIVACY\.md', 'README\.md'/);
 
 const securityTxt = readDashboard('public/.well-known/security.txt');
 const securityTxtFields = new Map();
@@ -120,6 +182,7 @@ assert.match(
   /https:\/\/raw\.githubusercontent\.com\/smigolsmigol\/llmkit\/main\/security-insights\.yml/,
 );
 assert.match(securityInsights, /bug-bounty-available: false/);
+assert.match(securityInsights, /quickstart-guide: https:\/\/github\.com\/smigolsmigol\/llmkit\/blob\/main\/docs\/getting-started\.md/);
 assert.match(securityInsights, /https:\/\/www\.bestpractices\.dev\/projects\/12288/);
 assert.doesNotMatch(securityInsights, /example\.com|11849/);
 
@@ -137,12 +200,12 @@ assert.match(governance, /single-maintainer governance model/);
 assert.match(governance, /Federico Benini/);
 assert.match(governance, /does not yet meet its target for access continuity/);
 
-const roadmap = readRepo('ROADMAP.md');
+const roadmap = readRepo('docs/roadmap.md');
 assert.match(roadmap, /August 2026 through August 2027/);
 assert.match(roadmap, /Not planned in this window/);
 assert.match(roadmap, /does not invent cross-modality rankings|automatic "cheapest model" ranking/);
 
-const architecture = readRepo('ARCHITECTURE.md');
+const architecture = readRepo('docs/architecture.md');
 assert.match(architecture, /Local tracking path/);
 assert.match(architecture, /Hosted request path/);
 assert.match(architecture, /public-recovery/);
@@ -150,11 +213,11 @@ assert.match(architecture, /service role is not a\s+tenant boundary by itself/);
 
 const securityPolicy = readRepo('SECURITY.md');
 assert.match(securityPolicy, /Security Requirements and Limits/);
-assert.match(securityPolicy, /\[SECURITY-ASSURANCE\.md\]\(SECURITY-ASSURANCE\.md\)/);
+assert.match(securityPolicy, /\[SECURITY-ASSURANCE\.md\]\(docs\/security-assurance\.md\)/);
 assert.match(securityPolicy, /731-entry snapshot dated 2026-03-25/);
 assert.match(securityPolicy, /does not invent cross-modality rankings/);
 
-const securityAssurance = readRepo('SECURITY-ASSURANCE.md');
+const securityAssurance = readRepo('docs/security-assurance.md');
 for (const requiredSection of [
   'Threat model',
   'Entry points and trust boundaries',
@@ -186,7 +249,7 @@ assert.doesNotMatch(
   'the assurance case must not use the BadgeApp answer as circular evidence',
 );
 
-const accessibility = readRepo('ACCESSIBILITY.md');
+const accessibility = readRepo('docs/accessibility.md');
 assert.match(accessibility, /target, not a[\s\S]*certification/);
 assert.match(accessibility, /No manual NVDA, VoiceOver, Narrator/);
 assert.match(accessibility, /English-only/);
@@ -225,8 +288,8 @@ const publicFiles = [
 ].map(readDashboard);
 const publicDocumentPaths = [
   'README.md',
-  'QUICKSTART.md',
-  'API.md',
+  'docs/getting-started.md',
+  'docs/api.md',
   'examples/sdk-basic.ts',
   'examples/streaming.ts',
   'examples/vercel-ai-sdk.ts',
@@ -238,11 +301,19 @@ const publicDocumentPaths = [
   'packages/python-sdk/src/llmkit/_transport.py',
   'packages/ai-sdk-provider/README.md',
 ];
+publicDocumentPaths.push(
+  'docs/integrations/python.md',
+  'docs/integrations/typescript.md',
+  'docs/integrations/cli.md',
+  'docs/integrations/mcp.md',
+  'docs/integrations/vercel-ai-sdk.md',
+  'docs/integrations/shared.md',
+);
 const publicDocs = publicDocumentPaths.map(readRepo);
 for (const relativePath of [
   'README.md',
-  'QUICKSTART.md',
-  'API.md',
+  'docs/getting-started.md',
+  'docs/api.md',
   'SECURITY.md',
   'packages/mcp-server/README.md',
 ]) {
@@ -354,7 +425,7 @@ assert.match(
 
 const pricingApiReferences = [
   readRepo('README.md'),
-  readRepo('API.md'),
+  readRepo('docs/api.md'),
   readDashboard('src/app/(public)/pricing/page.tsx'),
   readDashboard('src/app/(public)/providers/[name]/page.tsx'),
   readDashboard('src/app/(public)/compare/calculator.tsx'),

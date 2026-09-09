@@ -111,5 +111,5 @@ cleanup journal. A local or staging pass does not prove production deployment.
   cross-modality comparability or rank an implicit catalog.
 - Hosted account and dashboard recovery remains a release gate, not an available feature.
 
-Security guarantees and excluded guarantees are specified in [SECURITY.md](SECURITY.md). User-facing
-availability boundaries are kept in [README.md](README.md) and [QUICKSTART.md](QUICKSTART.md).
+Security guarantees and excluded guarantees are specified in [SECURITY.md](../SECURITY.md). User-facing
+availability boundaries are kept in [README.md](../README.md) and [QUICKSTART.md](getting-started.md).

@@ -17,7 +17,7 @@ project:
       social: https://github.com/smigolsmigol
       primary: true
   documentation:
-    quickstart-guide: https://github.com/smigolsmigol/llmkit/blob/main/QUICKSTART.md
+    quickstart-guide: https://github.com/smigolsmigol/llmkit/blob/main/docs/getting-started.md
     detailed-guide: https://llmkit.sh/docs
     code-of-conduct: https://github.com/smigolsmigol/llmkit/blob/main/CODE_OF_CONDUCT.md
     support-policy: https://github.com/smigolsmigol/llmkit/security/policy#supported-versions

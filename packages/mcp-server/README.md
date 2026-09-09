@@ -24,65 +24,10 @@ The local tools (`llmkit_local_*`) need no API key. They read supported Claude C
 Cline task data from supported editor storage. Proxy tools require an existing LLMKit API key in
 `LLMKIT_API_KEY`. Check [llmkit.sh](https://llmkit.sh) for current account and service availability.
 
-## Tools
-
-### Proxy tools (need API key)
-
-| Tool | What it does |
-|------|-------------|
-| `llmkit_usage_stats` | Spend, requests, top models for a period |
-| `llmkit_cost_query` | Costs grouped by provider, model, session, or day |
-| `llmkit_budget_status` | Budget limits and remaining balance |
-| `llmkit_session_summary` | Recent sessions with cost, duration, models |
-| `llmkit_list_keys` | All keys with status and creation date |
-| `llmkit_health` | Proxy ping with response time |
-
-### Local tools (no key needed)
-
-The local tools detect supported installations and aggregate their session data.
-
-| Tool | What it does |
-|------|-------------|
-| `llmkit_local_session` | Current Claude Code session or latest detected Cline task cost |
-| `llmkit_local_projects` | Cumulative cost across all projects and sessions |
-| `llmkit_local_cache` | Claude Code prompt caching savings using model-bound prices |
-| `llmkit_local_forecast` | 30-day API-rate projection from detected local history |
-| `llmkit_local_agents` | Subagent cost attribution (Claude Code) |
-
-### SessionEnd hook
-
-Auto-log session costs when Claude Code exits:
-
-```json
-{
-  "hooks": {
-    "SessionEnd": [
-      {
-        "type": "command",
-        "command": "npx @f3d1/llmkit-mcp-server --hook"
-      }
-    ]
-  }
-}
-```
-
-## Environment variables
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `LLMKIT_API_KEY` | No | API key for proxy tools. Local tools work without it. |
-| `LLMKIT_PROXY_URL` | No | Proxy URL (defaults to hosted service) |
-| `LLMKIT_CLINE_DIR` | No | Override Cline data directory path |
-| `LLMKIT_SCAN_WSL` | No | Set to `1` to scan WSL homes for Claude Code and Cline data |
-
-## Supported tools
-
-The local tools read data from:
-- Claude Code (`~/.claude/projects/`)
-- Cline extension storage in VS Code, Insiders, VSCodium, Cursor, and Windsurf
-- WSL installations when `LLMKIT_SCAN_WSL=1` (scans distro homes via UNC paths on Windows)
-- VS Code, Cursor, and Windsurf server directories for supported remote extension storage
+See the [MCP guide](https://github.com/smigolsmigol/llmkit/blob/main/docs/integrations/mcp.md) for all 11 tools, environment variables,
+supported storage and the SessionEnd hook. Read the
+[privacy policy](https://github.com/smigolsmigol/llmkit/blob/main/packages/mcp-server/MCP_PRIVACY.md) before enabling filesystem inspection.
 
 ## License
 
-MIT
+[MIT](https://github.com/smigolsmigol/llmkit/blob/main/LICENSE)

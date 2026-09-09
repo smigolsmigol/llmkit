@@ -146,5 +146,5 @@ Cost comes back in the `x-llmkit-cost` response header.
 - New account creation and dashboard key or budget management remain temporarily unavailable while the authenticated service is restored
 - Add `x-llmkit-session-id` headers to group requests by agent run
 - Add `x-llmkit-user-id` headers to track costs per end-user
-- Set up the [MCP server](packages/mcp-server) to inspect supported Claude Code sessions and Cline task data found in supported editor storage
-- See [API.md](API.md) for full endpoint docs
+- Set up the [MCP server](../packages/mcp-server) to inspect supported Claude Code sessions and Cline task data found in supported editor storage
+- See [API.md](api.md) for full endpoint docs

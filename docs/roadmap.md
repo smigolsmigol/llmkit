@@ -54,7 +54,7 @@ Intended work:
 
 ## How this roadmap changes
 
-Roadmap changes follow [GOVERNANCE.md](GOVERNANCE.md). A proposal should name the user outcome, the
+Roadmap changes follow [GOVERNANCE.md](../GOVERNANCE.md). A proposal should name the user outcome, the
 current evidence, compatibility and security boundaries, the proof required, and the work it
 displaces. Completed work belongs in release notes and current documentation, not in a rewritten
 history of this roadmap.
