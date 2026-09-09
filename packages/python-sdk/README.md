@@ -187,8 +187,9 @@ arguments, and direct calls to the original function are not covered. The covera
 enrollment, not an inventory of everything the Agent can execute.
 
 The [PydanticAI review example][pydantic-boundary-example] uses the same fake gateway and review sink
-as the OpenAI Agents example. It requires the current editable source checkout with the `pydantic-ai`
-extra installed. From `packages/python-sdk`:
+as the OpenAI Agents example. Use the example files from this checkout with the `pydantic-ai`
+extra installed. The SDK can come from the built wheel; an editable install is not required.
+From `packages/python-sdk`:
 
 ```bash
 python ../../examples/pydantic_ai_boundary_review.py
@@ -230,15 +231,13 @@ The approved review joins two model calls and one tool effect into three signed 
 fixture sends no GitHub or hosted LLMKit request, so it proves consumer wiring rather than hosted
 deployment.
 
-From `packages/python-sdk`, the check takes a few minutes:
+With the `openai-agents` extra installed, run the example from the repository root:
 
 ```bash
-python -m venv .venv
-.venv/bin/python -m pip install -e ".[openai-agents]"
-.venv/bin/python ../../examples/openai_agents_boundary_review.py
+python examples/openai_agents_boundary_review.py
 ```
 
-On Windows, use `.venv\Scripts\python.exe`. A passing result reports zero poisoned sink calls, one
+A passing result reports zero poisoned sink calls, one
 approved sink call, two approved model requests, and nine approved receipt states in
 `reserved`, `dispatched`, `settled` order.
 
@@ -264,27 +263,45 @@ MCP, computer, shell, apply-patch, handoffs, agent-as-tool calls, realtime, dire
 background retries remain uncovered. The included HMAC authority and replay/lifecycle stores are
 local proof components, not a production key service or durable coordination layer.
 
-## Boundary Check (experimental, source checkout)
+## Boundary Check (experimental)
 
 Check a declared route policy in CI, then use that same policy to restrict runtime admission.
-This command requires the current source checkout; it is not in the published 0.1.11 wheel.
-From the repository root, in a Python 3.11+ environment:
+The checker and example-policy export require SDK 0.1.12 or newer. This change prepares 0.1.12;
+it does not publish it. The published 0.1.11 wheel does not contain these commands.
+
+For the release candidate, build the wheel from the repository root in the bootstrapped quality
+environment with `python -m build --wheel --no-isolation packages/python-sdk`. Copy the wheel from
+`packages/python-sdk/dist/` into a new directory outside the checkout. In that directory, create
+and activate a Python 3.11+ virtual environment, then run:
 
 ```console
-python -m pip install -e "./packages/python-sdk[openai-agents]"
-python -m llmkit.boundary_check examples/pr_review_policy.json
+python -m pip install "./llmkit_sdk-0.1.12-py3-none-any.whl[openai-agents]"
+python -m llmkit.boundary_check --write-example openai-agents llmkit-policy.json
+python -m llmkit.boundary_check llmkit-policy.json
 ```
 
-The example declares one gateway model route and one review-comment tool. Set the comment route's
+After 0.1.12 is published, the install command becomes
+`python -m pip install "llmkit-sdk[openai-agents]==0.1.12"`. For PydanticAI, use the `pydantic-ai`
+extra and `--write-example pydantic-ai` instead. Both templates are included in the wheel and source
+distribution. No checkout is needed to export or check them.
+
+Export reports `written: true` and exits 0. It creates only the named file, refuses to overwrite an
+existing path, and does not create parent directories. Export is not validation or enrollment;
+always run the separate check. If a write fails, it exits 2 without echoing file contents. A failed
+write can leave a partial new file; inspect it and choose a new destination before retrying.
+
+The example declares one gateway model route and one review-comment tool. Review those routes for
+your application before committing the policy. Set the comment route's
 `enrolled` field to `false` and rerun the command: it exits 1 with `unenrolled_route` for
 `post_review_comment`. Restore `true` and it exits 0. Malformed or unreadable policy files exit 2
 without echoing their contents. The repository's `quality:pr` gate runs this check on the example.
-No API key, gateway, model request, or GitHub access is needed for the check.
+No API key, gateway, model request, or GitHub access is needed for export or checking. A missing SDK
+extra produces `adapter_unavailable` and exit 1; install the matching extra in the same environment.
 
 ```python
 from llmkit.boundary_policy import BoundaryPolicy
 
-policy = BoundaryPolicy.load("examples/pr_review_policy.json")
+policy = BoundaryPolicy.load("llmkit-policy.json")
 boundary_runtime = policy.runtime(authority=authority)
 ```
 
@@ -316,6 +333,12 @@ Change the tool route's version to `2`: the declaration still checks, but the ex
 tool is denied with `action_outside_policy` before the sink. The example exits nonzero because its
 approved-path assertion no longer holds. Restore version `1` to run the approved path again.
 This demonstrates policy-to-runtime wiring through the native Agent, not automatic route discovery.
+
+The OpenAI example likewise loads `examples/pr_review_policy.json` and binds grants and receipts to
+its checked hash. The artifact gate installs the built wheel in a fresh environment outside the
+checkout, exports both policies, and runs copies of both native examples. It proves missing-extra
+failure, policy-hash agreement, denial before the sink, and one approved review effect. The fake
+gateway and sink do not prove hosted enforcement or external developer adoption.
 
 ## Sessions and gateway mode
 

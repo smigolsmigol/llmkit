@@ -23,10 +23,15 @@ proof. No quality command deploys or mutates the hosted Supabase project.
 | `quality:pr` | Static gate plus deterministic JavaScript tests, Python tests and fuzzing, Python statement/branch coverage, zero-known-vulnerability npm and Python audits, the local data-preserving Supabase migration proof, and a real Worker/database compatibility request. |
 | `quality:dashboard-reproducibility` | Two no-cache dashboard container builds with one ephemeral pair secret, followed by an exact path and byte comparison. |
 
-The pre-PR gate also rebuilds all five npm tarballs and the Python wheel twice, requires each pair
+The pre-PR gate also rebuilds all five npm tarballs and the Python source archive and wheel twice,
+builds each wheel from its source archive, requires each pair
 to be bit-identical, installs the first set into isolated Node and Python consumers, exercises the
 public imports and CLI help paths, and verifies uninstall. Its ignored machine receipt is bound to
 the exact Git head and dirty worktree bytes at `audits/llmkit-artifact-reproducibility.json`.
+The Python consumer runs in isolated mode outside the checkout. It exports the bundled policies,
+checks missing-extra failures, then installs both native adapter extras and runs copies of the
+OpenAI Agents and PydanticAI review fixtures. Check reports and signed receipts must agree on the
+policy hash; a denied review must not reach the sink and the approved control must reach it once.
 
 Biome runs through `scripts/run-biome-policy.mjs`. All errors and all warning categories other than
 the existing cognitive-complexity advisory baseline fail. The baseline is capped per file and is

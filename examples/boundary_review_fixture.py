@@ -8,19 +8,12 @@ import uuid
 from typing import Any
 
 import httpx
-from llmkit.boundary import canonical_arguments, content_sha256
+from llmkit.boundary import canonical_arguments
 
 REPOSITORY = "smigolsmigol/llmkit"
 HEAD = "a" * 40
 BUDGET_ID = "11111111-1111-4111-8111-111111111111"
 MODEL = "gpt-4.1-mini"
-POLICY = content_sha256(
-    {
-        "name": "local-pr-review",
-        "requires": ["exact-effect-grant", "trusted-reviewer-approval"],
-        "version": 1,
-    }
-)
 
 
 class FakeGateway:

@@ -511,6 +511,10 @@ def test_native_review_examples_share_model_and_tool_receipt_contract(monkeypatc
         assert result["approved_run"]["final_output"] == "Review comment posted."
         assert result["approved_run"]["receipt_states"] == ["reserved", "dispatched", "settled"] * 3
         assert result["sink_calls"] == 1
+        for run in (result["poisoned_run"], result["approved_run"]):
+            assert run["boundary_check"]["ok"] is True
+            assert run["boundary_check"]["runtime_enforcement_verified"] is False
+            assert run["receipt_policy_sha256s"] == [run["boundary_check"]["policy_sha256"]]
         results.append(result)
     assert results[0]["coverage"]["contract_version"] == results[1]["coverage"]["contract_version"]
 
@@ -520,6 +524,29 @@ def pydantic_review(monkeypatch):
     examples = Path(__file__).resolve().parents[3] / "examples"
     monkeypatch.syspath_prepend(str(examples))
     return runpy.run_path(str(examples / "pydantic_ai_boundary_review.py"))
+
+
+@pytest.mark.parametrize("change", ["adapter", "unenrolled"])
+def test_openai_review_invalid_policy_stops_before_gateway(monkeypatch, change):
+    examples = Path(__file__).resolve().parents[3] / "examples"
+    monkeypatch.syspath_prepend(str(examples))
+    example = runpy.run_path(str(examples / "openai_agents_boundary_review.py"))
+    policy = BoundaryPolicy.load(examples / "pr_review_policy.json")
+    if change == "adapter":
+        policy = replace(policy, adapter="pydantic-ai")
+    else:
+        model, tool = policy.routes
+        policy = replace(policy, routes=(model, replace(tool, enrolled=False)))
+    monkeypatch.setattr(BoundaryPolicy, "load", lambda _: policy)
+
+    def unexpected_gateway(*args, **kwargs):
+        pytest.fail("invalid policy reached the gateway")
+
+    monkeypatch.setitem(example["main"].__globals__, "FakeGateway", unexpected_gateway)
+    with pytest.raises(
+        ValueError, match=r"openai_agents_policy_required|boundary_policy_check_failed"
+    ):
+        asyncio.run(example["main"]())
 
 
 def test_pydantic_review_default_policy_binds_native_receipts(pydantic_review, capsys):

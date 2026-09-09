@@ -1,8 +1,10 @@
 import json
 import runpy
 import sys
+from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from importlib.resources import files
 from pathlib import Path
 
 import pytest
@@ -314,3 +316,99 @@ def test_real_module_entrypoint_checks_the_committed_example(monkeypatch, capsys
         runpy.run_module("llmkit.boundary_check", run_name="__main__")
     assert result.value.code == 0
     assert json.loads(capsys.readouterr().out)["ok"]
+
+
+@pytest.mark.parametrize(
+    "adapter,example",
+    [("openai-agents", "pr_review_policy.json"), ("pydantic-ai", "pydantic_review_policy.json")],
+)
+def test_bundled_policy_export_matches_example_and_check(tmp_path, capsys, adapter, example):
+    path = tmp_path / "policy.json"
+    assert main(["--write-example", adapter, str(path)]) == 0
+    assert json.loads(capsys.readouterr().out) == {"written": True}
+    resource = files("llmkit").joinpath("policies", f"{adapter}.json")
+    assert path.read_bytes() == resource.read_bytes()
+    canonical = Path(__file__).resolve().parents[3] / "examples" / example
+    assert json.loads(path.read_bytes()) == json.loads(canonical.read_bytes())
+    assert main([str(path)]) == 0
+    assert json.loads(capsys.readouterr().out) == BoundaryPolicy.load(canonical).check()
+
+
+@pytest.mark.parametrize("existing", [True, False])
+def test_policy_export_never_overwrites_or_creates_parent_directories(tmp_path, capsys, existing):
+    path = tmp_path / "private-canary.json" if existing else tmp_path / "absent" / "policy.json"
+    if existing:
+        path.write_bytes(b"private-canary")
+    assert main(["--write-example", "openai-agents", str(path)]) == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "written": False,
+        "error": "example_policy_write_failed",
+    }
+    if existing:
+        assert path.read_bytes() == b"private-canary"
+    else:
+        assert not path.parent.exists()
+
+
+def test_export_does_not_require_adapter_or_claim_enforcement(tmp_path, monkeypatch, capsys):
+    def unexpected_check(_):
+        pytest.fail("export tried to check runtime enrollment")
+
+    monkeypatch.setattr(BoundaryPolicy, "check", unexpected_check)
+    assert main(["--write-example", "pydantic-ai", str(tmp_path / "policy.json")]) == 0
+    assert json.loads(capsys.readouterr().out) == {"written": True}
+
+
+def test_export_rejects_invalid_resource_before_creating_destination(tmp_path, monkeypatch, capsys):
+    resources = tmp_path / "policies"
+    resources.mkdir()
+    (resources / "openai-agents.json").write_bytes(b"private-invalid-resource")
+    monkeypatch.setitem(main.__globals__, "files", lambda _: tmp_path)
+    path = tmp_path / "policy.json"
+    assert main(["--write-example", "openai-agents", str(path)]) == 2
+    assert not path.exists()
+    assert json.loads(capsys.readouterr().out) == {
+        "written": False,
+        "error": "example_policy_write_failed",
+    }
+
+
+def test_export_rejects_unknown_adapter_without_creating_file(tmp_path, capsys):
+    path = tmp_path / "policy.json"
+    with pytest.raises(SystemExit) as error:
+        main(["--write-example", "../unknown", str(path)])
+    assert error.value.code == 2
+    assert not path.exists()
+    capsys.readouterr()
+
+
+def test_export_partial_write_fails_and_retry_preserves_the_file(tmp_path, monkeypatch, capsys):
+    original_open = Path.open
+    path = tmp_path / "policy.json"
+
+    @contextmanager
+    def failed_open(self, *args, **kwargs):
+        with original_open(self, *args, **kwargs) as destination:
+            if self != path:
+                yield destination
+                return
+
+            class PartialWrite:
+                def write(self, source):
+                    destination.write(source[:8])
+                    raise OSError("private-write-error")
+
+            yield PartialWrite()
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Path, "open", failed_open)
+        assert main(["--write-example", "openai-agents", str(path)]) == 2
+    assert json.loads(capsys.readouterr().out) == {
+        "written": False,
+        "error": "example_policy_write_failed",
+    }
+    partial = path.read_bytes()
+    assert len(partial) == 8
+    assert main(["--write-example", "openai-agents", str(path)]) == 2
+    assert path.read_bytes() == partial
+    assert json.loads(capsys.readouterr().out)["written"] is False
