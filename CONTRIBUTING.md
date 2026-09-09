@@ -128,6 +128,14 @@ under `packages/python-sdk/src/llmkit/policies/` must remain JSON-equivalent; `t
 checks both copies and the exported policy report. A first-run command change also requires the
 SDK README, CLI help, and isolated installed-wheel proof in `scripts/run-artifact-reproducibility.mjs`.
 
+## Releases
+
+The [Python release guide](packages/python-sdk/RELEASING.md) owns Python package tags, artifact
+verification and recovery. `pyproject.toml` owns the package version; the publication workflow owns
+build and upload behavior. Changes to those contracts must update the guide and
+`test/release-workflow-contract-test.mjs` together. npm packages retain their independent versions
+and existing publication workflow.
+
 ## Brand assets
 
 `.github/logo-wordmark.svg` and `.github/logo-wordmark-animated.svg` are the canonical logo

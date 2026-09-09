@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   sbom:
+    if: github.event_name != 'release' || !startsWith(github.event.release.tag_name, 'python-sdk-v')
     runs-on: ubuntu-latest
     permissions:
       contents: write

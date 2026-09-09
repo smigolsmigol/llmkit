@@ -1,9 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdir, mkdtemp, readFile, rm, truncate, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import {
   assertExpectedSha,
   assertPublishedVersion,
+  assertPythonReleaseArtifacts,
   assertUnpublishedVersion,
   registryVersionUrl,
 } from '../scripts/assert-unpublished-version.mjs';
@@ -11,6 +16,30 @@ import {
 const npmWorkflow = await readFile('.github/workflows/publish.yml', 'utf8');
 const pypiWorkflow = await readFile('.github/workflows/publish-pypi.yml', 'utf8');
 const sbomWorkflow = await readFile('.github/workflows/sbom.yml', 'utf8');
+const slsaWorkflow = await readFile('.github/workflows/slsa-provenance.yml', 'utf8');
+
+assert.match(pypiWorkflow, /environment: pypi/);
+assert.match(pypiWorkflow, /working-directory: packages\/python-sdk/);
+assert.match(pypiWorkflow, /id: release[\s\S]*version=\$VERSION.*GITHUB_OUTPUT/);
+assert.match(pypiWorkflow, /id: attest\n\s+uses: actions\/attest-build-provenance@[a-f0-9]{40}/);
+const pythonAttestAt = pypiWorkflow.indexOf('      - name: attest artifacts');
+const pythonPublishAt = pypiWorkflow.indexOf('uses: pypa/gh-action-pypi-publish@');
+const pythonVerifyAt = pypiWorkflow.indexOf('      - name: verify published artifact bytes');
+const pythonRetainAt = pypiWorkflow.indexOf('      - name: retain attested release artifacts');
+assert(pythonAttestAt >= 0 && pythonPublishAt > pythonAttestAt);
+assert(pythonVerifyAt > pythonPublishAt && pythonRetainAt > pythonVerifyAt);
+const pythonVerifyStep = pypiWorkflow.slice(pythonVerifyAt, pythonRetainAt);
+assert.match(pythonVerifyStep, /RELEASE_VERSION: \$\{\{ steps\.release\.outputs\.version \}\}/);
+assert.match(pythonVerifyStep, /run: node ..\/..\/scripts\/assert-unpublished-version\.mjs pypi-artifacts "\$RELEASE_VERSION" dist/);
+const pythonRetainStep = pypiWorkflow.slice(pythonRetainAt, pypiWorkflow.indexOf('\n      - name:', pythonRetainAt + 1));
+assert.match(pythonRetainStep, /if: always\(\) && steps\.attest\.outcome == 'success'/);
+assert.match(pythonRetainStep, /uses: actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);
+assert.match(pythonRetainStep, /name: llmkit-sdk-\$\{\{ steps\.release\.outputs\.version \}\}-dist/);
+assert.match(pythonRetainStep, /path: \|\n\s+packages\/python-sdk\/dist\/\*\.whl\n\s+packages\/python-sdk\/dist\/\*\.tar\.gz/);
+assert.match(pythonRetainStep, /if-no-files-found: error/);
+assert.match(pythonRetainStep, /retention-days: 90/);
+assert.match(slsaWorkflow, /build:\n\s+if: \$\{\{ !startsWith\(github\.event\.release\.tag_name, 'python-sdk-v'\) \}\}/);
+assert.match(sbomWorkflow, /sbom:\n\s+if: github\.event_name != 'release' \|\| !startsWith\(github\.event\.release\.tag_name, 'python-sdk-v'\)/);
 
 const sbomActions = [...sbomWorkflow.matchAll(/^\s*-?\s*uses:\s*[^@\s]+@([^\s#]+)/gm)];
 assert.ok(sbomActions.length >= 3, 'SBOM workflow must expose its action revisions');
@@ -122,5 +151,117 @@ assert.throws(
   () => assertExpectedSha('not-a-sha', sha),
   /full 40-character/,
 );
+
+const artifactDirectory = await mkdtemp(join(tmpdir(), 'llmkit-release-test-'));
+try {
+  const version = '0.1.12';
+  const names = [`llmkit_sdk-${version}-py3-none-any.whl`, `llmkit_sdk-${version}.tar.gz`];
+  const bytes = [Buffer.from('wheel fixture'), Buffer.from('source archive fixture')];
+  for (const [index, name] of names.entries()) await writeFile(join(artifactDirectory, name), bytes[index]);
+  const metadata = {
+    info: { name: 'llmkit-sdk', version },
+    urls: names.map((filename, index) => ({
+      filename,
+      size: bytes[index].length,
+      digests: { sha256: createHash('sha256').update(bytes[index]).digest('hex') },
+      url: `https://files.pythonhosted.org/packages/fixture/${filename}`,
+      yanked: false,
+    })),
+  };
+  const makeFetch = (record = metadata, downloads = bytes, calls = []) => async (url, options) => {
+    calls.push(url);
+    assert.equal(options.redirect, 'error');
+    assert(options.signal instanceof AbortSignal, 'every registry request needs a deadline');
+    if (url === registryVersionUrl('pypi', 'llmkit-sdk', version)) return Response.json(record);
+    const index = metadata.urls.findIndex((entry) => entry.url === url);
+    assert(index >= 0, 'only the validated PyPI artifact host may be read');
+    return new Response(downloads[index]);
+  };
+  const calls = [];
+  const result = await assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch(metadata, bytes, calls));
+  assert.equal(result.version, version);
+  assert.deepEqual(result.files.map((file) => file.filename), names);
+  assert.equal(calls.length, 3, 'verify metadata and both downloaded artifacts');
+
+  for (const mutate of [
+    (record) => { record.info.name = 'another-package'; },
+    (record) => { record.info.version = '0.1.11'; },
+    (record) => { record.urls = null; },
+    (record) => { record.urls.pop(); },
+    (record) => { record.urls.push(record.urls[0]); },
+    (record) => { record.urls[1] = record.urls[0]; },
+    (record) => { record.urls[0] = null; },
+    (record) => { record.urls[0].yanked = true; },
+    (record) => { record.urls[0].size += 1; },
+    (record) => { record.urls[0].digests.sha256 = '0'.repeat(64); },
+    (record) => { record.urls[0].digests = null; },
+    (record) => { record.urls[0].url = 'https://example.com/artifact'; },
+    (record) => { record.urls[0].url = 'http://files.pythonhosted.org/artifact'; },
+    (record) => { record.urls[0].url = 'not a URL'; },
+  ]) {
+    const record = structuredClone(metadata);
+    mutate(record);
+    await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch(record)));
+  }
+  for (const url of [
+    `https://files.pythonhosted.org:444/packages/${names[0]}`,
+    `https://user:pass@files.pythonhosted.org/packages/${names[0]}`,
+    `${metadata.urls[0].url}?download=1`,
+    `${metadata.urls[0].url}#fragment`,
+    `https://files.pythonhosted.org/other/${names[0]}`,
+    'https://files.pythonhosted.org/packages/other.whl',
+  ]) {
+    const record = structuredClone(metadata);
+    record.urls[0].url = url;
+    await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch(record)), /URL/);
+  }
+  for (const record of [null, {}, { info: null }]) {
+    await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch(record)), /metadata/);
+  }
+  for (const altered of [Buffer.alloc(bytes[0].length, 65), Buffer.from('short'), Buffer.alloc(100)]) {
+    await assert.rejects(
+      assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch(metadata, [altered, bytes[1]])),
+      /artifact bytes/,
+    );
+  }
+  await assert.rejects(
+    assertPythonReleaseArtifacts(version, artifactDirectory, async () => new Response('', { status: 503 })),
+    /metadata/,
+  );
+  for (const response of [new Response('', { status: 503 }), new Response(null)]) {
+    await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory,
+      async (url) => url.endsWith('/json') ? Response.json(metadata) : response), /download/);
+  }
+  await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory, async () => {
+    throw new DOMException('Timed out', 'TimeoutError');
+  }), { name: 'TimeoutError' });
+  for (const invalid of ['../bad', '', '0.1.12rc1', '01.1.12', '0.1', '1.2.3.4']) {
+    await assert.rejects(assertPythonReleaseArtifacts(invalid, artifactDirectory, makeFetch()), /version/);
+    const preflightCalls = [];
+    await assert.rejects(assertUnpublishedVersion('pypi', 'llmkit-sdk', invalid,
+      makeFetch(metadata, bytes, preflightCalls)), /stable major.minor.patch/);
+    assert.equal(preflightCalls.length, 0, 'unsupported versions must fail before registry access or publication');
+  }
+  for (const args of [[], [version], [version, artifactDirectory, 'extra']]) {
+    const cli = spawnSync(process.execPath, ['scripts/assert-unpublished-version.mjs', 'pypi-artifacts', ...args],
+      { encoding: 'utf8', timeout: 10_000 });
+    assert.equal(cli.status, 1);
+    assert.match(cli.stderr, /Usage:/);
+  }
+  for (const size of [0, 64 * 1024 * 1024 + 1]) {
+    await truncate(join(artifactDirectory, names[0]), size);
+    await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch()), /size/);
+  }
+  await writeFile(join(artifactDirectory, names[0]), bytes[0]);
+  await writeFile(join(artifactDirectory, 'unexpected.txt'), 'not part of the release');
+  await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch()), /exactly/);
+  await rm(join(artifactDirectory, 'unexpected.txt'));
+  await rm(join(artifactDirectory, names[0]));
+  await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch()), /exactly/);
+  await mkdir(join(artifactDirectory, names[0]));
+  await assert.rejects(assertPythonReleaseArtifacts(version, artifactDirectory, makeFetch()), /exactly/);
+} finally {
+  await rm(artifactDirectory, { recursive: true, force: true });
+}
 
 console.log('RELEASE_WORKFLOW_CONTRACT PASS');
