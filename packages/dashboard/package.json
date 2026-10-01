@@ -41,11 +41,11 @@
     "@types/react-dom": "^19.2.5",
     "@vitest/browser-playwright": "4.1.11",
     "@vitest/coverage-istanbul": "4.1.11",
-    "playwright": "1.62.1",
-    "postcss": "^8.5.26",
+    "playwright": "1.63.0",
+    "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.0",
     "vitest": "4.1.11",
-    "wrangler": "4.128.0"
+    "wrangler": "4.143.0"
   }
 }
