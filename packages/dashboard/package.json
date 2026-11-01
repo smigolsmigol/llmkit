@@ -39,13 +39,13 @@
     "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.5",
-    "@vitest/browser-playwright": "4.1.11",
-    "@vitest/coverage-istanbul": "4.1.11",
-    "playwright": "1.62.1",
-    "postcss": "^8.5.26",
+    "@vitest/browser-playwright": "4.1.12",
+    "@vitest/coverage-istanbul": "4.1.12",
+    "playwright": "1.64.1",
+    "postcss": "^8.5.32",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.0",
-    "vitest": "4.1.11",
-    "wrangler": "4.128.0"
+    "vitest": "4.1.12",
+    "wrangler": "4.155.0"
   }
 }
